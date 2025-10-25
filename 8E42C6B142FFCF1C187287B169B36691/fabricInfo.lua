@@ -3,8 +3,6 @@ FabricInfo = {
     fName = nil,
     fType = nil,
     fCoreNetworkCard = nil,
-    item = nil,
-    containerInventory = nil,
 }
 
 function FabricInfo:new(o)
@@ -25,6 +23,31 @@ end
 
 function FabricInfo:setCoreNetworkCard(coreNetworkCard)
     self.fCoreNetworkCard = coreNetworkCard
+end
+
+function FabricInfo:update(fabric) 
+
+end
+
+function FabricInfo:check(fabric) 
+     if not fabric then
+        log(3, "Fabric is nil")
+        return false
+    end
+
+    local id = fabric.fCoreNetworkCard
+    if not id then
+        log(3, "Fabric has no CoreNetworkCardId")
+        return false
+    end
+
+    local name = fabric.fName
+    if not name then
+        log(3, "Fabric has no Name")
+        return false
+    end
+
+    return true
 end
 
 

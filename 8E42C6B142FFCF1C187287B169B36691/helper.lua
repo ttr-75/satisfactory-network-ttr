@@ -1,19 +1,38 @@
 --Logger
 function log(level, ...)
-    if level >= LOG_MIN then
-        computer.log(level, table.concat({ ... }, " "))
-    end
+  if level >= LOG_MIN then
+    computer.log(level, table.concat({ ... }, " "))
+  end
 end
- 
+
+-- Zeit in ms (FN: computer.millis; Fallback: os.clock)
+function now_ms()
+  return (computer and computer.millis and computer.millis())
+      or math.floor(os.clock() * 1000)
+end
+
+-- Throttle-Wrapper
+function throttle_ms(fn, interval_ms)
+  local last = 0
+  return function(...)
+    local t = now_ms()
+    if t - last >= interval_ms then
+      last = t
+      return fn(...)
+    end
+    -- sonst: still ignorieren
+  end
+end
+
 --@param s string
 --@param x number
 function is_longer_than(s, x)
-    log(0, "S: " .. s .. "\nTypS: " .. type(s) ..  "\nX: " .. x ..  "\nTypX: " .. type(x))
-    if s == nil then return false end -- nil → nicht länger
-    if x == nil then return false end -- nil → nicht länger
-    if type(s) ~= "string" then return false end
-    if type(x) ~= "number" then return false end
-    return #s > x
+  log(0, "S: " .. s .. "\nTypS: " .. type(s) .. "\nX: " .. x .. "\nTypX: " .. type(x))
+  if s == nil then return false end   -- nil → nicht länger
+  if x == nil then return false end   -- nil → nicht länger
+  if type(s) ~= "string" then return false end
+  if type(x) ~= "number" then return false end
+  return #s > x
 end
 
 function de_umlaute(s)
@@ -25,38 +44,38 @@ function de_umlaute(s)
 end
 
 function byNick(nick)
-    local t = component.findComponent(nick)[1]
-    assert(t, "Komponente '" .. nick .. "' nicht gefunden")
-    return component.proxy(t)
+  local t = component.findComponent(nick)[1]
+  assert(t, "Komponente '" .. nick .. "' nicht gefunden")
+  return component.proxy(t)
 end
 
 -- Liest die erste Inventory des Containers aus und aggregiert nach Item-Typ
 function readInventory(container, totals, types)
-    local invs = container:getInventories()
-    local inv = invs and invs[1]
-    if not inv then return {}, {} end
+  local invs = container:getInventories()
+  local inv = invs and invs[1]
+  if not inv then return {}, {} end
 
-    --local totals = {} -- key: type.hash -> sum count
-    --local types  = {} -- key: type.hash -> type (für Namen/MaxStack)
+  --local totals = {} -- key: type.hash -> sum count
+  --local types  = {} -- key: type.hash -> type (für Namen/MaxStack)
 
-    if totals == nil then
-        totals = {}
-    end
-    if types == nil then
-        types = {}
-    end
+  if totals == nil then
+    totals = {}
+  end
+  if types == nil then
+    types = {}
+  end
 
-    -- Slots sind 0-basiert und gehen bis size-1
-    for slot = 0, inv.size - 1, 1 do
-        local stack = inv:getStack(slot)
-        if stack and stack.count and stack.count > 0 and stack.item and stack.item.type then
-            local t = stack.item.type
-            local key = t.hash
-            totals[key] = (totals[key] or 0) + stack.count
-            types[key] = t
-        end
+  -- Slots sind 0-basiert und gehen bis size-1
+  for slot = 0, inv.size - 1, 1 do
+    local stack = inv:getStack(slot)
+    if stack and stack.count and stack.count > 0 and stack.item and stack.item.type then
+      local t = stack.item.type
+      local key = t.hash
+      totals[key] = (totals[key] or 0) + stack.count
+      types[key] = t
     end
-    return totals, types
+  end
+  return totals, types
 end
 
 -- pretty_json(value, opts) -> string
@@ -66,7 +85,7 @@ end
 --   cycle = "<cycle>" -- placeholder when a reference cycle is found
 -- }
 function pretty_json(value, opts)
-  opts = opts or {}
+  opts        = opts or {}
   local IND   = (" "):rep(opts.indent or 2)
   local SORT  = (opts.sort_keys ~= false)
   local CYCLE = opts.cycle or "<cycle>"
@@ -74,8 +93,15 @@ function pretty_json(value, opts)
   local function esc_str(s)
     -- escape control chars, backslash, quotes
     return s:gsub('[%z\1-\31\\"]', function(c)
-      local map = { ['\\']='\\\\', ['"']='\\"', ['\b']='\\b',
-                    ['\f']='\\f', ['\n']='\\n', ['\r']='\\r', ['\t']='\\t' }
+      local map = {
+        ['\\'] = '\\\\',
+        ['"'] = '\\"',
+        ['\b'] = '\\b',
+        ['\f'] = '\\f',
+        ['\n'] = '\\n',
+        ['\r'] = '\\r',
+        ['\t'] = '\\t'
+      }
       return map[c] or string.format("\\u%04X", string.byte(c))
     end)
   end
@@ -120,20 +146,22 @@ function pretty_json(value, opts)
     if seen[v] then
       return '"' .. esc_str(CYCLE) .. '"'
     end
-    seen[v] = true
+    seen[v]      = true
 
-    local pad   = IND:rep(depth)
-    local padIn = IND:rep(depth + 1)
+    local pad    = IND:rep(depth)
+    local padIn  = IND:rep(depth + 1)
 
     local arr, n = is_array(v)
     if arr then
-      if n == 0 then seen[v] = nil; return "[]" end
-      local out = {"["}
-      for i = 1, n do
-        out[#out+1] = "\n" .. padIn .. serialize(v[i], depth + 1)
-        if i < n then out[#out+1] = "," end
+      if n == 0 then
+        seen[v] = nil; return "[]"
       end
-      out[#out+1] = "\n" .. pad .. "]"
+      local out = { "[" }
+      for i = 1, n do
+        out[#out + 1] = "\n" .. padIn .. serialize(v[i], depth + 1)
+        if i < n then out[#out + 1] = "," end
+      end
+      out[#out + 1] = "\n" .. pad .. "]"
       seen[v] = nil
       return table.concat(out)
     else
@@ -141,20 +169,22 @@ function pretty_json(value, opts)
       local keys = {}
       for k in pairs(v) do
         if type(k) == "string" then
-          keys[#keys+1] = k
+          keys[#keys + 1] = k
         else
           -- non-string keys: show as [tostring(key)]
-          keys[#keys+1] = "[" .. tostring(k) .. "]"
+          keys[#keys + 1] = "[" .. tostring(k) .. "]"
         end
       end
       if SORT then table.sort(keys) end
-      if #keys == 0 then seen[v] = nil; return "{}" end
+      if #keys == 0 then
+        seen[v] = nil; return "{}"
+      end
 
-      local out, first = {"{"}, true
+      local out, first = { "{" }, true
       for _, k in ipairs(keys) do
         local rawk, displayk = k, k
         -- if we wrapped a non-string key as [x], keep display as that
-        if k:sub(1,1) == "[" and k:sub(-1) == "]" then
+        if k:sub(1, 1) == "[" and k:sub(-1) == "]" then
           -- reconstruct best-effort value by original tostring; not used for lookup
           -- we cannot map back reliably; skip lookup and show as stringified key
           displayk = k
@@ -162,19 +192,21 @@ function pretty_json(value, opts)
           -- fallback: skip (rare). Here we do a safe search for matching tostring:
           local found_v
           for real_k, val in pairs(v) do
-            if "["..tostring(real_k).."]" == k then found_v = val; break end
+            if "[" .. tostring(real_k) .. "]" == k then
+              found_v = val; break
+            end
           end
           if found_v ~= nil then
-            if not first then out[#out+1] = "," end; first = false
-            out[#out+1] = "\n" .. padIn .. '"' .. esc_str(displayk) .. '": ' .. serialize(found_v, depth + 1)
+            if not first then out[#out + 1] = "," end; first = false
+            out[#out + 1] = "\n" .. padIn .. '"' .. esc_str(displayk) .. '": ' .. serialize(found_v, depth + 1)
           end
         else
           -- normal string key
-          if not first then out[#out+1] = "," end; first = false
-          out[#out+1] = "\n" .. padIn .. '"' .. esc_str(rawk) .. '": ' .. serialize(v[rawk], depth + 1)
+          if not first then out[#out + 1] = "," end; first = false
+          out[#out + 1] = "\n" .. padIn .. '"' .. esc_str(rawk) .. '": ' .. serialize(v[rawk], depth + 1)
         end
       end
-      out[#out+1] = "\n" .. pad .. "}"
+      out[#out + 1] = "\n" .. pad .. "}"
       seen[v] = nil
       return table.concat(out)
     end
@@ -182,4 +214,3 @@ function pretty_json(value, opts)
 
   return serialize(value, 0)
 end
-

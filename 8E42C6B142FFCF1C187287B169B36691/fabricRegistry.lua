@@ -17,25 +17,29 @@ function FabricRegistry:new(o)
 end
 
 function FabricRegistry:add(fabric)
-    if not fabric then
-        log(3, "Ignorring: FabricRegister:add(nil)")
-        return
+    if self:checkMinimum(fabric) then
+        local id = fabric.fCoreNetworkCard
+        local name = fabric.fName
+        log(0, "Adding: FabricRegister:add(fabric): Fabric" .. name .. " with id:" .. id)
+        self.fabrics[id] = fabric
+    else
+        log(3, "Ignorring: FabricRegister:add(fabric)")
     end
+end
 
-    local id = fabric.fCoreNetworkCard
-    if not id then
-        log(3, "Ignorring: FabricRegister:add(fabric): Fabric has no CoreNetworkCardId")
-        return
+function FabricRegistry:update(fabric)
+    if self:checkMinimum(fabric) then
+        local id = fabric.fCoreNetworkCard
+        local name = fabric.fName
+        log(0, "Update: FabricRegister:update(fabric): Fabric" .. name .. " with id:" .. id)
+        self.fabrics[id].update(fabric)
+    else
+        log(3, "Ignorring: FabricRegister:Update(fabric)")
     end
+end
 
-    local name = fabric.fName
-    if not name then
-        log(3, "Ignorring: FabricRegister:add(fabric): Fabric has no Name")
-        return
-    end
-
-    log(0, "Adding: FabricRegister:add(fabric): Fabric" .. name .. " with id:" .. id)
-    self.fabrics[id] = fabric
+function FabricRegistry:checkMinimum(fabric)
+    return FabricInfo:check(fabric)
 end
 
 function FabricRegistry:getAll()
@@ -78,13 +82,15 @@ FabricRegistryClient.__index = FabricRegistryClient
 function FabricRegistryClient.new()
     local self = setmetatable({}, FabricRegistryClient)
     self.registered = false -- Instanzzustand
+    self.myFabric = nil
 
     ----------------------------------------------------------------------
     -- PRIVATE: sendRegisterRequest (nicht exportiert)
     ----------------------------------------------------------------------
     local function sendRegisterRequest(fabric)
         if not self.netBootInitDone then self:initNetworkt() end
-        if self.registered then return true end
+        if self.registered then return false end
+
 
         -- einfache Typ-/Formprüfung (falls du FabricInfo als Klasse hast, gern ersetzen)
         if tostring(fabric):find("FabricInfo", 1, true) == nil then
@@ -94,6 +100,8 @@ function FabricRegistryClient.new()
         end
 
         local fName = fabric.fName or "<noname>"
+
+
         -- Broadcast senden
         self.net:broadcast(self.port, NET_CMD_REGISTER, fName)
         log(0, "Net-FabricRegistryClient: Broadcasting '" .. NET_CMD_REGISTER ..
@@ -101,31 +109,34 @@ function FabricRegistryClient.new()
 
         -- Auf ACK warten (kooperativ, nicht volle 30s blocken)
         local deadline = (computer.millis and computer.millis() or 0) + 30000
-        while true do
-            -- kurzer Poll, damit du CPU schonst und andere Events durchkommen
-            local e, _, fromId, p, cmd = event.pull(0.25)
+        while computer.millis() < deadline do
+            local e, s, from, p, cmd = event.pull(0.25) -- kurzer Poll
             if e == "NetworkMessage" and p == self.port and cmd == NET_CMD_REGISTER_ACK then
-                log(1, "Net-FabricRegistryClient: Got Ack for \"" .. fName ..
-                    "\" from Server \"" .. tostring(fromId) .. "\"")
+                log(1, "Net-FabricRegistryClient: Got Ack for \"" .. fName .. "\" from \"" .. tostring(from) .. "\"")
                 self.registered = true
+                self.myFabric = fabric
+                self.myFabric:setCoreNetworkCard(self.net.id)
                 return true
             end
-            -- Timeout prüfen (falls computer.millis nicht existiert, brechen wir nach ~30s trotzdem ab)
-            if computer.millis and computer.millis() >= deadline then
-                log(3, "Net-FabricRegistryClient: Request timeout – retry later…")
-                return false
-            end
         end
+        log(3, "Net-FabricRegistryClient: Request Timeout reached! Retry later…")
     end
 
     ----------------------------------------------------------------------
     -- PRIVATE: checkForReboot (nicht exportiert)
     ----------------------------------------------------------------------
-    local function checkForReboot(e, _, s, p, cmd, programName)
+    local function handleNetworkMessage(e, s, fromId, p, cmd)
         if e == "NetworkMessage" and p == self.port then
-            if cmd == NET_CMD_RESET_FABRICREGISTRY  then
-                log(2, "Net-FabricRegistryClient:: Received reset command from Server \"" .. s .. "\"")
+            if cmd == NET_CMD_RESET_FABRICREGISTRY then
+                log(2, "Net-FabricRegistryClient:: Received reset command from  \"" .. fromId .. "\"")
                 computer.reset()
+            elseif cmd == NET_CMD_GET_FABRIC_UPDATE then
+                log(0, "Net-FabricRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
+
+                local J = JSON.new { indent = 2, sort_keys = true }
+                local serialized = J:encode(self.myFabric)
+                self.net:send(fromId, self.port, NET_CMD_UPDATE_FABRIC, serialized)
+                log(0, "Net-FabricRegistryClient::update send to  \"" .. fromId .. "\"")
             end
         end
         -- Platzhalter: hier deine Logik (z.B. Flag prüfen und ggf. resetten)
@@ -137,46 +148,89 @@ function FabricRegistryClient.new()
     ----------------------------------------------------------------------
     function self:callbackEvent(fabric, args)
         sendRegisterRequest(fabric)
-        checkForReboot(table.unpack(args, 1, args.n))
+        handleNetworkMessage(table.unpack(args, 1, args.n))
     end
 
     return self
 end
 
 --------------------------------------------------------------------------------
--- FabricRegistryServer
+-- FabricRegistryServer (Variante B: private per-Instanz-Closures)
 --------------------------------------------------------------------------------
 FabricRegistryServer = FabricRegistryNetworkConnection:new()
-
 FabricRegistryServer.__index = FabricRegistryServer
-FabricRegistryServer.reg = nil
 
 function FabricRegistryServer.new()
-    local o = setmetatable({}, FabricRegistryServer)
-    o.reg = FabricRegistry:new()
-    return o
-end
+    local self = setmetatable({}, FabricRegistryServer)
+    self.reg = FabricRegistry:new() -- eigene, leere Registry für diesen Server
+    self.last = 0
 
-function FabricRegistryServer:registerRequestServerCallback(e, s, fromId, port, cmd, fName)
-    if not self.netBootInitDone then
-        self:initNetworkt()
-    end
-
-    if e == "NetworkMessage" then
-        log(0, "Eventlistener '" .. cmd .. "' called.")
-        if port == self.port and cmd == NET_CMD_REGISTER then
-            computer.log(1, ('Net-FabricRegistryServer: Received Register from "%s"'):format(fromId))
+    -- ===== PRIVATE: Netzwerk-Handler (nicht exportiert) =====
+    local function handleNetworkMessage(e, s, fromId, port, cmd, arg1)
+        if e ~= "NetworkMessage" or port ~= self.port then return end
+        log(0, 'Net-FabricRegistryServer: Handle' .. cmd)
+        if cmd == NET_CMD_REGISTER then
+            log(0, ('Net-FabricRegistryServer: Received Register from "%s"'):format(fromId))
             local fInfo = FabricInfo:new()
-            fInfo:setName(fName)
+            fInfo:setName(arg1)
             fInfo:setCoreNetworkCard(fromId)
             self.reg:add(fInfo)
+            -- ACK an den Absender zurück
             self.net:send(fromId, self.port, NET_CMD_REGISTER_ACK)
-            --   end
+        elseif cmd == NET_CMD_UPDATE_FABRIC then
+            log(0, ('Net-FabricRegistryServer: Received Update from "%s"'):format(fromId))
+            local J = JSON.new { indent = 2, sort_keys = true }
+            local o = J:decode(arg1)
+            --local id = o.fCoreNetworkCard
+            self:getRegistry():update(o)
         end
     end
-    return
+
+    -- ===== ÖFFENTLICH: vom Main-Loop aufrufen, args = table.pack(event.pull(...)) =====
+    function self:callbackEvent(args)
+        -- local J = JSON.new { indent = 2, sort_keys = true }
+        --local serialized = J:encode(table.unpack(args, 1, args.n))
+        --print(serialized)
+        if not self.netBootInitDone then self:initNetworkt() end
+        if args and args.n then
+            handleNetworkMessage(table.unpack(args, 1, args.n))
+        end
+    end
+
+    function self:callForUpdates(fabric)
+        local t = now_ms()
+        if t - self.last >= 1000 then
+            self.last = t
+
+            if self.reg:checkMinimum(fabric) then
+                local fromId = fabric.fCoreNetworkCard
+                local name = fabric.fName
+                log(0, "Net-FabricRegistryServer: Send UpdateRequest for " .. name)
+                self.net:send(fromId, self.port, NET_CMD_GET_FABRIC_UPDATE)
+            else
+            end
+        end
+    end
+
+    return self
 end
 
+-- ===== OVERRIDE: Server-spezifische Netz-Init (inkl. Reset-Broadcast) =====
+function FabricRegistryServer:initNetworkt()
+    if self.netBootInitDone then return end
+    self.net = computer.getPCIDevices(classes.NetworkCard)[1]
+    assert(self.net, "Net-FabricRegistryServer: Failed to Start: No Network Card available!")
+    self.net:open(self.port)
+    event.listen(self.net)
+    log(0, "Net-FabricRegistryServer: Init FabricRegistryServer network on Port " .. self.port)
+
+    -- *** Neu: beim Start alle Clients informieren ***
+    self.net:broadcast(self.port, NET_CMD_RESET_FABRICREGISTRY)
+
+    self.netBootInitDone = true
+end
+
+-- ===== ÖFFENTLICH: Zugriff auf die Registry =====
 function FabricRegistryServer:getRegistry()
     return self.reg
 end
