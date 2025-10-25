@@ -1,0 +1,13 @@
+Container Stahltraeger2Mehrzweckgeruest
+
+Container ModularerRahmen2Mehrzweckgeruest
+
+Container Mehrzweckgeruest
+
+comp = component.findComponent("Factory Mehrzweckgeruest")
+
+c = component.proxy(comp[1])
+
+assert(c,"asas")
+
+print(c.
