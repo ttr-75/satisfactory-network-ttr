@@ -20,17 +20,6 @@ function FabricStack:isInput() return false end
 
 function FabricStack:isOutput() return false end
 
--- Optional: hübsches tostring (nur für Debug)
-function FabricStack:__tostring()
-    return string.format(
-        "%s{itemClass=%s, station=%s, container=%s}",
-        rawget(self, "__name") or "FabricStack",
-        tostring(self.itemClass),
-        tostring(self.amountStation),
-        tostring(self.amountContainer)
-    )
-end
-
 --------------------------------------------------------------------------------
 -- Subklasse: Input
 --------------------------------------------------------------------------------
@@ -165,4 +154,29 @@ function FabricInfo:check(fabric)
     end
 
     return true
+end
+
+function containerByFabricStack(fabricName, itemStack)
+    local nick = "Container "
+
+    if itemStack:isOutput() then
+        nick = nick .. de_umlaute(itemStack.itemClass.name)
+    else
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. fabricName
+    end
+
+    pj(nick)
+
+    return byAllNick(nick)
+end
+
+function stationByFabricStack(fabricName, itemStack)
+    local nick = "Trainstation "
+
+    if itemStack:isOutput() then
+        nick = nick .. de_umlaute(itemStack.itemClass.name)
+    else
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. fabricName
+    end
+    return byAllNick(nick)
 end

@@ -117,8 +117,8 @@ local function barColor(frac)
 end
 
 -- eine Zeile rendern (zwei Bars: Station / Container)
-function FabricDashboard:_drawRow(colX, ix, it, colWidth)
-    local y = 120 + (ix - 1) * (self.rowH + self.pad)
+function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
+    local y = posY + 120 + (ix - 1) * (self.rowH + self.pad)
     local left = colX + self.pad
 
     -- Icon
@@ -178,37 +178,46 @@ function FabricDashboard:paint()
     self.root:drawRect(Vector2d.new(0, 0), self.size, self.bg, nil, nil)
 
     -- Titel
-    local titlePosX, titlePosY = self.pad, self.pad;
-    local titleIconSize = Vector2d.new(256, 256);
+    local posX, posY = self.pad, self.pad;
+    local titleIconSize = Vector2d.new(200, 200);
+    self.title = ""
     for i, it in ipairs(self.outputs) do
         local icon = get_icon_for(it.name)
         self.root:drawBox({
-            position = Vector2d.new(titlePosX, titlePosY),
-            size = titleIconSize,
-            image = icon and icon:getRef() or "",
-            imageSize = titleIconSize
+            position         = Vector2d.new(posX, posY),
+            size             = titleIconSize,
+            image            = icon and icon:getRef() or "",
+            imageSize        = titleIconSize,
+            color            = Color.WHITE,
+            outlineThickness = 5,
+            outlineColor     = Color.WHITE,
+            hasOutline       = true,
+
         })
-        titlePosX = titlePosX + titleIconSize.x + self.pad
+        posX = posX + titleIconSize.x + self.pad
+        self.title = it.name .. " " .. self.title
     end
 
-    self.root:drawText(Vector2d.new(titlePosX, titlePosY), self.title, 36, self.accent, false)
+    self.root:drawText(Vector2d.new(posX, posY + titleIconSize.y - 72 * 2), self.title, 72, self.accent, false)
 
+    posX = self.pad
+    posY = posY + titleIconSize.y + self.pad
     -- Spaltenüberschriften
-    self.root:drawText(Vector2d.new(self.pad, 78), "Inputs", self.headerSize, self.fg, false)
-    self.root:drawText(Vector2d.new(mid + self.pad, 78), "Outputs", self.headerSize, self.fg, false)
+    self.root:drawText(Vector2d.new(posX, posY), "Inputs", self.headerSize, self.fg, false)
+    self.root:drawText(Vector2d.new(mid + posX, posY), "Outputs", self.headerSize, self.fg, false)
 
     -- vertikaler Trenner
-    self.root:drawRect(Vector2d.new(mid - 1, 72), Vector2d.new(2, h - 80), Color.GREY_0125, nil, nil)
+    self.root:drawRect(Vector2d.new(mid - 1, posY), Vector2d.new(2, h - 80), Color.GREY_0125, nil, nil)
 
     -- Spaltenbreiten
     local leftW  = mid - 2 * self.pad
     local rightW = (w - mid) - 2 * self.pad
 
     for i, it in ipairs(self.inputs) do
-        self:_drawRow(self.pad, i, it, leftW)
+        self:_drawRow(self.pad, posY, i, it, leftW)
     end
     for i, it in ipairs(self.outputs) do
-        self:_drawRow(mid + self.pad, i, it, rightW)
+        self:_drawRow(mid + self.pad, posY, i, it, rightW)
     end
 
     self.gpu:flush()

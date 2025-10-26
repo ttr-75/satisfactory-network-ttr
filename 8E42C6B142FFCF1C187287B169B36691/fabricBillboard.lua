@@ -59,7 +59,7 @@ function FabricBillbard:init(gpu, scr)
 end
 
 function FabricBillbard:run()
-    local dash = FabricDashboard.new { title = "Station 2 – Materialfluss" }
+    local dash = FabricDashboard.new {  }
 
     local w, h = self.scr:getSize()
 

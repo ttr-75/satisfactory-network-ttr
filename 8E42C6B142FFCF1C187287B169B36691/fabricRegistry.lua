@@ -161,8 +161,10 @@ function FabricRegistryClient.new(opts)
     -- === HOOKS, in die deine Original-Logik eingesetzt wird ===
     function self:onRegisterAck(fromId)
         -- KEEP: deine bisherige Logik, wenn ACK eingeht (z.B. Flags setzen, Logs)
+        log(1, "Client: Registration ACK from " .. tostring(fromId) .. " Build FabricInfo now.")
         self.myFabricInfo:setCoreNetworkCard(self.net.id)
-        log(1, "Client: Registration ACK from " .. tostring(fromId))
+        self:performUpdate()
+
         self.registered = true
     end
 
@@ -191,10 +193,11 @@ function FabricRegistryClient.new(opts)
         if #comp > 0 then
             local manufacturer = component.proxy(comp[1])
             local recipe = manufacturer:getRecipe()
+
             if recipe ~= nil then
                 local products = recipe:getProducts()
-                if #products == 1 then
-                    local p = products[1]
+                for _, product in pairs(products) do
+                    local p = product
                     local item = MyItemList:get_by_Name(p.type.name)
                     item.max = p.type.max
                     local output = Output:new {
@@ -204,17 +207,45 @@ function FabricRegistryClient.new(opts)
                         maxAmountStation   = 3000,
                         maxAmountContainer = 3000
                     }
+
+                    local containers = containerByFabricStack(self.myFabricInfo.name, output)
+
+
+
+
+                    for _, container in pairs(containers) do
+                        print(container.nick)
+
+                        -- meist hat der Container genau 1 Inventory
+                        local invs = container.getInventories and container:getInventories() or nil
+                        -- local inv  = (invs and invs[1]) or (container.getInventory and container:getInventory()) or nil
+
+                        for _, inv in pairs(invs) do
+                            -- 1) Direkte Größe?
+                            if inv.size then return print(inv.size) end
+                            if inv.getSize then
+                                local ok, sz = pcall(function() return inv:getSize() end)
+                                if ok and type(sz) == "number" then print(sz) end
+                            end
+                            if inv.getCapacity then
+                                local ok, cap = pcall(function() return inv:getCapacity() end)
+                                if ok and type(cap) == "number" then return print(cap) end
+                            end
+                            if inv.getSlotCount then
+                                local ok, sc = pcall(function() return inv:getSlotCount() end)
+                                if ok and type(sc) == "number" then return print(sc) end
+                            end
+                        end
+                    end
                     self.myFabricInfo:updateOutput(output) -- <– korrektes Feld
-                else
-                    log(3, "Fabric with more than 1 output not implemented yet")
                 end
                 for _, ingredient in pairs(recipe:getIngredients()) do
                     local it = MyItemList:get_by_Name(ingredient.type.name)
                     it.max = ingredient.type.max
                     local input = Input:new {
                         itemClass          = it,
-                        amountStation      = math.random(3000),
-                        amountContainer    = math.random(3000),
+                        amountStation      = 0,
+                        amountContainer    = 0,
                         maxAmountStation   = 3000,
                         maxAmountContainer = 3000
                     }
@@ -230,7 +261,7 @@ end
 function FabricRegistryClient:initRegisterListener()
     if not self.netBootInitDone then self:initNetworkt() end
     local f = event.filter { event = "NetworkMessage" }
-    self:_addListener(f, function(e, _, fromId, port, cmd, a, b)
+    self:_addListener(f, safe_listener("FabricRegistryClient", function(e, _, fromId, port, cmd, a, b)
         if port ~= self.port then return end
         -- Debug:
         --log(0, ("Client RX cmd=%s from=%s"):format(tostring(cmd), tostring(fromId)))
@@ -242,7 +273,7 @@ function FabricRegistryClient:initRegisterListener()
         elseif cmd == NET_CMD_GET_FABRIC_UPDATE then
             self:onGetFabricUpdate(fromId, a, b)
         end
-    end)
+    end))
 end
 
 -- Aufruf aus deiner Logik: einmal registrieren (oder nach Reset erneut)
@@ -251,7 +282,7 @@ function FabricRegistryClient:register(fabricInfo)
     if self.registered then return true end
 
     self.myFabricInfo = fabricInfo
-    pj(tostring(self.myFabricInfo))
+    --pj(tostring(self.myFabricInfo))
     -- einfache Typ-/Formprüfung (falls du FabricInfo als Klasse hast, gern ersetzen)
     if tostring(self.myFabricInfo):find("FabricInfo", 1, true) == nil then
         log(3, "Net-FabricRegistryClient: Cannot broadcast '" ..
@@ -329,7 +360,7 @@ end
 function FabricRegistryServer:initRegisterListener()
     if not self.netBootInitDone then self:initNetworkt() end
     local f = event.filter { event = "NetworkMessage" }
-    self:_addListener(f, function(e, _, fromId, port, cmd, a, b)
+    self:_addListener(f, safe_listener("FabricRegistryClient", function(e, _, fromId, port, cmd, a, b)
         if port ~= self.port then return end
         -- Debug:
         --log(0, ("Server RX cmd=%s from=%s"):format(tostring(cmd), tostring(fromId)))
@@ -345,7 +376,7 @@ function FabricRegistryServer:initRegisterListener()
         elseif cmd == NET_CMD_RESET_ALL then
             self:triggerReset(fromId)
         end
-    end)
+    end))
 end
 
 function FabricRegistryServer:callForUpdates(fabricInfo)

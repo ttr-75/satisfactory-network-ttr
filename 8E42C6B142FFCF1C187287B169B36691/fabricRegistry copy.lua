@@ -189,7 +189,7 @@ end
 
 -- Einmalige Registrierung anstoßen (z. B. beim Start oder nach Reset)
 -- fabricName: String (z. B. fi.fName)
-function FabricRegistryClient:register(fabric)
+function FabricRegistryClient:register(fabricName)
     if not self.netBootInitDone then self:initNetworkt() end
     if self.registered then return true end
     fabricName = tostring(fabricName or "?")
@@ -248,7 +248,6 @@ function FabricRegistryServer:broadcastRegistryReset()
     self:broadcast(NET_CMD_RESET_FABRICREGISTRY)
     log(0, "Server: broadcast registry reset")
 end
-
 
 
 

@@ -65,6 +65,36 @@ function byNick(nick)
   return component.proxy(t)
 end
 
+function byAllNick(nick)
+  local t = component.findComponent(nick)
+  assert(t, "Komponente '" .. nick .. "' nicht gefunden")
+  local cArray = {}
+  for _, comp in pairs(t) do
+    local prox = component.proxy(comp)
+    cArray[#cArray + 1] = prox
+    assert(prox, "Proxy für '" .. nick .. "' nicht gefunden")
+  end
+  return cArray
+end
+
+function getMaxSlotsForContainer(container)
+  local invs = container.getInventories and container:getInventories() or nil
+
+  for _, inv in pairs(invs) do
+    --pj(inv)
+    local maxSlots = 0
+    for i = 0, 100, 1 do
+      local s = inv:getStack(i)
+      if s ~= nil then
+        maxSlots = maxSlots + 1
+      else
+        break
+      end
+    end
+    return maxSlots
+  end
+end
+
 -- Liest die erste Inventory des Containers aus und aggregiert nach Item-Typ
 function readInventory(container, totals, types)
   local invs = container:getInventories()
@@ -111,4 +141,32 @@ end
 
 function pj(value)
   print(pretty_json(value))
+end
+
+-- ===== debug_helpers.lua (oder einfach oben in deine Datei) =====
+local function _traceback(tag)
+  return function(err)
+    local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
+    -- Level hoch genug wählen, damit es nicht weggefiltert wird:
+    -- 0..1=Info, 2=Warn, 3=Error, 4=Fatal (je nach deinem Logger)
+    computer.log(4, tb)
+    return tb
+  end
+end
+
+-- wrappt eine Listener-Funktion mit xpcall+Traceback
+function safe_listener(tag, fn)
+  assert(type(fn) == "function", "safe_listener needs a function")
+  return function(...)
+    local ok, res = xpcall(fn, _traceback(tag), ...)
+    -- Falls der Event-Dispatcher einen Rückgabewert auswertet, reiche ihn weiter:
+    return res
+  end
+end
+
+-- optional: Argumente hübsch fürs Log formatieren
+function fmt_args(...)
+  local t = table.pack(...)
+  for i = 1, t.n do t[i] = tostring(t[i]) end
+  return table.concat(t, ", ")
 end
