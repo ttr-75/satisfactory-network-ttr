@@ -11,11 +11,11 @@ local _icon_cache = {}
 local function get_icon_for(itemName)
     if not itemName then return nil end
     if _icon_cache[itemName] ~= nil then return _icon_cache[itemName] end
-    
-    
-    local icon = MyItemList:get_by_Name(itemName)
 
-    _icon_cache[itemName]  = icon
+
+    local icon            = MyItemList:get_by_Name(itemName)
+
+    _icon_cache[itemName] = icon
     return _icon_cache[itemName]
 end
 
@@ -178,7 +178,20 @@ function FabricDashboard:paint()
     self.root:drawRect(Vector2d.new(0, 0), self.size, self.bg, nil, nil)
 
     -- Titel
-    self.root:drawText(Vector2d.new(self.pad, self.pad), self.title, 36, self.accent, false)
+    local titlePosX, titlePosY = self.pad, self.pad;
+    local titleIconSize = Vector2d.new(256, 256);
+    for i, it in ipairs(self.outputs) do
+        local icon = get_icon_for(it.name)
+        self.root:drawBox({
+            position = Vector2d.new(titlePosX, titlePosY),
+            size = titleIconSize,
+            image = icon and icon:getRef() or "",
+            imageSize = titleIconSize
+        })
+        titlePosX = titlePosX + titleIconSize.x + self.pad
+    end
+
+    self.root:drawText(Vector2d.new(titlePosX, titlePosY), self.title, 36, self.accent, false)
 
     -- Spaltenüberschriften
     self.root:drawText(Vector2d.new(self.pad, 78), "Inputs", self.headerSize, self.fg, false)

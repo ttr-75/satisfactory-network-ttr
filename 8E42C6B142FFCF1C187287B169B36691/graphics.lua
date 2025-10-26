@@ -156,6 +156,10 @@ function ScreenElement:drawLocalLines(points, thickness, color)
     self.gpu:drawLines(points, thickness, color)
 end
 
+function ScreenElement:drawLocalBox(boxSettings)
+    self.gpu:drawBox(boxSettings)
+end
+
 --------------------------------------------------------------------------------
 -- ItemImage
 --------------------------------------------------------------------------------

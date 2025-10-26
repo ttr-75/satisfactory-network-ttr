@@ -50,13 +50,18 @@ function FabricBillbard:init(gpu, scr)
     print("\nInitialising FabricBillbard\n")
     self.gpu = gpu
     self.scr = scr
-    self.regServer = FabricRegistryServer:new()
+    self.regServer = FabricRegistryServer.new { port = 11 }
+    self.regServer:initNetworkt()
+    self.regServer:initRegisterListener()
+    self.regServer:setResetHandler(function(fromId)
+        log(0, "Registry reset requested by " .. tostring(fromId) .. " — re-register")
+    end)
 end
 
 function FabricBillbard:run()
     local dash = FabricDashboard.new { title = "Station 2 – Materialfluss" }
 
-   local w, h = self.scr:getSize()
+    local w, h = self.scr:getSize()
 
 
     dash:init(self.gpu, self.scr, w * 300, h * 300)
@@ -66,10 +71,11 @@ function FabricBillbard:run()
 
     -- Loop
     while true do
-        local args = table.pack(event.pull(self.pollInterval))
-        self.regServer:callbackEvent(args)
+        --local args = table.pack(event.pull(self.pollInterval))
+        future.run()
+        -- self.regServer:callbackEvent(args)
         self.regServer:callForUpdates(self.currentFabric)
-        self:collectData()
+        --self:collectData()
 
         if self.currentFabric == nil then
             local reg = self.regServer:getRegistry()
@@ -150,7 +156,7 @@ end
 
 function FabricBillbard:imageBox(position, item)
     return {
-        position = position,    
+        position = position,
         size = Vector2d.new(256, 256),
         image = item and item:getRef() or "",
         imageSize = Vector2d.new(256, 256)

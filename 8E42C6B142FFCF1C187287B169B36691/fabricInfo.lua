@@ -88,6 +88,7 @@ function FabricInfo:new(o)
     o.fCoreNetworkCard = o.fCoreNetworkCard or nil
     o.inputs           = o.inputs or {} -- ← NEU (sonst shared!)
     o.outputs          = o.outputs or {}
+    o.__name           = "FabricInfo"
     self.__index       = self
     return setmetatable(o, self)
 end

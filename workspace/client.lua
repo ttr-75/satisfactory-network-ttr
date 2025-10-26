@@ -36,8 +36,8 @@ function MyClient:initNetBoot()
     local f = event.filter { event = "NetworkMessage" }
     self._listenerId = event.registerListener(f, function(ev, nic, fromId, port, cmd, ...)
         -- Verbose Debug: zeig, was wirklich reinkommt
-        computer.log(1, ("NB RX ev=%s port=%s cmd=%s from=%s"):format(
-            tostring(ev), tostring(port), tostring(cmd), tostring(fromId)))
+       -- computer.log(1, ("NB RX ev=%s port=%s cmd=%s from=%s"):format(
+        --    tostring(ev), tostring(port), tostring(cmd), tostring(fromId)))
 
         if port ~= self.port then return end
         if cmd ~= NET_CMD_RESET_ALL then return end
