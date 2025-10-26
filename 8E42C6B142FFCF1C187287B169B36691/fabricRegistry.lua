@@ -83,6 +83,7 @@ function FabricRegistryClient.new()
     local self = setmetatable({}, FabricRegistryClient)
     self.registered = false -- Instanzzustand
     self.myFabric = nil
+    self._onReset = nil
 
     ----------------------------------------------------------------------
     -- PRIVATE: sendRegisterRequest (nicht exportiert)
@@ -137,21 +138,37 @@ function FabricRegistryClient.new()
                     local p = products[1]
                     local a = p.amount
                     local t = p.type
-                    local J = JSON.new { indent = 2, sort_keys = true }
-                    local s = J:encode(t)
-                   -- print(t.name)
+                    --local J = JSON.new { indent = 2, sort_keys = true }
+                    --local s = J:encode(t)
+                    -- print(t.name)
                     --local l = .new()
                     local item = MyItemList:get_by_Name(t.name)
                     item.max = t.max
-                    local output = Output:new { itemClass = item, amountStation = 300, amountContainer = 1500 }
-
+                    local output = Output:new { itemClass = item, amountStation = math.random(3000), amountContainer = math.random(3000), maxAmountStation = 3000, maxAmountContainer = 3000 }
                     self.myFabric:updateOutput(output)
-                   -- local J = JSON.new { indent = 2, sort_keys = true }
-                   -- local serialized = J:encode(self.myFabric)
-                   -- print(serialized)
+                    -- local J = JSON.new { indent = 2, sort_keys = true }
+                    -- local serialized = J:encode(self.myFabric)
+                    -- print(serialized)
                 else
                     log(3,
                         "Fabric with more then 1 Output product not implemented yet - FabricRegistryClient:performUpdate")
+                end
+
+                local ingredients = recipe:getIngredients()
+                for _, ingredient in pairs(ingredients) do
+                    local a = ingredient.amount
+                    local t = ingredient.type
+
+                    pj(t.name)
+
+                    --local l = .new()
+                    local item = MyItemList:get_by_Name(t.name)
+                    item.max = t.max
+                    local input = Input:new { itemClass = item, amountStation = math.random(3000), amountContainer = math.random(3000), maxAmountStation = 3000, maxAmountContainer = 3000 }
+                    self.myFabric:updateInput(input)
+                    -- local J = JSON.new { indent = 2, sort_keys = true }
+                    -- local serialized = J:encode(self.myFabric)
+                    -- print(serialized)
                 end
             end
         end
@@ -161,6 +178,11 @@ function FabricRegistryClient.new()
         if e == "NetworkMessage" and p == self.port then
             if cmd == NET_CMD_RESET_FABRICREGISTRY then
                 log(2, "Net-FabricRegistryClient:: Received reset command from  \"" .. fromId .. "\"")
+                if self._onReset ~= nil then
+                    computer.log(0, "Net-Boot: Call Callback")
+                    local ok, err = pcall(self._onReset)
+                    if not ok then computer.log(3, "Reset handler error: " .. tostring(err)) end
+                end
                 computer.reset()
             elseif cmd == NET_CMD_GET_FABRIC_UPDATE then
                 log(0, "Net-FabricRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
@@ -189,6 +211,17 @@ function FabricRegistryClient.new()
     function self:callbackEvent(fabric, args)
         sendRegisterRequest(fabric)
         handleNetworkMessage(table.unpack(args, 1, args.n))
+    end
+
+    function self:setPort(p)
+        assert(type(p) == "number" and p > 0, "setPort: invalid port")
+        self.port = p
+    end
+
+    function self:setResetHandler(fn)
+        computer.log(2, "Net-Boot: setResetHandlerCalled")
+        assert(fn == nil or type(fn) == "function", "setResetHandler: function or nil expected")
+        self._onReset = fn
     end
 
     return self

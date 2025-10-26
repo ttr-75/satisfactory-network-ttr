@@ -5,11 +5,13 @@ FabricStack = {}
 FabricStack.__index = FabricStack
 
 function FabricStack:new(o)
-    o                 = o or {}
+    o                    = o or {}
     -- Standard-Properties
-    o.itemClass       = o.itemClass or nil
-    o.amountStation   = o.amountStation or 0
-    o.amountContainer = o.amountContainer or 0
+    o.itemClass          = o.itemClass or nil
+    o.amountStation      = o.amountStation or 0
+    o.amountContainer    = o.amountContainer or 0
+    o.maxAmountStation   = o.maxAmountStation or 0
+    o.maxAmountContainer = o.maxAmountContainer or 0
     return setmetatable(o, self)
 end
 
@@ -74,17 +76,19 @@ FabricInfo = {
     fName = nil,
     fType = nil,
     fCoreNetworkCard = nil,
+    inputs = {},
     outputs = {}
 }
 
+
 function FabricInfo:new(o)
-    o = o or {}
-    -- Felder EXPLIZIT pro Instanz setzen:
+    o                  = o or {}
     o.fName            = o.fName or nil
     o.fType            = o.fType or nil
     o.fCoreNetworkCard = o.fCoreNetworkCard or nil
-    o.outputs          = o.outputs or {}   -- <-- wichtig!
-    self.__index = self
+    o.inputs           = o.inputs or {} -- ← NEU (sonst shared!)
+    o.outputs          = o.outputs or {}
+    self.__index       = self
     return setmetatable(o, self)
 end
 
@@ -104,6 +108,9 @@ function FabricInfo:update(fabric)
     for _, output in pairs(fabric.outputs) do
         self:updateOutput(output)
     end
+    for _, input in pairs(fabric.inputs) do
+        self:updateInput(input)
+    end
 end
 
 function FabricInfo:updateOutput(output)
@@ -115,6 +122,23 @@ function FabricInfo:updateOutput(output)
     else
         self.outputs[output.itemClass.name].amountStation = output.amountStation
         self.outputs[output.itemClass.name].amountContainer = output.amountContainer
+        self.outputs[output.itemClass.name].maxAmountStation = output.maxAmountStation
+        self.outputs[output.itemClass.name].maxAmountContainer = output.maxAmountContainer
+    end
+    --local J = JSON.new { indent = 2, sort_keys = true }
+    --local s2 = J:encode(self)
+    --print(s2)
+end
+
+function FabricInfo:updateInput(input)
+    local J = JSON.new { indent = 2, sort_keys = true }
+    local s = J:encode(input)
+    --print(s)
+    if self.inputs[input.itemClass.name] == nil then
+        self.inputs[input.itemClass.name] = input
+    else
+        self.inputs[input.itemClass.name].amountStation = input.amountStation
+        self.inputs[input.itemClass.name].amountContainer = input.amountContainer
     end
     --local J = JSON.new { indent = 2, sort_keys = true }
     --local s2 = J:encode(self)

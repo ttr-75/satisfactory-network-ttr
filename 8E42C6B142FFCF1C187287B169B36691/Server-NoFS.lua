@@ -1,4 +1,4 @@
-
+NET_CMD_RESET_ALL = "resetAll"
 
 --[[ Net-Boot Server ]] --
 
@@ -14,6 +14,7 @@ netBootPrograms["fabricBillboard.lua"] = [[]]
 netBootPrograms["serializer.lua"] = [[]]
 netBootPrograms["fabricInfo.lua"] = [[]]
 netBootPrograms["fabricRegistry.lua"] = [[]]
+netBootPrograms["fabricDashboard.lua"] = [[]]
 
 bootloader2 = {
     --init = nil,
@@ -117,11 +118,10 @@ end
 net:open(netBootPort)
 event.listen(net)
 
--- Reset all related Programs
-for programName in pairs(netBootPrograms) do
-    net:broadcast(netBootPort, "reset", programName)
-    print("Broadcasted reset for Program \"" .. programName .. "\"")
-end
+-- Reset all  Programs
+    net:broadcast(netBootPort, NET_CMD_RESET_ALL)
+    print("Broadcasted reset for All Netdevices")
+
 
 -- Serve Net-Boot
 while true do

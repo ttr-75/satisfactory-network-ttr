@@ -7,48 +7,88 @@ Headline.textColor = Color.GREY_0750
 Headline.textVerticalOffset = -22
 
 function Headline:draw()
-    self:drawRect( Vector2d.new( 100,50 ), Vector2d.new( 50,50 ), self.colors.consumption, nil, nil )
-    self:drawText( Vector2d.new( 200,50+self.textVerticalOffset ), self._getLabel( "Consumption", self.values.consumption), self.fontSize, self.textColor)
+    self:drawRect(Vector2d.new(100, 50), Vector2d.new(50, 50), self.colors.consumption, nil, nil)
+    self:drawText(Vector2d.new(200, 50 + self.textVerticalOffset),
+        self._getLabel("Consumption", self.values.consumption), self.fontSize, self.textColor)
 
-    self:drawRect( Vector2d.new( 100,150 ), Vector2d.new( 50,50 ), self.colors.production, nil, nil )
-    self:drawText( Vector2d.new( 200,150+self.textVerticalOffset ), self._getLabel( "Production", self.values.production), self.fontSize, self.textColor)
+    self:drawRect(Vector2d.new(100, 150), Vector2d.new(50, 50), self.colors.production, nil, nil)
+    self:drawText(Vector2d.new(200, 150 + self.textVerticalOffset), self._getLabel("Production", self.values.production),
+        self.fontSize, self.textColor)
 
-    self:drawRect( Vector2d.new( 1100,50 ), Vector2d.new( 50,50 ), self.colors.maxConsumption, nil, nil )
-    self:drawText( Vector2d.new( 1200,50+self.textVerticalOffset ), self._getLabel( "Max. consumption", self.values.maxPowerConsumption), self.fontSize, self.textColor)
+    self:drawRect(Vector2d.new(1100, 50), Vector2d.new(50, 50), self.colors.maxConsumption, nil, nil)
+    self:drawText(Vector2d.new(1200, 50 + self.textVerticalOffset),
+        self._getLabel("Max. consumption", self.values.maxPowerConsumption), self.fontSize, self.textColor)
 
-    self:drawRect( Vector2d.new( 1100,150 ), Vector2d.new( 50,50 ), self.colors.capacity, nil, nil )
-    self:drawText( Vector2d.new( 1200,150+self.textVerticalOffset ), self._getLabel( "Production capacity", self.values.capacity), self.fontSize, self.textColor)
+    self:drawRect(Vector2d.new(1100, 150), Vector2d.new(50, 50), self.colors.capacity, nil, nil)
+    self:drawText(Vector2d.new(1200, 150 + self.textVerticalOffset),
+        self._getLabel("Production capacity", self.values.capacity), self.fontSize, self.textColor)
 end
 
 function Headline:setValues(values)
     self.values = values
 end
 
-function Headline._getLabel( text, value )
+function Headline._getLabel(text, value)
     if value == nil then
         value = 'NaN'
     else
-        value = string.format( '%.1f', value )
+        value = string.format('%.1f', value)
     end
 
     return text .. ' ' .. value .. ' MW'
 end
 
-
 FabricBillbard = {
     regServer = nil,
     gpu = nil,
+    scr = nil,
     currentFabric = nil,
     pollInterval = 1,
 }
 
-function FabricBillbard:init(gpu)
+function FabricBillbard:init(gpu, scr)
     print("\nInitialising FabricBillbard\n")
     self.gpu = gpu
+    self.scr = scr
     self.regServer = FabricRegistryServer:new()
 end
 
 function FabricBillbard:run()
+    local dash = FabricDashboard.new { title = "Station 2 – Materialfluss" }
+
+   local w, h = self.scr:getSize()
+
+
+    dash:init(self.gpu, self.scr, w * 300, h * 300)
+
+    -- aus deiner FabricInfo befüllen:
+    --dash:setFromFabricInfo(myFabricInfo)
+
+    -- Loop
+    while true do
+        local args = table.pack(event.pull(self.pollInterval))
+        self.regServer:callbackEvent(args)
+        self.regServer:callForUpdates(self.currentFabric)
+        self:collectData()
+
+        if self.currentFabric == nil then
+            local reg = self.regServer:getRegistry()
+            local all = reg:getAll()
+            for id, fabric in pairs(all) do
+                log(0, "Registered Fabrics id:" .. id)
+                if fabric ~= nil then
+                    self.currentFabric = fabric;
+                end
+            end
+        end
+        dash:setFromFabricInfo(self.currentFabric)
+
+        -- ggf. myFabricInfo:update(...) → dann erneut mappen:
+        -- dash:setFromFabricInfo(myFabricInfo)
+        dash:paint() -- throttled: max 1x/s
+    end
+
+
     local p = Progressbar.new();
 
     p:init(self.gpu, Vector2d.new(10, 10))
@@ -110,7 +150,7 @@ end
 
 function FabricBillbard:imageBox(position, item)
     return {
-        position = position,
+        position = position,    
         size = Vector2d.new(256, 256),
         image = item and item:getRef() or "",
         imageSize = Vector2d.new(256, 256)

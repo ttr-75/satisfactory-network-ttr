@@ -141,6 +141,21 @@ function ScreenElement:reposition(vector)
     return Vector2d.new(px, py)
 end
 
+-- ===== Local drawing helpers (KEIN reposition) =====
+function ScreenElement:drawLocalRect(position, size, color, image, rotation)
+    -- position ist bereits lokal relativ zu self.position
+    self.gpu:drawRect(position, size, color, image, rotation)
+end
+
+function ScreenElement:drawLocalText(position, text, size, color, monospace)
+    self.gpu:drawText(position, text, size, color, monospace)
+end
+
+function ScreenElement:drawLocalLines(points, thickness, color)
+    -- erwartet lokale Punkte; NICHT verschieben
+    self.gpu:drawLines(points, thickness, color)
+end
+
 --------------------------------------------------------------------------------
 -- ItemImage
 --------------------------------------------------------------------------------
@@ -349,19 +364,29 @@ function Progressbar:setBackground(bg) self.bg = bg end
 function Progressbar:setForeground(fg) self.fg = fg end
 
 function Progressbar:draw()
-    assert(self.value >= 0 and self.value <= 1, "Value must be between 0 and 1")
+    -- robust clamp
+    local v = self.value
+    if v ~= v then v = 0 end
+    if v < 0 then v = 0 elseif v > 1 then v = 1 end
+    self.value = v
 
     if not self.dimensions then
         self.dimensions = Vector2d.new(300, 50)
     end
-    self:drawRect(self.position, self.dimensions, self.bg, nil, nil)
 
+    local origin = self.position-- Vector2d.new(0, 0)
+
+    -- Hintergrund (lokal)
+    self:drawLocalRect(origin, self.dimensions, self.bg, nil, nil)
+
+    -- Farbe
     local f = self.fg
     if not f then
-        local r = 1 - self.value
-        f = Color.new(r, self.value, 0, 1)
+        local r = 1 - v
+        f = Color.new(r, v, 0, 1)
     end
 
-    local d = math.floor(self.dimensions.x * self.value)
-    self:drawRect(self.position, Vector2d.new(d, self.dimensions.y), f, nil, nil)
+    -- Füllung (lokal)
+    local d = math.floor(self.dimensions.x * v)
+    self:drawLocalRect(origin, Vector2d.new(d, self.dimensions.y), f, nil, nil)
 end

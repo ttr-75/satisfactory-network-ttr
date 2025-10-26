@@ -17,7 +17,7 @@ function MyItem:getRef()
     return "icon:" .. self.id
 end
 
-function MyItem:getCodeName()   
+function MyItem:getCodeName()
     return de_umlaute(self.name)
 end
 
@@ -30,8 +30,8 @@ function MyItemList.new()
 end
 
 function MyItemList:addItem(item)
-    local name    = item.name
-    local id      = item.id;
+    local name  = item.name
+    local id    = item.id;
 
     -- remove old pairings to keep it bijective
     local oldId = self.k2v[name]
@@ -42,9 +42,19 @@ function MyItemList:addItem(item)
     self.v2k[id] = item
 end
 
-function MyItemList:get_by_Name(name) return self.k2v[name] end
+function MyItemList:get_by_Name(name)
+    if self.k2v[name] == nil then
+        log(3, "Icon: '" .. name .. "' not implemented yes.")
+    end
+    return self.k2v[name]
+end
 
-function MyItemList:get_by_Id(id) return self.v2k[id] end
+function MyItemList:get_by_Id(id)
+    if self.v2k[id] == nil then
+        log(3, "IconId: '" .. id .. "' not implemented yes.")
+    end
+    return self.v2k[id]
+end
 
 function MyItemList:delete_by_Name(name)
     local item = self.k2v[name]
@@ -74,12 +84,14 @@ MyItemList = MyItemList.new()
 MyItem.PLATINE = MyItem.new({ name = "Platine", id = 243 })
 MyItem.TURBODRAHT = MyItem.new({ name = "Turbodraht", id = 274 })
 MyItem.STAHLTRAEGER = MyItem.new({ name = "Stahlträger", id = 219 })
+MyItem.MODULARER_RAHMEN = MyItem.new({ name = "Modularer Rahmen", id = 233 })
 MyItem.MEHRZWECKGERUEST = MyItem.new({ name = "Mehrzweckgerüst", id = 244 })
 
 
 MyItemList:addItem(MyItem.PLATINE)
 MyItemList:addItem(MyItem.TURBODRAHT)
 MyItemList:addItem(MyItem.STAHLTRAEGER)
+MyItemList:addItem(MyItem.MODULARER_RAHMEN)
 MyItemList:addItem(MyItem.MEHRZWECKGERUEST)
 
 -- Buildings

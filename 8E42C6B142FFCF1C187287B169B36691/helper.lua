@@ -11,6 +11,22 @@ function now_ms()
       or math.floor(os.clock() * 1000)
 end
 
+-- blockiert für mind. ms Millisekunden, aber kooperativ
+function sleep_ms(ms)
+  if not ms or ms <= 0 then return end
+  local deadline = now_ms() + ms
+  while true do
+    local remaining = deadline - now_ms()
+    if remaining <= 0 then break end
+    -- in kleinen Häppchen warten, Events erlauben
+    event.pull(math.min(remaining, 250) / 1000) -- max 250ms pro Pull
+  end
+end
+
+function sleep_s(seconds)
+  sleep_ms(math.floor((seconds or 0) * 1000))
+end
+
 -- Throttle-Wrapper
 function throttle_ms(fn, interval_ms)
   local last = 0
