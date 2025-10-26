@@ -32,7 +32,7 @@ function FabricRegistry:update(fabric)
         local id = fabric.fCoreNetworkCard
         local name = fabric.fName
         log(0, "Update: FabricRegister:update(fabric): Fabric" .. name .. " with id:" .. id)
-        self.fabrics[id].update(fabric)
+        self.fabrics[id]:update(fabric)
     else
         log(3, "Ignorring: FabricRegister:Update(fabric)")
     end
@@ -139,13 +139,16 @@ function FabricRegistryClient.new()
                     local t = p.type
                     local J = JSON.new { indent = 2, sort_keys = true }
                     local s = J:encode(t)
-                    print(t.name)
+                   -- print(t.name)
                     --local l = .new()
                     local item = MyItemList:get_by_Name(t.name)
                     item.max = t.max
-                    local output = Output:new { itemClass=item, amountStation = 300, amountContainer = 1500 }
+                    local output = Output:new { itemClass = item, amountStation = 300, amountContainer = 1500 }
 
                     self.myFabric:updateOutput(output)
+                   -- local J = JSON.new { indent = 2, sort_keys = true }
+                   -- local serialized = J:encode(self.myFabric)
+                   -- print(serialized)
                 else
                     log(3,
                         "Fabric with more then 1 Output product not implemented yet - FabricRegistryClient:performUpdate")
@@ -166,6 +169,11 @@ function FabricRegistryClient.new()
 
                 local J = JSON.new { indent = 2, sort_keys = true }
                 local serialized = J:encode(self.myFabric)
+                -- print(serialized)
+
+                -- local serialized2 = J:encode(self.myFabric.outputs)
+                -- print(serialized)
+
                 self.net:send(fromId, self.port, NET_CMD_UPDATE_FABRIC, serialized)
                 log(0, "Net-FabricRegistryClient::update send to  \"" .. fromId .. "\"")
             end
@@ -213,6 +221,7 @@ function FabricRegistryServer.new()
             log(0, ('Net-FabricRegistryServer: Received Update from "%s"'):format(fromId))
             local J = JSON.new { indent = 2, sort_keys = true }
             local o = J:decode(arg1)
+            --print(arg1)
             --local id = o.fCoreNetworkCard
             self:getRegistry():update(o)
         end

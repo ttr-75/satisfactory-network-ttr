@@ -1,7 +1,44 @@
+--------------------------------------------------------------------------------
+-- Headline
+--------------------------------------------------------------------------------
+Headline = ScreenElement:new()
+Headline.fontSize = 50
+Headline.textColor = Color.GREY_0750
+Headline.textVerticalOffset = -22
+
+function Headline:draw()
+    self:drawRect( Vector2d.new( 100,50 ), Vector2d.new( 50,50 ), self.colors.consumption, nil, nil )
+    self:drawText( Vector2d.new( 200,50+self.textVerticalOffset ), self._getLabel( "Consumption", self.values.consumption), self.fontSize, self.textColor)
+
+    self:drawRect( Vector2d.new( 100,150 ), Vector2d.new( 50,50 ), self.colors.production, nil, nil )
+    self:drawText( Vector2d.new( 200,150+self.textVerticalOffset ), self._getLabel( "Production", self.values.production), self.fontSize, self.textColor)
+
+    self:drawRect( Vector2d.new( 1100,50 ), Vector2d.new( 50,50 ), self.colors.maxConsumption, nil, nil )
+    self:drawText( Vector2d.new( 1200,50+self.textVerticalOffset ), self._getLabel( "Max. consumption", self.values.maxPowerConsumption), self.fontSize, self.textColor)
+
+    self:drawRect( Vector2d.new( 1100,150 ), Vector2d.new( 50,50 ), self.colors.capacity, nil, nil )
+    self:drawText( Vector2d.new( 1200,150+self.textVerticalOffset ), self._getLabel( "Production capacity", self.values.capacity), self.fontSize, self.textColor)
+end
+
+function Headline:setValues(values)
+    self.values = values
+end
+
+function Headline._getLabel( text, value )
+    if value == nil then
+        value = 'NaN'
+    else
+        value = string.format( '%.1f', value )
+    end
+
+    return text .. ' ' .. value .. ' MW'
+end
+
+
 FabricBillbard = {
     regServer = nil,
     gpu = nil,
-    currentFactory = nil,
+    currentFabric = nil,
     pollInterval = 1,
 }
 
@@ -24,24 +61,33 @@ function FabricBillbard:run()
     while true do
         local args = table.pack(event.pull(self.pollInterval))
         self.regServer:callbackEvent(args)
-        self.regServer:callForUpdates(self.currentFactory)
+        self.regServer:callForUpdates(self.currentFabric)
         self:collectData()
 
-        
-        local reg = self.regServer:getRegistry()
-        local all = reg:getAll()
-        for id, fabric in pairs(all) do
-            log(0, "Registered Fabrics id:" .. id)
-            if fabric ~= nil then
-                self.currentFactory = fabric;
+        if self.currentFabric == nil then
+            local reg = self.regServer:getRegistry()
+            local all = reg:getAll()
+            for id, fabric in pairs(all) do
+                log(0, "Registered Fabrics id:" .. id)
+                if fabric ~= nil then
+                    self.currentFabric = fabric;
+                end
             end
         end
 
-        if self.currentFactory ~= nil then
+        if self.currentFabric ~= nil then
             p:setValue(i)
 
+            local myItem = nil
 
-            ii:setBox(self:imageBox(Vector2d.new(200, 200), nil))
+
+
+            for _, output in pairs(self.currentFabric.outputs) do
+                local itemName = output.itemClass.name
+                myItem = MyItemList:get_by_Name(itemName)
+            end
+
+            ii:setBox(self:imageBox(Vector2d.new(10, 10), myItem))
 
             p:draw()
             ii:draw()
@@ -65,8 +111,8 @@ end
 function FabricBillbard:imageBox(position, item)
     return {
         position = position,
-        size = Vector2d.new(512, 512),
+        size = Vector2d.new(256, 256),
         image = item and item:getRef() or "",
-        imageSize = Vector2d.new(512, 512)
+        imageSize = Vector2d.new(256, 256)
     }
 end

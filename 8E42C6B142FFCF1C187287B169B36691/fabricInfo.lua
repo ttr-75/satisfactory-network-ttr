@@ -79,9 +79,13 @@ FabricInfo = {
 
 function FabricInfo:new(o)
     o = o or {}
+    -- Felder EXPLIZIT pro Instanz setzen:
+    o.fName            = o.fName or nil
+    o.fType            = o.fType or nil
+    o.fCoreNetworkCard = o.fCoreNetworkCard or nil
+    o.outputs          = o.outputs or {}   -- <-- wichtig!
     self.__index = self
-    setmetatable(o, self)
-    return o
+    return setmetatable(o, self)
 end
 
 function FabricInfo:setName(name)
@@ -97,19 +101,24 @@ function FabricInfo:setCoreNetworkCard(coreNetworkCard)
 end
 
 function FabricInfo:update(fabric)
-    self.products = fabric.products
+    for _, output in pairs(fabric.outputs) do
+        self:updateOutput(output)
+    end
 end
 
 function FabricInfo:updateOutput(output)
     local J = JSON.new { indent = 2, sort_keys = true }
     local s = J:encode(output)
-    print(s)
+    --print(s)
     if self.outputs[output.itemClass.name] == nil then
         self.outputs[output.itemClass.name] = output
     else
         self.outputs[output.itemClass.name].amountStation = output.amountStation
         self.outputs[output.itemClass.name].amountContainer = output.amountContainer
     end
+    --local J = JSON.new { indent = 2, sort_keys = true }
+    --local s2 = J:encode(self)
+    --print(s2)
 end
 
 function FabricInfo:check(fabric)
