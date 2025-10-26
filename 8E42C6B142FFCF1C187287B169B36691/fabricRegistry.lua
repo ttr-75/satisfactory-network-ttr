@@ -125,6 +125,35 @@ function FabricRegistryClient.new()
     ----------------------------------------------------------------------
     -- PRIVATE: checkForReboot (nicht exportiert)
     ----------------------------------------------------------------------
+
+    local function performUpdate()
+        local comp = component.findComponent(classes.Manufacturer)
+        if (#comp > 0) then
+            local manufacturer = component.proxy(comp[1])
+            local recipe = manufacturer:getRecipe()
+            if recipe ~= nil then
+                local products = recipe:getProducts()
+                if #products == 1 then
+                    local p = products[1]
+                    local a = p.amount
+                    local t = p.type
+                    local J = JSON.new { indent = 2, sort_keys = true }
+                    local s = J:encode(t)
+                    print(t.name)
+                    --local l = .new()
+                    local item = MyItemList:get_by_Name(t.name)
+                    item.max = t.max
+                    local output = Output:new { itemClass=item, amountStation = 300, amountContainer = 1500 }
+
+                    self.myFabric:updateOutput(output)
+                else
+                    log(3,
+                        "Fabric with more then 1 Output product not implemented yet - FabricRegistryClient:performUpdate")
+                end
+            end
+        end
+    end
+
     local function handleNetworkMessage(e, s, fromId, p, cmd)
         if e == "NetworkMessage" and p == self.port then
             if cmd == NET_CMD_RESET_FABRICREGISTRY then
@@ -132,6 +161,8 @@ function FabricRegistryClient.new()
                 computer.reset()
             elseif cmd == NET_CMD_GET_FABRIC_UPDATE then
                 log(0, "Net-FabricRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
+
+                performUpdate()
 
                 local J = JSON.new { indent = 2, sort_keys = true }
                 local serialized = J:encode(self.myFabric)
@@ -142,6 +173,7 @@ function FabricRegistryClient.new()
         -- Platzhalter: hier deine Logik (z.B. Flag prüfen und ggf. resetten)
         -- if needReboot then computer.reset() end
     end
+
 
     ----------------------------------------------------------------------
     -- ÖFFENTLICH: einzig sichtbare Methode

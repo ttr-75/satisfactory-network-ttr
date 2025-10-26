@@ -1,6 +1,7 @@
 MyItem = {
     name = nil,
     id = nil,
+    max = nil,
     ref = nil
 }
 
@@ -21,7 +22,7 @@ function MyItem:getCodeName()
 end
 
 -- BiMap: bijective map (each key maps to exactly one value and vice versa)
-local MyItemList = {}
+MyItemList = {}
 MyItemList.__index = MyItemList
 
 function MyItemList.new()
