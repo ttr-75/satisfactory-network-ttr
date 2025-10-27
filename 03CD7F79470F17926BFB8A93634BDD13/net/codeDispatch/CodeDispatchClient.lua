@@ -12,6 +12,8 @@ function CodeDispatchClient.new(opts)
     self.ver = 1
     self.requestCompleted = {}
     self.loadingRegistry = {}
+    self.codes = {}
+    self.codeOrder = {}
     self = setmetatable(self, CodeDispatchClient)
 
 
@@ -24,31 +26,35 @@ function CodeDispatchClient.new(opts)
         return false
     end
 
-    local function insertAtInRegistry(i, v)
-        local n = #self.loadingRegistry
+    local function insertAt(a, i, v)
+        local n = #a
         if i == nil then i = n + 1 end
         if i < 1 then i = 1 end
         if i > n + 1 then i = n + 1 end
-        table.insert(self.loadingRegistry, i, v) -- nutzt die eingebaute Verschiebung
+        table.insert(a, i, v) -- nutzt die eingebaute Verschiebung
         return i
     end
 
-    local function indexOfInRegestry(value)
-        for i = 1, #self.loadingRegistry do
-            if self.loadingRegistry[i] == value then return i end
+    local function indexOfIn(a, value)
+        for i = 1, #a do
+            if a[i] == value then return i end
         end
         return nil
     end
 
-    local function removeFromRegistry(value)
-        local i = indexOfInRegestry(value)
+    local function removeFrom(a, value)
+        local i = indexOfIn(a, value)
         if i then
-            table.remove(self.loadingRegistry, i); return true
+            table.remove(a, i); return true
         end
         return false
     end
 
-
+    local function logRegister()
+        for i = 1, #self.loadingRegistry do
+            log(4, "Eintrag (" .. i .. ") " .. self.loadingRegistry[i])
+        end
+    end
 
     -- Private functions--
     local function split_on_finished(content)
@@ -88,6 +94,8 @@ function CodeDispatchClient.new(opts)
             if not ok then
                 log(4, err)
             end
+
+            --self:loadAndWait()
         end
 
 
@@ -101,11 +109,8 @@ function CodeDispatchClient.new(opts)
             computer.log(4, "CodeDispatchClient:Failed to load module " .. name)
             return
         end
-        log(1, "CodeDispatchClient:Starting " .. name)
-        local ok, err = pcall(code)
-        if not ok then
-            log(4, err)
-        end
+        log(1, "CodeDispatchClient:Save for Procedure " .. name)
+        self.codes[name] = code
         self.requestCompleted[name] = true
     end
 
@@ -145,28 +150,60 @@ function CodeDispatchClient.new(opts)
 
     function self:loadAndWait()
         if #self.loadingRegistry == 0 then
+            self:callAllLoadedFiles()
             return false
         end
         local next = self.loadingRegistry[1]
-       
-        while removeFromRegistry(next) do
 
+        local r = false
+        while removeFrom(self.loadingRegistry, next) do
+            log(4, "REMOED:  " .. next)
+            r = true
         end
-        
+        if r then
+            logRegister()
+        end
+
         loadModule(next)
 
         while self.requestCompleted[next] == false do
             future.run()
         end
 
-
-
         self:loadAndWait()
     end
 
+    function self:callAllLoadedFiles()
+        for i = 1, #self.codeOrder do
+            local name = self.codeOrder[i]
+            log(1, "CodeDispatchClient:Running Code: " .. name)
+            local ok, err = pcall(self.codes[name])
+            if not ok then
+                log(4, err)
+            end
+        end
+        self.codeOrder = {}
+        self.codes = {}
+    end
+
     local function register(name)
-        if existsInRegistry(name) == false and self.requestCompleted[name] == nil then
-            insertAtInRegistry(1, name)
+        if self.requestCompleted[name] == nil then
+            if existsInRegistry(name) == false then
+                log(4, "Neu Registiert:  " .. name)
+                insertAt(self.loadingRegistry, 1, name)
+                insertAt(self.codeOrder, 1, name)
+            else
+                log(4, "Nochmals Registiert:  " .. name)
+                while removeFrom(self.loadingRegistry, name) do
+                    -- Delete all
+                end
+                insertAt(self.loadingRegistry, 1, name)
+            end
+            while removeFrom(self.codeOrder, name) do
+                -- Delete all
+            end
+            insertAt(self.codeOrder, 1, name)
+            logRegister()
         end
     end
 
@@ -199,3 +236,9 @@ CodeDispatchClient = CodeDispatchClient.new()
 names = {"helper.lua","serializer.lua","testFolder/testFile.lua","fabricRegistry/basics.lua"}
 CodeDispatchClient:loadAndWait(names)
 ]]
+
+
+names = {}
+CodeDispatchClient:registerForLoading(names)
+
+CodeDispatchClient:loadAndWait()

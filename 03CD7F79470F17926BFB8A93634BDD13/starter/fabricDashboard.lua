@@ -1,7 +1,13 @@
-LOG_MIN = 1 -- nur Warn und höher
-
-
-
+local names = { "helper.lua",
+    "serializer.lua",
+    "items.lua",
+    "graphics.lua",
+    "fabricInfo.lua",
+    "fabricBillboard.lua",
+    "fabricDashboard.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
 
 
 
@@ -13,8 +19,7 @@ NICK_SCREEN = "MyScreen"
 
 local scr = byNick(NICK_SCREEN)
 assert(scr, "Screen nicht gefunden")
---x,y=scr:getSize()
---log(1,"ScreenSize: X:" .. x .." Y:" .. y )
+
 
 -- GPU/Screen/Container
 local gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
@@ -25,8 +30,7 @@ assert(gpu, "No GPU T2 found. Cannot continue.")
 
 log(1, "Billboard Creation")
 
---[[
+
 
 FabricBillbard:init(gpu, scr)
 FabricBillbard:run()
-]]

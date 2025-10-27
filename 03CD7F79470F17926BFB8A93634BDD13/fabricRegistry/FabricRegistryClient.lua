@@ -1,6 +1,5 @@
 local names = {
     "fabricRegistry/basics.lua",
-    "fabricRegistry/FabricRegistry.lua",
     "net/NetworkAdapter.lua",
 }
 CodeDispatchClient:registerForLoading(names)
@@ -240,19 +239,19 @@ function FabricRegistryClient.new(opts)
     end
 
     self:registerWith(function(from, port, cmd, a, b)
-        if port == self.port and cmd == NET_CMD_REGISTER_ACK then
-            self:onRegisterAck(fromId)
+        if port == self.port and cmd == NET_CMD_FABRIC_REGISTER_ACK then
+            self:onRegisterAck(from)
         elseif port == self.port and cmd == NET_CMD_RESET_FABRICREGISTRY then
-            self:onRegistryReset(fromId)
+            self:onRegistryReset(from)
         elseif port == self.port and cmd == NET_CMD_GET_FABRIC_UPDATE then
-            self:onGetFabricUpdate(fromId, a, b)
+            self:onGetFabricUpdate(from, a, b)
         end
     end)
 
 
     if tostring(self.myFabricInfo):find("FabricInfo", 1, true) == nil then
         log(3, "FabricRegistryClient: Cannot broadcast '" ..
-            NET_CMD_REGISTER .. "' on port " .. self.port .. " – object is no FabricInfo")
+            NET_CMD_FABRIC_REGISTER .. "' on port " .. self.port .. " – object is no FabricInfo")
         return false
     end
 
@@ -261,11 +260,11 @@ function FabricRegistryClient.new(opts)
     fabricName = tostring(fabricName or "?")
     if (fabricName == "?") then
         log(3, "FabricRegistryClient: Cannot broadcast '" ..
-            NET_CMD_REGISTER .. "' on port " .. self.port .. " – fabricName is not set")
+            NET_CMD_FABRIC_REGISTER .. "' on port " .. self.port .. " – fabricName is not set")
         return false
     end
-    self:broadcast(NET_CMD_REGISTER, fabricName)
-    log(1, ("FabricRegistryClient: broadcast '%s' with name '%s'"):format(NET_CMD_REGISTER, fabricName))
+    self:broadcast(NET_CMD_FABRIC_REGISTER, fabricName)
+    log(1, ("FabricRegistryClient: broadcast '%s' with name '%s'"):format(NET_CMD_FABRIC_REGISTER, fabricName))
 
     return self
 end

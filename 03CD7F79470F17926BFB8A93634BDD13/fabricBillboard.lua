@@ -1,3 +1,15 @@
+names = { "helper.lua",
+    "serializer.lua",
+    "items.lua",
+    "graphics.lua",
+    "fabricInfo.lua",
+    "fabricRegistry/fabricRegistry.lua",
+    "fabricRegistry/FabricRegistryServer.lua",
+    "fabricDashboard.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
 --------------------------------------------------------------------------------
 -- Headline
 --------------------------------------------------------------------------------
@@ -6,37 +18,6 @@ Headline.fontSize = 50
 Headline.textColor = Color.GREY_0750
 Headline.textVerticalOffset = -22
 
-function Headline:draw()
-    self:drawRect(Vector2d.new(100, 50), Vector2d.new(50, 50), self.colors.consumption, nil, nil)
-    self:drawText(Vector2d.new(200, 50 + self.textVerticalOffset),
-        self._getLabel("Consumption", self.values.consumption), self.fontSize, self.textColor)
-
-    self:drawRect(Vector2d.new(100, 150), Vector2d.new(50, 50), self.colors.production, nil, nil)
-    self:drawText(Vector2d.new(200, 150 + self.textVerticalOffset), self._getLabel("Production", self.values.production),
-        self.fontSize, self.textColor)
-
-    self:drawRect(Vector2d.new(1100, 50), Vector2d.new(50, 50), self.colors.maxConsumption, nil, nil)
-    self:drawText(Vector2d.new(1200, 50 + self.textVerticalOffset),
-        self._getLabel("Max. consumption", self.values.maxPowerConsumption), self.fontSize, self.textColor)
-
-    self:drawRect(Vector2d.new(1100, 150), Vector2d.new(50, 50), self.colors.capacity, nil, nil)
-    self:drawText(Vector2d.new(1200, 150 + self.textVerticalOffset),
-        self._getLabel("Production capacity", self.values.capacity), self.fontSize, self.textColor)
-end
-
-function Headline:setValues(values)
-    self.values = values
-end
-
-function Headline._getLabel(text, value)
-    if value == nil then
-        value = 'NaN'
-    else
-        value = string.format('%.1f', value)
-    end
-
-    return text .. ' ' .. value .. ' MW'
-end
 
 FabricBillbard = {
     regServer = nil,
@@ -50,12 +31,7 @@ function FabricBillbard:init(gpu, scr)
     print("\nInitialising FabricBillbard\n")
     self.gpu = gpu
     self.scr = scr
-    self.regServer = FabricRegistryServer.new { port = 11 }
-    self.regServer:initNetworkt()
-    self.regServer:initRegisterListener()
-    self.regServer:setResetHandler(function(fromId)
-        log(0, "Registry reset requested by " .. tostring(fromId) .. " — re-register")
-    end)
+    self.regServer = FabricRegistryServer.new()
     self.regServer:broadcastRegistryReset()
 end
 

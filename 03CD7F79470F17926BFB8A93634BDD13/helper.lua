@@ -1,3 +1,11 @@
+local names = {
+  "serializer.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
+
+
 ----------------------------------------------------------------
 -- helper.lua – Kleine Helferlein für Logging, Zeit, Inventories, JSON, Events
 -- Optimiert & ausführlich kommentiert

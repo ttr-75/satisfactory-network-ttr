@@ -1,9 +1,17 @@
+local names = {
+    "fabricRegistry/basics.lua",
+    "fabricRegistry/FabricRegistry.lua",
+    "net/NetworkAdapter.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
 --------------------------------------------------------------------------------
 -- Server
 --------------------------------------------------------------------------------
 FabricRegistryServer = setmetatable({}, { __index = NetworkAdapter })
 FabricRegistryServer.__index = FabricRegistryServer
- 
+
 function FabricRegistryServer.new(opts)
     local self = NetworkAdapter:new(opts)
     self.name = NET_NAME_FABRIC_REGISTRY_SERVER
@@ -26,7 +34,7 @@ function FabricRegistryServer.new(opts)
         self.reg:add(fInfo)
         -- ACK an den Absender zurück
         log(1, ('Server: Registered "%s" from %s'):format(fName, tostring(fromId)))
-        self:send(fromId, NET_CMD_REGISTER_ACK)
+        self:send(fromId, NET_CMD_FABRIC_REGISTER_ACK)
     end
 
     -- function self:onRegistryReset(fromId)
@@ -53,10 +61,10 @@ function FabricRegistryServer.new(opts)
     end
 
     self:registerWith(function(from, port, cmd, a, b)
-        if port == self.port and cmd == NET_CMD_REGISTER then
-            self:onRegister(fromId, a)
+        if port == self.port and cmd == NET_CMD_FABRIC_REGISTER then
+            self:onRegister(from, a)
         elseif port == self.port and cmd == NET_CMD_UPDATE_FABRIC then
-            self:onUpdateFabric(fromId, a)
+            self:onUpdateFabric(from, a)
             -- elseif port == self.port and cmd == NET_CMD_RESET_ALL then
             --     self:onGetFabricUpdate(fromId, a, b)
         end
@@ -87,7 +95,6 @@ function FabricRegistryServer:clearRegistry()
 end
 
 function FabricRegistryServer:broadcastRegistryReset()
-    if not self.netBootInitDone then self:initNetworkt() end
     self:clearRegistry()
     self:broadcast(NET_CMD_RESET_FABRICREGISTRY)
     log(2, "Server: broadcast registry reset")

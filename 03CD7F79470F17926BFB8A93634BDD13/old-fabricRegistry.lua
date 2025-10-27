@@ -46,8 +46,8 @@ end
 -- Konstanten (wie in deiner Originaldatei)
 --------------------------------------------------------------------------------
 NET_PORT_DEFAULT                        = 11
-NET_CMD_REGISTER                        = "registerFabric"
-NET_CMD_REGISTER_ACK                    = "registerFabricAck"
+NET_CMD_FABRIC_REGISTER                        = "registerFabric"
+NET_CMD_FABRIC_REGISTER_ACK                    = "registerFabricAck"
 NET_CMD_GET_FABRIC_UPDATE               = "getFabricUpdate"
 NET_CMD_UPDATE_FABRIC                   = "updateFabric"
 NET_CMD_RESET_FABRICREGISTRY            = "resetFabricRegistry"
@@ -387,7 +387,7 @@ function FabricRegistryClient:initRegisterListener()
         -- Debug:
         --log(0, ("Client RX cmd=%s from=%s"):format(tostring(cmd), tostring(fromId)))
 
-        if cmd == NET_CMD_REGISTER_ACK then
+        if cmd == NET_CMD_FABRIC_REGISTER_ACK then
             self:onRegisterAck(fromId)
         elseif cmd == NET_CMD_RESET_FABRICREGISTRY then
             print("CALLLLLL")
@@ -408,7 +408,7 @@ function FabricRegistryClient:register(fabricInfo)
     -- einfache Typ-/Formprüfung (falls du FabricInfo als Klasse hast, gern ersetzen)
     if tostring(self.myFabricInfo):find("FabricInfo", 1, true) == nil then
         log(3, "Net-FabricRegistryClient: Cannot broadcast '" ..
-            NET_CMD_REGISTER .. "' on port " .. self.port .. " – object is no FabricInfo")
+            NET_CMD_FABRIC_REGISTER .. "' on port " .. self.port .. " – object is no FabricInfo")
         return false
     end
 
@@ -417,11 +417,11 @@ function FabricRegistryClient:register(fabricInfo)
     fabricName = tostring(fabricName or "?")
     if (fabricName == "?") then
         log(3, "Net-FabricRegistryClient: Cannot broadcast '" ..
-            NET_CMD_REGISTER .. "' on port " .. self.port .. " – fabricName is not set")
+            NET_CMD_FABRIC_REGISTER .. "' on port " .. self.port .. " – fabricName is not set")
         return false
     end
-    self:broadcast(NET_CMD_REGISTER, fabricName)
-    log(1, ("Client: broadcast '%s' with name '%s'"):format(NET_CMD_REGISTER, fabricName))
+    self:broadcast(NET_CMD_FABRIC_REGISTER, fabricName)
+    log(1, ("Client: broadcast '%s' with name '%s'"):format(NET_CMD_FABRIC_REGISTER, fabricName))
     return true
 end
 
@@ -450,7 +450,7 @@ function FabricRegistryServer.new(opts)
         self.reg:add(fInfo)
         -- ACK an den Absender zurück
         log(1, ('Server: Registered "%s" from %s'):format(fName, tostring(fromId)))
-        self:send(fromId, NET_CMD_REGISTER_ACK)
+        self:send(fromId, NET_CMD_FABRIC_REGISTER_ACK)
     end
 
     -- function self:onRegistryReset(fromId)
@@ -487,7 +487,7 @@ function FabricRegistryServer:initRegisterListener()
         -- Debug:
         --log(0, ("Server RX cmd=%s from=%s"):format(tostring(cmd), tostring(fromId)))
 
-        if cmd == NET_CMD_REGISTER then
+        if cmd == NET_CMD_FABRIC_REGISTER then
             self:onRegister(fromId, a)
             --elseif cmd == NET_CMD_RESET_FABRICREGISTRY then
             --    self:onRegistryReset(fromId)

@@ -1,3 +1,14 @@
+
+local names = { "helper.lua",
+    "items.lua",
+    "graphics.lua",
+    "fabricInfo.lua",
+    "fabricBillboard.lua",
+    "fabricDashboard.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
 ----------------------------------------------------------------
 -- FabricDashboard – passt direkt zu deiner FabricInfo-Struktur
 ----------------------------------------------------------------
