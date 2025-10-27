@@ -26,8 +26,8 @@ function FabricDashboard.new(opts)
     local self         = setmetatable({}, FabricDashboard)
     self.title         = (opts and opts.title) or "Fabrik-Übersicht"
     self.pad           = 14
-    self.rowH          = 64
-    self.iconSize      = 48
+    self.rowH          = 100
+    self.iconSize      = 100
     self.fontSize      = 24
     self.headerSize    = 28
     self.minIntervalMs = 1000
@@ -106,6 +106,7 @@ end
 
 -- kleine Farblogik für Füllstand
 local function barColor(frac)
+    if true then return nil end
     if frac ~= frac then frac = 0 end
     if frac < 0.2 then
         return Color.RED
@@ -118,7 +119,7 @@ end
 
 -- eine Zeile rendern (zwei Bars: Station / Container)
 function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
-    local y = posY + 120 + (ix - 1) * (self.rowH + self.pad)
+    local y = posY + 120 + (ix - 1) * (self.rowH + self.rowH) + self.pad
     local left = colX + self.pad
 
     -- Icon
@@ -134,14 +135,23 @@ function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
 
     -- Text
     local textX = left + self.iconSize + 10
-    local line = string.format("%s | Station: %s/%s   Container: %s/%s",
-        it.name or "?", tostring(it.s), tostring(it.sMax), tostring(it.c), tostring(it.cMax))
+    local line = string.format("%s", it.name or "?")
     self.root:drawText(Vector2d.new(textX, y + (self.rowH - self.fontSize) // 2),
+        line, self.fontSize, self.fg, false)
+
+    local line = string.format("Station: %s/%s",
+        tostring(it.s), tostring(it.sMax))
+    self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH - self.fontSize) // 2),
+        line, self.fontSize, self.fg, false)
+
+    local line = string.format("Container: %s/%s",
+        tostring(it.c), tostring(it.cMax))
+    self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH + self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
     -- Bars rechts: Station + Container
     local barW  = math.max(320, math.floor(colWidth * 0.45))
-    local barH  = 16
+    local barH  = 50
     local gap   = 6
     local pbX   = colX + colWidth - barW - self.pad
     local sFrac = (it.sMax and it.sMax > 0) and (it.s / it.sMax) or 0
@@ -149,7 +159,7 @@ function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
 
     -- Station-Bar
     local pbS   = Progressbar.new {
-        position = Vector2d.new(pbX, y + (self.rowH - (2 * barH + gap)) // 2),
+        position = Vector2d.new(pbX, y + (self.rowH + self.rowH - (2 * barH + gap)) // 2),
         dimensions = Vector2d.new(barW, barH),
         bg = Color.GREY_0250, fg = barColor(sFrac), value = sFrac
     }
@@ -164,6 +174,84 @@ function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
     }
     pbC:init(self.gpu, pbC.position, pbC.dimensions); pbC:draw()
     self.root:drawText(Vector2d.new(pbX - 64, pbC.position.y - 2), "Co", 18, self.muted, true)
+end
+
+function FabricDashboard:paintOuputWarning(position, size)
+    local posY = self.pad
+    local posX = self.size.x - 200 - self.pad
+    if position ~= nil then
+        posX = position.x
+        posY = position.y
+    end
+
+    if size == nil then
+        size = Vector2d.new(200, 200)
+    end
+
+    local color = Color.GREEN
+    for i, it in pairs(self.outputs) do
+        local sFrac = it.s / it.sMax
+        local cFrac = it.c / it.cMax
+        if sFrac < 0.5 then
+            color = Color.YELLOW
+            if cFrac < 0.2 then
+                color = Color.RED
+            end
+        end
+        if sFrac < 0.1 then
+            color = Color.RED
+        end
+    end
+
+    self.root:drawLocalRect(position, size, color)
+    --[[local icon = get_icon_for(it.name)
+    self.root:drawBox({
+        position  = Vector2d.new(posX, posY),
+        size      = titleIconSize,
+        image     = icon and icon:getRef() or "",
+        imageSize = titleIconSize,
+
+    })]]
+end
+
+function FabricDashboard:paintInputWarning(position, size)
+    local posY = self.pad
+    local posX = self.size.x - 500 - self.pad
+    if position ~= nil then
+        posX = position.x
+        posY = position.y
+    end
+
+    if size == nil then
+        size = Vector2d.new(200, 200)
+    end
+
+    local color = Color.GREEN
+    for i, it in pairs(self.inputs) do
+        local sFrac = it.s / it.sMax
+        local cFrac = it.c / it.cMax
+        if cFrac < 0.5 then
+            color = Color.YELLOW
+            if sFrac < 0.2 then
+                color = Color.RED
+            end
+        end
+        if cFrac < 0.1 then
+            color = Color.RED
+        end
+    end
+
+
+
+    self.root:drawLocalRect(position, size, color)
+    --[[local icon = get_icon_for(it.name)
+    self.root:drawBox({
+        position  = Vector2d.new(posX, posY),
+        size      = titleIconSize,
+        image     = icon and icon:getRef() or "",
+        imageSize = titleIconSize,
+
+    })]]
 end
 
 function FabricDashboard:paint()
@@ -184,14 +272,10 @@ function FabricDashboard:paint()
     for i, it in ipairs(self.outputs) do
         local icon = get_icon_for(it.name)
         self.root:drawBox({
-            position         = Vector2d.new(posX, posY),
-            size             = titleIconSize,
-            image            = icon and icon:getRef() or "",
-            imageSize        = titleIconSize,
-            color            = Color.WHITE,
-            outlineThickness = 5,
-            outlineColor     = Color.WHITE,
-            hasOutline       = true,
+            position  = Vector2d.new(posX, posY),
+            size      = titleIconSize,
+            image     = icon and icon:getRef() or "",
+            imageSize = titleIconSize,
 
         })
         posX = posX + titleIconSize.x + self.pad
@@ -219,6 +303,11 @@ function FabricDashboard:paint()
     for i, it in ipairs(self.outputs) do
         self:_drawRow(mid + self.pad, posY, i, it, rightW)
     end
+
+    local sizeW = Vector2d.new(800, 50)
+    self:paintInputWarning(Vector2d.new(posX + 200, posY), sizeW)
+    self:paintOuputWarning(Vector2d.new(mid + posX + 200, posY), sizeW)
+
 
     self.gpu:flush()
 end

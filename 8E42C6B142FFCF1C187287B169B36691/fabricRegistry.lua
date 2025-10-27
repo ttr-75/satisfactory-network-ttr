@@ -1,10 +1,3 @@
-NET_CMD_REGISTER = "registerFabric"
-NET_CMD_REGISTER_ACK = "registerFabricAck"
-NET_CMD_UPDATE_FABRIC = "updateFabric"
-NET_CMD_GET_FABRIC_UPDATE = "getFabricUpdate"
-NET_CMD_RESET_FABRICREGISTRY = "resetFabricRegistry"
-
-
 FabricRegistry = {
     fabrics = {}
 }
@@ -19,6 +12,9 @@ end
 function FabricRegistry:add(fabric)
     if self:checkMinimum(fabric) then
         local id = fabric.fCoreNetworkCard
+        if self.fabrics[id] ~= nil then
+            return self:update(fabric)
+        end
         local name = fabric.fName
         log(0, "Adding: FabricRegister:add(fabric): Fabric" .. name .. " with id:" .. id)
         self.fabrics[id] = fabric
@@ -139,11 +135,15 @@ function FabricRegistryNetworkConnection:broadcast(cmd, ...)
 end
 
 function FabricRegistryNetworkConnection:triggerReset(fromId)
+    log(2, "Reset Triggered")
     if self._onReset then
         local ok, err = pcall(self._onReset, fromId)
         if not ok then log(3, "Reset handler error: " .. tostring(err)) end
     end
-    if self._autoReboot then computer.reset() end
+    if self._autoReboot then
+        log(2, "Computer.reset Triggered")
+        computer.reset()
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -202,53 +202,174 @@ function FabricRegistryClient.new(opts)
                     item.max = p.type.max
                     local output = Output:new {
                         itemClass          = item,
-                        amountStation      = math.random(3000),
-                        amountContainer    = math.random(3000),
-                        maxAmountStation   = 3000,
-                        maxAmountContainer = 3000
-                    }
-
-                    local containers = containerByFabricStack(self.myFabricInfo.name, output)
-
-
-
-
-                    for _, container in pairs(containers) do
-                        print(container.nick)
-
-                        -- meist hat der Container genau 1 Inventory
-                        local invs = container.getInventories and container:getInventories() or nil
-                        -- local inv  = (invs and invs[1]) or (container.getInventory and container:getInventory()) or nil
-
-                        for _, inv in pairs(invs) do
-                            -- 1) Direkte Größe?
-                            if inv.size then return print(inv.size) end
-                            if inv.getSize then
-                                local ok, sz = pcall(function() return inv:getSize() end)
-                                if ok and type(sz) == "number" then print(sz) end
-                            end
-                            if inv.getCapacity then
-                                local ok, cap = pcall(function() return inv:getCapacity() end)
-                                if ok and type(cap) == "number" then return print(cap) end
-                            end
-                            if inv.getSlotCount then
-                                local ok, sc = pcall(function() return inv:getSlotCount() end)
-                                if ok and type(sc) == "number" then return print(sc) end
-                            end
-                        end
-                    end
-                    self.myFabricInfo:updateOutput(output) -- <– korrektes Feld
-                end
-                for _, ingredient in pairs(recipe:getIngredients()) do
-                    local it = MyItemList:get_by_Name(ingredient.type.name)
-                    it.max = ingredient.type.max
-                    local input = Input:new {
-                        itemClass          = it,
                         amountStation      = 0,
                         amountContainer    = 0,
                         maxAmountStation   = 3000,
                         maxAmountContainer = 3000
                     }
+
+                    -- Container
+                    local containers = containerByFabricStack(self.myFabricInfo.fName, output)
+
+                    local maxSlotsC = 0
+                    local totalsC = {}
+                    local typesC = {}
+
+
+                    for _, container in pairs(containers) do
+                        maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
+                        totalsC, typesC = readInventory(container, totalsC, typesC)
+                        --print(container.nick)
+                    end
+
+                    local counterC = 0
+                    local maxStackC = item.max
+                    for key, cnt in pairs(totalsC) do
+                        local t = typesC[key]
+                        --local name = (t and t.name) or ("Type#" .. tostring(key))
+                        -- maxStackC = (t and t.max) or 0
+                        counterC = counterC + cnt
+
+                        local tht = (t and t.name) or ("Type#" .. tostring(key))
+                        --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
+                    end
+
+                    local _maxAmountContainer = maxSlotsC * maxStackC
+
+                    --Station
+                    local trainstations = trainstationByFabricStack(self.myFabricInfo.fName, output)
+
+
+                    local maxSlotsS = 0
+                    local totalsS = {}
+                    local typesS = {}
+
+
+                    for _, trainstation in pairs(trainstations) do
+                        local platforms = trainstation:getAllConnectedPlatforms()
+                        log(0, "# platforms:" .. tostring(#platforms))
+
+
+
+                        for _, platform in pairs(platforms) do
+                            totalsS, typesS = readInventory(platform, totalsS, typesS)
+                            maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
+                        end
+                        --print(container.nick)
+                    end
+
+                    local counterS = 0
+                    local maxStackS = item.max
+                    for key, cnt in pairs(totalsS) do
+                        local t = typesS[key]
+                        --local name = (t and t.name) or ("Type#" .. tostring(key))
+                        --maxStackS = (t and t.max) or 0
+                        counterS = counterS + cnt
+
+                        local tht = (t and t.name) or ("Type#" .. tostring(key))
+                        --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
+                    end
+
+                    local _maxAmountTainstation = maxSlotsS * maxStackS
+
+                    output = Output:new {
+                        itemClass          = item,
+                        amountStation      = counterS,
+                        amountContainer    = counterC,
+                        maxAmountStation   = _maxAmountTainstation,
+                        maxAmountContainer = _maxAmountContainer
+                    }
+
+                    self.myFabricInfo:updateOutput(output) -- <– korrektes Feld
+                    --pj(self.myFabricInfo)
+                end
+                for _, ingredient in pairs(recipe:getIngredients()) do
+                    local item = MyItemList:get_by_Name(ingredient.type.name)
+                    item.max = ingredient.type.max
+                    local input = Input:new {
+                        itemClass          = item,
+                        amountStation      = 0,
+                        amountContainer    = 0,
+                        maxAmountStation   = 3000,
+                        maxAmountContainer = 3000
+                    }
+
+
+                    -- Container
+                    local containers = containerByFabricStack(self.myFabricInfo.fName, input)
+
+                    local maxSlotsC = 0
+                    local totalsC = {}
+                    local typesC = {}
+
+
+                    for _, container in pairs(containers) do
+                        maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
+                        totalsC, typesC = readInventory(container, totalsC, typesC)
+                        --print(container.nick)
+                    end
+
+                    local counterC = 0
+                    local maxStackC = item.max
+                    for key, cnt in pairs(totalsC) do
+                        local t = typesC[key]
+                        --local name = (t and t.name) or ("Type#" .. tostring(key))
+                        --maxStackC = (t and t.max) or 0
+                        counterC = counterC + cnt
+
+                        local tht = (t and t.name) or ("Type#" .. tostring(key))
+                        --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
+                    end
+
+                    local _maxAmountContainer = maxSlotsC * maxStackC
+
+
+
+
+                    --Station
+                    local trainstations = trainstationByFabricStack(self.myFabricInfo.fName, input)
+
+
+                    local maxSlotsS = 0
+                    local totalsS = {}
+                    local typesS = {}
+
+
+                    for _, trainstation in pairs(trainstations) do
+                        local platforms = trainstation:getAllConnectedPlatforms()
+                        log(0, "# platforms:" .. tostring(#platforms))
+
+
+
+                        for _, platform in pairs(platforms) do
+                            totalsS, typesS = readInventory(platform, totalsS, typesS)
+                            maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
+                        end
+                        --print(container.nick)
+                    end
+
+                    local counterS = 0
+                    local maxStackS = item.max
+                    for key, cnt in pairs(totalsS) do
+                        local t = typesS[key]
+                        --local name = (t and t.name) or ("Type#" .. tostring(key))
+                        -- maxStackS = (t and t.max) or 0
+                        counterS = counterS + cnt
+
+                        local tht = (t and t.name) or ("Type#" .. tostring(key))
+                        --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
+                    end
+
+                    local _maxAmountTainstation = maxSlotsS * maxStackS
+
+                    input = Input:new {
+                        itemClass          = item,
+                        amountStation      = counterS,
+                        amountContainer    = counterC,
+                        maxAmountStation   = _maxAmountTainstation,
+                        maxAmountContainer = _maxAmountContainer
+                    }
+
                     self.myFabricInfo:updateInput(input) -- <– korrektes Feld
                 end
             end
@@ -269,6 +390,7 @@ function FabricRegistryClient:initRegisterListener()
         if cmd == NET_CMD_REGISTER_ACK then
             self:onRegisterAck(fromId)
         elseif cmd == NET_CMD_RESET_FABRICREGISTRY then
+            print("CALLLLLL")
             self:onRegistryReset(fromId)
         elseif cmd == NET_CMD_GET_FABRIC_UPDATE then
             self:onGetFabricUpdate(fromId, a, b)
@@ -299,7 +421,7 @@ function FabricRegistryClient:register(fabricInfo)
         return false
     end
     self:broadcast(NET_CMD_REGISTER, fabricName)
-    log(0, ("Client: broadcast '%s' with name '%s'"):format(NET_CMD_REGISTER, fabricName))
+    log(1, ("Client: broadcast '%s' with name '%s'"):format(NET_CMD_REGISTER, fabricName))
     return true
 end
 
@@ -396,14 +518,14 @@ end
 
 function FabricRegistryServer:clearRegistry()
     -- KEEP: falls du eine eigene Registry-Klasse hast, ruf hier deren clear/reset
-    self.reg = FabricRegistry:new()
+    --self.reg = FabricRegistry:new()
 end
 
 function FabricRegistryServer:broadcastRegistryReset()
     if not self.netBootInitDone then self:initNetworkt() end
     self:clearRegistry()
     self:broadcast(NET_CMD_RESET_FABRICREGISTRY)
-    log(0, "Server: broadcast registry reset")
+    log(2, "Server: broadcast registry reset")
 end
 
 -- ===== ÖFFENTLICH: Zugriff auf die Registry =====

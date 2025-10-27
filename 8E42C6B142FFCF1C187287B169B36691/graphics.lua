@@ -40,6 +40,7 @@ Color.GREEN_0500    = Color.new(0.000, 0.500, 0.000, 1.0)
 Color.BLUE          = Color.new(0.000, 0.000, 1.000, 1.0)
 
 Color.FICSIT_ORANGE = Color.new(1.000, 0.550, 0.200, 1.0)
+Color.YELLOW        = Color.new(1.000, 1.000, 0.000, 1.0)
 
 --------------------------------------------------------------------------------
 -- Vector 2d
@@ -378,7 +379,7 @@ function Progressbar:draw()
         self.dimensions = Vector2d.new(300, 50)
     end
 
-    local origin = self.position-- Vector2d.new(0, 0)
+    local origin = self.position -- Vector2d.new(0, 0)
 
     -- Hintergrund (lokal)
     self:drawLocalRect(origin, self.dimensions, self.bg, nil, nil)

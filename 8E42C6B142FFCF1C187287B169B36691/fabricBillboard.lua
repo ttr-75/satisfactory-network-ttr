@@ -56,10 +56,11 @@ function FabricBillbard:init(gpu, scr)
     self.regServer:setResetHandler(function(fromId)
         log(0, "Registry reset requested by " .. tostring(fromId) .. " — re-register")
     end)
+    self.regServer:broadcastRegistryReset()
 end
 
 function FabricBillbard:run()
-    local dash = FabricDashboard.new {  }
+    local dash = FabricDashboard.new {}
 
     local w, h = self.scr:getSize()
 
@@ -87,6 +88,7 @@ function FabricBillbard:run()
                 end
             end
         end
+
         dash:setFromFabricInfo(self.currentFabric)
 
         -- ggf. myFabricInfo:update(...) → dann erneut mappen:
@@ -95,7 +97,7 @@ function FabricBillbard:run()
     end
 
 
-    local p = Progressbar.new();
+    --[[ local p = Progressbar.new();
 
     p:init(self.gpu, Vector2d.new(10, 10))
     p:setBackground(Color.WHITE)
@@ -145,7 +147,7 @@ function FabricBillbard:run()
         --end
         i = i + 0.1
         if (i > 1) then i = 0 end
-    end
+    end]]
 end
 
 function FabricBillbard:collectData()

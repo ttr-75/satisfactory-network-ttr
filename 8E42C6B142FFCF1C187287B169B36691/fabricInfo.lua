@@ -84,7 +84,7 @@ end
 
 function FabricInfo:setName(name)
     self.fName = name
-end
+end 
 
 function FabricInfo:setType(type)
     self.fType = type
@@ -165,12 +165,10 @@ function containerByFabricStack(fabricName, itemStack)
         nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. fabricName
     end
 
-    pj(nick)
-
     return byAllNick(nick)
 end
 
-function stationByFabricStack(fabricName, itemStack)
+function trainstationByFabricStack(fabricName, itemStack)
     local nick = "Trainstation "
 
     if itemStack:isOutput() then
