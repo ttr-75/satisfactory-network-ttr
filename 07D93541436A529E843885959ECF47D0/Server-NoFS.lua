@@ -15,6 +15,8 @@ netBootPrograms["serializer.lua"] = [[]]
 netBootPrograms["fabricInfo.lua"] = [[]]
 netBootPrograms["fabricRegistry.lua"] = [[]]
 netBootPrograms["fabricDashboard.lua"] = [[]]
+----netBootPrograms["testFolder/testFile.lua"] = [[]]
+--netBootPrograms["testFolder/testFile2.lua"] = [[]]
 
 bootloader2 = {
     --init = nil,
@@ -79,7 +81,7 @@ function bootloader2:loadCode(name)
         computer.log(1, "Loading " .. name .. " from cache")
         return content
     end
-    computer.log(1, content)
+    --computer.log(1, content)
     if not self.storageMounted then
         computer.log(0, "Mounting storage")
         self:mountStorage()

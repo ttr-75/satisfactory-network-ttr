@@ -10,7 +10,7 @@ MyClient.__index = MyClient
 
 function MyClient:new(o)
     return setmetatable(o or {}, MyClient)
-end
+end 
 
 function MyClient:setPort(p)
     assert(type(p) == "number" and p > 0, "setPort: invalid port")
