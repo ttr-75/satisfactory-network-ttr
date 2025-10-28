@@ -35,6 +35,8 @@ function CodeDispatchServer.new(opts)
     end)
 
     function self:run(timeout)
+        self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
+        print("Broadcasted reset for All Netdevices")
         while true do
             event.pull(timeout)
         end

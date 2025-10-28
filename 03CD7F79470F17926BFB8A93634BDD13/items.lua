@@ -100,6 +100,19 @@ MyItem.ASSEMBLER = MyItem.new({ name = "Assembler", id = 59 })
 MyItemList:addItem(MyItem.ASSEMBLER)
 
 
+-- Monchrom
+MyItem.THUMBS_UP = MyItem.new({ name = "Thumbs up", id = 339 })
+MyItem.THUMBS_DOWN = MyItem.new({ name = "Thumbs down", id = 340 })
+MyItem.POWER = MyItem.new({ name = "Power", id = 352 })
+MyItem.WARNING = MyItem.new({ name = "Warning", id = 362 })
+MyItem.CHECK_MARK = MyItem.new({ name = "Check Mark", id = 598 })
+
+MyItemList:addItem(MyItem.THUMBS_UP)
+MyItemList:addItem(MyItem.THUMBS_DOWN)
+MyItemList:addItem(MyItem.POWER)
+MyItemList:addItem(MyItem.WARNING)
+MyItemList:addItem(MyItem.CHECK_MARK)
+
 --[[
 MyItemList["Platine"] = 243
 MyItemList["Turbodraht"] = 274

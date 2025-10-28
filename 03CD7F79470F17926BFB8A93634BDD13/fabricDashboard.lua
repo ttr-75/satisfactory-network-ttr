@@ -3,7 +3,6 @@ local names = { "helper.lua",
     "graphics.lua",
     "fabricInfo.lua",
     "fabricBillboard.lua",
-    "net/media/MediaClient.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
@@ -52,7 +51,7 @@ function FabricDashboard.new(opts)
     self.outputs       = {}
 
     -- Client
-    self.mediaCli      = MediaClient.new()
+    --self.mediaCli      = MediaClient.new()
 
 
 
@@ -204,32 +203,32 @@ function FabricDashboard:paintOuputWarning(position, size)
         size = Vector2d.new(200, 200)
     end
 
-    local icon = MEDIA_ICON_OK
+    local icon = MyItem.CHECK_MARK
     local color = Color.GREEN
     for i, it in pairs(self.outputs) do
         local sFrac = it.s / it.sMax
         local cFrac = it.c / it.cMax
         if sFrac < 0.5 then
-            icon = MEDIA_ICON_WARNING
+            icon = MyItem.WARNING
             color = Color.YELLOW
             if cFrac < 0.2 then
-                icon = MEDIA_ICON_ERROR
+                icon = MyItem.POWER
                 color = Color.RED
             end
         end
         if sFrac < 0.1 then
-            icon = MEDIA_ICON_ERROR
+            icon = MyItem.POWER
             color = Color.RED
         end
     end
 
     -- Bild direkt laden
-    local img, err = self.mediaCli:load_png_via_media(icon, 8000)
-    if not img then
-        log(3, "load_png_via_media failed: " .. tostring(err))
-    end
+    --local img, err = self.mediaCli:load_png_via_media(icon, 8000)
+    --if not img then
+    --   log(3, "load_png_via_media failed: " .. tostring(err))
+    --end
 
-    self.root:drawLocalRect(position, size, color, img)
+    self.root:drawLocalRect(position, size, color, icon:getRef())
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({
         position  = Vector2d.new(posX, posY),
@@ -253,23 +252,27 @@ function FabricDashboard:paintInputWarning(position, size)
     end
 
     local color = Color.GREEN
+    local icon = MyItem.CHECK_MARK
     for i, it in pairs(self.inputs) do
         local sFrac = it.s / it.sMax
         local cFrac = it.c / it.cMax
         if cFrac < 0.5 then
+            icon = MyItem.WARNING
             color = Color.YELLOW
             if sFrac < 0.2 then
+                icon = MyItem.POWER
                 color = Color.RED
             end
         end
         if cFrac < 0.1 then
+            icon = MyItem.POWER
             color = Color.RED
         end
     end
 
 
 
-    self.root:drawLocalRect(position, size, color)
+    self.root:drawLocalRect(position, size, color, icon:getRef())
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({
         position  = Vector2d.new(posX, posY),
@@ -330,7 +333,7 @@ function FabricDashboard:paint()
         self:_drawRow(mid + self.pad, posY, i, it, rightW)
     end
 
-    local sizeW = Vector2d.new(800, 50)
+    local sizeW = Vector2d.new(50, 50)
     self:paintInputWarning(Vector2d.new(posX + 200, posY), sizeW)
     self:paintOuputWarning(Vector2d.new(mid + posX + 200, posY), sizeW)
 

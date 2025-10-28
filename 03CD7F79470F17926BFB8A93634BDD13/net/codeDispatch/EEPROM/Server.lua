@@ -357,6 +357,14 @@ function NetworkAdapter:registerWith(fn)
     NetHub:register(self.port, self.name, self.ver, fn)
 end
 
+function NetworkAdapter:send(toId, cmd, ...)
+    self.net:send(toId, self.port, cmd, ...)
+end
+
+function NetworkAdapter:broadcast(cmd, ...)
+    self.net:broadcast(self.port, cmd, ...)
+end
+
 -------------------------------------------------------------------------------
 --- CodeDispatchServer
 -------------------------------------------------------------------------------
@@ -395,6 +403,8 @@ function CodeDispatchServer.new(opts)
 
 
     function self:run(timeout)
+        self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
+        print("Broadcasted reset for All Netdevices")
         while true do
             future.run(timeout)
         end
@@ -410,4 +420,3 @@ NetHub:init(nic)
 CodeDispatchServer = CodeDispatchServer.new()
 
 CodeDispatchServer:run(0.25)
-

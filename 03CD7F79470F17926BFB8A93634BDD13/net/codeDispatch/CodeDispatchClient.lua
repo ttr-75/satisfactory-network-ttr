@@ -50,11 +50,6 @@ function CodeDispatchClient.new(opts)
         return false
     end
 
-    local function logRegister()
-        for i = 1, #self.loadingRegistry do
-            log(4, "Eintrag (" .. i .. ") " .. self.loadingRegistry[i])
-        end
-    end
 
     -- Private functions--
     local function split_on_finished(content)
@@ -95,7 +90,6 @@ function CodeDispatchClient.new(opts)
                 log(4, err)
             end
 
-            --self:loadAndWait()
         end
 
 
@@ -155,14 +149,10 @@ function CodeDispatchClient.new(opts)
         end
         local next = self.loadingRegistry[1]
 
-        local r = false
         while removeFrom(self.loadingRegistry, next) do
-            --log(4, "REMOED:  " .. next)
-            r = true
+            
         end
-        if r then
-            logRegister()
-        end
+        
 
         loadModule(next)
 
@@ -189,11 +179,11 @@ function CodeDispatchClient.new(opts)
     local function register(name)
         if self.requestCompleted[name] == nil then
             if existsInRegistry(name) == false then
-                log(4, "Neu Registiert:  " .. name)
+                log(0, "Neu Registiert:  " .. name)
                 insertAt(self.loadingRegistry, 1, name)
                 insertAt(self.codeOrder, 1, name)
             else
-                log(4, "Nochmals Registiert:  " .. name)
+                log(0, "Nochmals Registiert:  " .. name)
                 while removeFrom(self.loadingRegistry, name) do
                     -- Delete all
                 end
@@ -203,7 +193,6 @@ function CodeDispatchClient.new(opts)
                 -- Delete all
             end
             insertAt(self.codeOrder, 1, name)
-            --logRegister()
         end
     end
 

@@ -23,18 +23,16 @@ local function _req_id() return tostring(now_ms()) .. "-" .. math.random(100000,
 -- interner Fallback-Lader, falls keine globale load_png(path) existiert
 local function _fallback_load_png(path)
     -- 1) FINMediaSubsystem
-    local msRef = component.findComponent("FINMediaSubsystem")[1]
-    if msRef then
-        local ms = component.proxy(msRef)
-        if ms and ms.loadImage then
-            local ok, img = pcall(ms.loadImage, ms, path)
-            if ok and img then
-                return {
-                    ref    = img.ref or img.getRef and img:getRef() or img,
-                    width  = img.width or img.getWidth and img:getWidth() or 512,
-                    height = img.height or img.getHeight and img:getHeight() or 512,
-                }
-            end
+
+    local ms = computer.media
+    if ms and ms.loadImage then
+        local ok, img = pcall(ms.loadImage, ms, path)
+        if ok and img then
+            return {
+                ref    = img.ref or img.getRef and img:getRef() or img,
+                width  = img.width or img.getWidth and img:getWidth() or 512,
+                height = img.height or img.getHeight and img:getHeight() or 512,
+            }
         end
     end
     -- 2) GPU direkt
@@ -81,13 +79,19 @@ function MediaClient.new(opts)
 
             log(0, "Mounted dev = " .. tostring(self.fsio:getMountedDevice()))
             log(0, "Mounted id  = " .. tostring(self.fsio:getMountedId()))
+            log(0, "PicturePath is  = " .. tostring(relPath))
 
             local dst = self.fsio:abs(relPath)
-            self.fsio:mkdir(relPath)
+            log(0, "Destination is  = " .. tostring(dst))
+
+            --self.fsio:mkdir(relPath)
             --_ensure_dir(dst)
-            local f = filesystem.open(dst, "wb")
-            for i = 1, #tr.parts do f:write(tr.parts[i]) end
-            f:close()
+            -- local f = filesystem.open(dst, "wb")
+            if #tr.parts > 0 then
+                self.fsio:writeBinaryArray(relPath, tr.parts)
+            end
+            --for i = 1, #tr.parts do self.fsio:writeBinary(relPath, tr.parts[i]) end
+            --f:close()
             tr.result, tr.done = dst, true
         elseif cmd == NET_CMD_MEDIA_CMD_ERR then
             tr.err, tr.done = (payload or "unknown"), true
