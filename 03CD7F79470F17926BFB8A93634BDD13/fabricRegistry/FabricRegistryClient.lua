@@ -1,5 +1,8 @@
+---@diagnostic disable: lowercase-global
+
 local names = {
     "fabricRegistry/basics.lua",
+    "fabricRegistry/FabricInfo.lua",
     "net/NetworkAdapter.lua",
 }
 CodeDispatchClient:registerForLoading(names)
@@ -9,20 +12,32 @@ CodeDispatchClient:finished()
 --------------------------------------------------------------------------------
 -- Client
 --------------------------------------------------------------------------------
+
+---@class FabricRegistryClient : NetworkAdapter
+---@field myFabricInfo FabricInfo|nil
+---@field registered boolean
 FabricRegistryClient = setmetatable({}, { __index = NetworkAdapter })
 FabricRegistryClient.__index = FabricRegistryClient
 
+---@param opts table|nil
+---@return FabricRegistryClient
 function FabricRegistryClient.new(opts)
     local self = NetworkAdapter:new(opts)
     self.name = NET_NAME_FABRIC_REGISTRY_CLIENT
     self.port = NET_PORT_FABRIC_REGISTRY
     self.ver = 1
     self = setmetatable(self, FabricRegistryClient)
+    ---@type FabricInfo|nil
     self.myFabricInfo = (opts and opts.fabricInfo) or nil
     self.registered = false
 
 
-    -- === HOOKS, in die deine Original-Logik eingesetzt wird ===
+    --------------------------------------------------------------------------
+    -- HOOKS
+    --------------------------------------------------------------------------
+
+    --- ACK nach Registrierung
+    ---@param fromId string
     function self:onRegisterAck(fromId)
         -- KEEP: deine bisherige Logik, wenn ACK eingeht (z.B. Flags setzen, Logs)
         log(1, "Client: Registration ACK from " .. tostring(fromId) .. " Build FabricInfo now.")
@@ -31,6 +46,8 @@ function FabricRegistryClient.new(opts)
         self.registered = true
     end
 
+    --- Server hat Registry zurückgesetzt
+    ---@param fromId string
     function self:onRegistryReset(fromId)
         -- KEEP: deine bisherige Logik beim Registry-Reset (früher: computer.reset())
         log(2, 'Client: Registry reset requested by "' .. tostring(fromId) .. '"')
@@ -38,6 +55,10 @@ function FabricRegistryClient.new(opts)
         computer.reset()
     end
 
+    --- Server fordert ein Update an
+    ---@param fromId string
+    ---@param payloadA any
+    ---@param payloadB any
     function self:onGetFabricUpdate(fromId, payloadA, payloadB)
         log(0, "Net-FabricRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
 
@@ -45,7 +66,7 @@ function FabricRegistryClient.new(opts)
 
         local J = JSON.new { indent = 2, sort_keys = true }
         local serialized = J:encode(self.myFabricInfo)
-        self:send(fromId, NET_CMD_UPDATE_FABRIC, serialized)
+        self:send(fromId, NET_CMD_UPDATE_FABRIC_IN_REGISTRY, serialized)
         log(0, "Net-FabricRegistryClient::update send to  \"" .. fromId .. "\"")
     end
 
@@ -238,17 +259,23 @@ function FabricRegistryClient.new(opts)
         end
     end
 
+    --------------------------------------------------------------------------
+    -- Netzwerk-Handler registrieren
+    --------------------------------------------------------------------------
     self:registerWith(function(from, port, cmd, a, b)
         if port == self.port and cmd == NET_CMD_FABRIC_REGISTER_ACK then
             self:onRegisterAck(from)
         elseif port == self.port and cmd == NET_CMD_RESET_FABRICREGISTRY then
             self:onRegistryReset(from)
-        elseif port == self.port and cmd == NET_CMD_GET_FABRIC_UPDATE then
+        elseif port == self.port and cmd == NET_CMD_CALL_FABRICS_FOR_UPDATES then
             self:onGetFabricUpdate(from, a, b)
         end
     end)
 
 
+    --------------------------------------------------------------------------
+    -- Direkt registrieren (Broadcast)
+    --------------------------------------------------------------------------
     if tostring(self.myFabricInfo):find("FabricInfo", 1, true) == nil then
         log(3, "FabricRegistryClient: Cannot broadcast '" ..
             NET_CMD_FABRIC_REGISTER .. "' on port " .. self.port .. " – object is no FabricInfo")

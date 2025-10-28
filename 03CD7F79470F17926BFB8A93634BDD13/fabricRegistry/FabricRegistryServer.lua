@@ -1,5 +1,8 @@
+---@diagnostic disable: lowercase-global
+
 local names = {
     "fabricRegistry/basics.lua",
+    "fabricRegistry/FabricInfo.lua",
     "fabricRegistry/FabricRegistry.lua",
     "net/NetworkAdapter.lua",
 }
@@ -9,21 +12,34 @@ CodeDispatchClient:finished()
 --------------------------------------------------------------------------------
 -- Server
 --------------------------------------------------------------------------------
+
+---@class FabricRegistryServer : NetworkAdapter
+---@field reg FabricRegistry
+---@field last integer
 FabricRegistryServer = setmetatable({}, { __index = NetworkAdapter })
 FabricRegistryServer.__index = FabricRegistryServer
 
+---@param opts table|nil
+---@return FabricRegistryServer
 function FabricRegistryServer.new(opts)
     local self = NetworkAdapter:new(opts)
     self.name = NET_NAME_FABRIC_REGISTRY_SERVER
     self.port = NET_PORT_FABRIC_REGISTRY
     self.ver = 1
     self = setmetatable(self, FabricRegistryServer)
+
+    ---@type FabricRegistry
     self.reg = FabricRegistry:new() -- eigene, leere Registry für diesen Server
+    ---@type integer
     self.last = 0
 
-    -- deine bestehende Registry-Struktur weiter verwenden:
-    --self.reg = {} -- id -> { name=..., fromId=..., ts=... }  (ODER ersetze durch dein FabricRegistry-Objekt)
-    -- === HOOKS: hier deine Original-Logik einfügen ===
+    --------------------------------------------------------------------------
+    -- HOOKS
+    --------------------------------------------------------------------------
+
+    --- Wird aufgerufen, wenn ein Client sich registriert.
+    ---@param fromId string
+    ---@param fName string
     function self:onRegister(fromId, fName)
         -- KEEP: Original-Server-Logik beim Register (FabricInfo anlegen, speichern, …)
         local name = tostring(fName or "?")
@@ -37,19 +53,9 @@ function FabricRegistryServer.new(opts)
         self:send(fromId, NET_CMD_FABRIC_REGISTER_ACK)
     end
 
-    -- function self:onRegistryReset(fromId)
-    --    -- KEEP: wie du beim Reset verfahren willst (Registry leeren, etc.)
-    --    self:clearRegistry()
-    --     log(0, "Server: registry cleared (by " .. tostring(fromId) .. ")")
-    -- optional Clients informieren, damit sie neu registrieren:
-    --     self:broadcast(NET_CMD_RESET_FABRICREGISTRY)
-    -- end
-
-    -- function self:onGetFabricUpdate(fromId, payloadA, payloadB)
-    -- KEEP: wenn der Client Updates anfragt → antworte mit deinen Daten
-    -- Beispiel: self:send(fromId, NET_CMD_UPDATE_FABRIC, <dein JSON/String/…>)
-    --end
-
+    --- Client schickt ein Update seiner FabricInfo (als JSON).
+    ---@param fromId string
+    ---@param fabricInfoS string
     function self:onUpdateFabric(fromId, fabricInfoS)
         -- KEEP: falls Client etwas am Server aktualisiert
         log(0, ('Net-FabricRegistryServer: Received Update from "%s"'):format(fromId))
@@ -57,23 +63,46 @@ function FabricRegistryServer.new(opts)
         local o = J:decode(fabricInfoS)
         --print(arg1)
         --local id = o.fCoreNetworkCard
-        self:getRegistry():update(o)
+        self.reg:update(o)
     end
 
+    -- Netzwerk-Handler für diesen Port registrieren
     self:registerWith(function(from, port, cmd, a, b)
         if port == self.port and cmd == NET_CMD_FABRIC_REGISTER then
             self:onRegister(from, a)
-        elseif port == self.port and cmd == NET_CMD_UPDATE_FABRIC then
+        elseif port == self.port and cmd == NET_CMD_UPDATE_FABRIC_IN_REGISTRY then
             self:onUpdateFabric(from, a)
             -- elseif port == self.port and cmd == NET_CMD_RESET_ALL then
             --     self:onGetFabricUpdate(fromId, a, b)
         end
     end)
 
+    -- Initial: Registry leeren und allen Clients Reset signalisieren
+    self:broadcastRegistryReset()
 
     return self
 end
 
+--- Fragt zyklisch (1/s) alle bekannten Fabriken nach Updates.
+function FabricRegistryServer:callForUpdates()
+    local t = now_ms()
+    if t - self.last >= 1000 then
+        self.last = t
+
+        local fabrics = self.reg:getAll()
+        for name2, fabric in pairs(fabrics) do
+            if self.reg:checkMinimum(fabric) then
+                local fromId = fabric.fCoreNetworkCard
+                local name = fabric.fName
+                log(0, "Net-FabricRegistryServer: Send UpdateRequest for " .. name)
+                self:send(fromId, NET_CMD_CALL_FABRICS_FOR_UPDATES)
+            else
+            end
+        end
+    end
+end
+
+--[[
 function FabricRegistryServer:callForUpdates(fabricInfo)
     local t = now_ms()
     if t - self.last >= 1000 then
@@ -83,17 +112,18 @@ function FabricRegistryServer:callForUpdates(fabricInfo)
             local fromId = fabricInfo.fCoreNetworkCard
             local name = fabricInfo.fName
             log(0, "Net-FabricRegistryServer: Send UpdateRequest for " .. name)
-            self.net:send(fromId, self.port, NET_CMD_GET_FABRIC_UPDATE)
+            self.net:send(fromId, self.port, NET_CMD_CALL_FABRICS_FOR_UPDATES)
         else
         end
     end
-end
+end]]
 
 function FabricRegistryServer:clearRegistry()
     -- KEEP: falls du eine eigene Registry-Klasse hast, ruf hier deren clear/reset
     --self.reg = FabricRegistry:new()
 end
 
+--- Registry-Reset broadcasten (und ggf. lokal leeren).
 function FabricRegistryServer:broadcastRegistryReset()
     self:clearRegistry()
     self:broadcast(NET_CMD_RESET_FABRICREGISTRY)
@@ -101,6 +131,8 @@ function FabricRegistryServer:broadcastRegistryReset()
 end
 
 -- ===== ÖFFENTLICH: Zugriff auf die Registry =====
+--- Öffentliche API: Registry holen.
+---@return FabricRegistry
 function FabricRegistryServer:getRegistry()
     return self.reg
 end

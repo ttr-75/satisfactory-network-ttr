@@ -34,6 +34,36 @@ NET_CMD_CODE_DISPATCH_SET_EEPROM = "setEEPROM"
 NET_CMD_CODE_DISPATCH_GET_EEPROM = "getEEPROM"
 NET_CMD_CODE_DISPATCH_RESET_ALL  = "resetAll"
 
+
+-------------------------------
+-- Listener-Debug-Helfer
+-------------------------------
+-- Warum xpcall? Viele Event-Dispatcher „schlucken“ Errors.
+-- Mit xpcall + traceback loggen wir jeden Fehler *sichtbar* (Level 4).
+local function _traceback(tag)
+    return function(err)
+        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
+        computer.log(4, tb)
+        return tb
+    end
+end
+
+-- safe_listener(tag, fn): verpackt fn in xpcall, sodass Fehler nicht „leise“ bleiben.
+function safe_listener(tag, fn)
+    assert(type(fn) == "function", "safe_listener needs a function")
+    return function(...)
+        local ok, res = xpcall(fn, _traceback(tag), ...)
+        return res
+    end
+end
+
+-- hübsches Argument-Logging
+function fmt_args(...)
+    local t = table.pack(...)
+    for i = 1, t.n do t[i] = tostring(t[i]) end
+    return table.concat(t, ", ")
+end
+
 -------------------------------------------------------
 --- NetHub
 -------------------------------------------------------
@@ -45,14 +75,7 @@ NetHub = {
     services = {}, -- [port] = { handler=fn, name="MEDIA", ver=1 }
 }
 
--- fallback wrapper if safe_listener isn't loaded
-local function _traceback(tag)
-    return function(err)
-        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
-        computer.log(4, tb)
-        return tb
-    end
-end
+
 local function _wrap(tag, fn)
     if type(safe_listener) == "function" then
         return safe_listener(tag, fn)
@@ -215,7 +238,6 @@ function CodeDispatchClient.new(opts)
             if not ok then
                 log(4, err)
             end
-
         end
 
 
@@ -276,9 +298,9 @@ function CodeDispatchClient.new(opts)
         local next = self.loadingRegistry[1]
 
         while removeFrom(self.loadingRegistry, next) do
-            
+
         end
-        
+
 
         loadModule(next)
 
@@ -336,7 +358,6 @@ function CodeDispatchClient.new(opts)
 
     return self
 end
-
 
 local nic = computer.getPCIDevices(classes.NetworkCard)[1]
 assert(nic, "Keine NIC")

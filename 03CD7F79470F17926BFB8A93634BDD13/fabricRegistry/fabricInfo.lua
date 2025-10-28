@@ -1,9 +1,30 @@
+---@diagnostic disable: lowercase-global
+
+local names = {
+    "shared/helper.lua",
+    "shared/items.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
 --------------------------------------------------------------------------------
 -- Basisklasse: FabricStack
 --------------------------------------------------------------------------------
+
+---@class FabricStack
+---@field itemClass MyItem|nil
+---@field amountStation integer
+---@field amountContainer integer
+---@field maxAmountStation integer
+---@field maxAmountContainer integer
 FabricStack = {}
 FabricStack.__index = FabricStack
 
+--- Generischer Basiskonstruktor:
+---@generic T : FabricStack
+---@param self T
+---@param o table|nil
+---@return T
 function FabricStack:new(o)
     o                    = o or {}
     -- Standard-Properties
@@ -16,38 +37,52 @@ function FabricStack:new(o)
 end
 
 -- Platzhalter-Implementierungen (werden in Subklassen überschrieben)
+---@return boolean
 function FabricStack:isInput() return false end
 
+---@return boolean
 function FabricStack:isOutput() return false end
 
 --------------------------------------------------------------------------------
 -- Subklasse: Input
 --------------------------------------------------------------------------------
+---@class Input : FabricStack
 Input = setmetatable({ __name = "Input" }, FabricStack)
 Input.__index = Input
 
+---@param o table|nil
+---@return Input
 function Input:new(o)
     o = o or {}
+    ---@cast o Input
     return FabricStack.new(self, o) -- ruft Eltern-Constructor
 end
 
+---@return boolean
 function Input:isInput() return true end
 
+---@return boolean
 function Input:isOutput() return false end
 
 --------------------------------------------------------------------------------
 -- Subklasse: Output
 --------------------------------------------------------------------------------
+---@class Output : FabricStack
 Output = setmetatable({ __name = "Output" }, FabricStack)
 Output.__index = Output
 
+---@param o table|nil
+---@return Output
 function Output:new(o)
     o = o or {}
+    ---@cast o Output
     return FabricStack.new(self, o)
 end
 
+---@return boolean
 function Output:isInput() return false end
 
+---@return boolean
 function Output:isOutput() return true end
 
 --[[ USAGE
@@ -59,7 +94,15 @@ print(b, b:isInput(), b:isOutput())   -- Output{...}  false true]]
 
 --- Fabric Info
 
-
+--------------------------------------------------------------------------------
+-- FabricInfo
+--------------------------------------------------------------------------------
+---@class FabricInfo
+---@field fName string|nil
+---@field fCoreNetworkCard string|nil
+---@field fType integer|string|nil
+---@field inputs  table<string, Input>   -- key: Itemname
+---@field outputs table<string, Output>  -- key: Itemname
 FabricInfo = {
     __name = "FabricInfo",
     fName = nil,
@@ -69,7 +112,8 @@ FabricInfo = {
     outputs = {}
 }
 
-
+---@param o table|nil
+---@return FabricInfo
 function FabricInfo:new(o)
     o                  = o or {}
     o.fName            = o.fName or nil
@@ -82,31 +126,38 @@ function FabricInfo:new(o)
     return setmetatable(o, self)
 end
 
+---@param name string
 function FabricInfo:setName(name)
     self.fName = name
-end 
+end
 
+---@param type string|integer
 function FabricInfo:setType(type)
     self.fType = type
 end
 
+---@param coreNetworkCard string
 function FabricInfo:setCoreNetworkCard(coreNetworkCard)
     self.fCoreNetworkCard = coreNetworkCard
 end
 
+--- Merge eines eintreffenden FabricInfo-Snapshots in diese Instanz.
+---@param fabric FabricInfo
 function FabricInfo:update(fabric)
-    for _, output in pairs(fabric.outputs) do
-        self:updateOutput(output)
+    -- Outputs zuerst, dann Inputs (Reihenfolge beliebig, semantisch getrennt)
+    for _, outStack in pairs(fabric.outputs) do
+        ---@cast outStack Output
+        self:updateOutput(outStack)
     end
-    for _, input in pairs(fabric.inputs) do
-        self:updateInput(input)
+    for _, inStack in pairs(fabric.inputs) do
+        ---@cast inStack Input
+        self:updateInput(inStack)
     end
 end
 
+--- Einzelnen Output-Stack aktualisieren/setzen.
+---@param output Output
 function FabricInfo:updateOutput(output)
-    local J = JSON.new { indent = 2, sort_keys = true }
-    local s = J:encode(output)
-    --print(s)
     if self.outputs[output.itemClass.name] == nil then
         self.outputs[output.itemClass.name] = output
     else
@@ -115,26 +166,21 @@ function FabricInfo:updateOutput(output)
         self.outputs[output.itemClass.name].maxAmountStation = output.maxAmountStation
         self.outputs[output.itemClass.name].maxAmountContainer = output.maxAmountContainer
     end
-    --local J = JSON.new { indent = 2, sort_keys = true }
-    --local s2 = J:encode(self)
-    --print(s2)
 end
 
+--- Einzelnen Input-Stack aktualisieren/setzen.
+---@param input Input
 function FabricInfo:updateInput(input)
-    local J = JSON.new { indent = 2, sort_keys = true }
-    local s = J:encode(input)
-    --print(s)
     if self.inputs[input.itemClass.name] == nil then
         self.inputs[input.itemClass.name] = input
     else
         self.inputs[input.itemClass.name].amountStation = input.amountStation
         self.inputs[input.itemClass.name].amountContainer = input.amountContainer
     end
-    --local J = JSON.new { indent = 2, sort_keys = true }
-    --local s2 = J:encode(self)
-    --print(s2)
 end
 
+---@param fabric FabricInfo|nil
+---@return boolean
 function FabricInfo:check(fabric)
     if not fabric then
         log(3, "Fabric is nil")
@@ -156,6 +202,14 @@ function FabricInfo:check(fabric)
     return true
 end
 
+
+--------------------------------------------------------------------------------
+-- Hilfsfunktionen (Namensbildung → deine Komponenten-Suche)
+--------------------------------------------------------------------------------
+
+---@param fabricName string
+---@param itemStack FabricStack
+---@return any  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
 function containerByFabricStack(fabricName, itemStack)
     local nick = "Container "
 
@@ -168,6 +222,9 @@ function containerByFabricStack(fabricName, itemStack)
     return byAllNick(nick)
 end
 
+---@param fabricName string
+---@param itemStack FabricStack
+---@return any
 function trainstationByFabricStack(fabricName, itemStack)
     local nick = "Trainstation "
 

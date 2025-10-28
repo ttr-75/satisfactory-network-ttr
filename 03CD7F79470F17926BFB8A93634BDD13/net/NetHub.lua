@@ -1,5 +1,8 @@
+---@diagnostic disable: lowercase-global
+
+
 local names = {
-    "helper.lua",
+    "shared/helper.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
@@ -8,7 +11,27 @@ CodeDispatchClient:finished()
 --- NetHub
 -------------------------------------------------------
 
+---@alias NIC any                 -- FN NetworkCard Component-Proxy
+---@alias NetPort integer
+---@alias NetName string
+---@alias NetVersion integer
+---@alias NetCommand string
 
+--- Signatur für registrierte Paket-Handler (Callback)
+---@alias NetHandler fun(fromId: string, port: NetPort, cmd: NetCommand, a: any, b: any, c: any, d: any): any
+
+--- Ein Dienst-Eintrag in NetHub.services
+---@class NetServiceEntry
+---@field handler  NetHandler
+---@field _wrapped NetHandler
+---@field name     NetName|nil
+---@field ver      NetVersion
+
+--- NetHub-Singleton
+---@class NetHubClass
+---@field nic NIC|nil
+---@field listenerId any|nil
+---@field services table<NetPort, NetServiceEntry>
 NetHub = {
     nic = nil,
     listenerId = nil,
@@ -16,6 +39,8 @@ NetHub = {
 }
 
 -- fallback wrapper if safe_listener isn't loaded
+---@param tag string
+---@return fun(err:any):string
 local function _traceback(tag)
     return function(err)
         local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
@@ -23,6 +48,10 @@ local function _traceback(tag)
         return tb
     end
 end
+
+---@param tag string
+---@param fn  NetHandler
+---@return NetHandler
 local function _wrap(tag, fn)
     if type(safe_listener) == "function" then
         return safe_listener(tag, fn)
@@ -33,6 +62,8 @@ local function _wrap(tag, fn)
     end
 end
 
+--- Initialisiert den Hub (einmalig), hört auf NetworkMessage und verteilt pro Port.
+---@param nic NIC|nil  -- optional explizite NIC; sonst erste gefundene
 function NetHub:init(nic)
     if self.listenerId then return end
     self.nic = nic or computer.getPCIDevices(classes.NetworkCard)[1]
@@ -50,6 +81,11 @@ function NetHub:init(nic)
     computer.log(0, "NetHub: ready")
 end
 
+--- Registriert einen Handler für Port/Name/Version; öffnet den Port auf der NIC.
+---@param port NetPort
+---@param name NetName|nil
+---@param ver  NetVersion|nil
+---@param handler NetHandler
 function NetHub:register(port, name, ver, handler)
     assert(type(port) == "number" and handler, "NetHub.register: ungültig")
     local wrapped = _wrap("NetHub." .. tostring(name or port), handler)
@@ -57,6 +93,7 @@ function NetHub:register(port, name, ver, handler)
     self.nic:open(port) -- Port EINMAL hier öffnen
 end
 
+--- Beendet den Listener und leert die Service-Tabelle.
 function NetHub:close()
     if self.listenerId and event.removeListener then event.removeListener(self.listenerId) end
     self.listenerId = nil

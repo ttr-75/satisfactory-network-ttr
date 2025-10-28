@@ -1,1 +1,0 @@
-NET_CMD_RESET_ALL = "resetAll"

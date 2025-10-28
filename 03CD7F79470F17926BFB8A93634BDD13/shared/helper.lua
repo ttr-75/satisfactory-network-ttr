@@ -1,5 +1,7 @@
+---@diagnostic disable: lowercase-global
+
 local names = {
-  "serializer.lua",
+  "shared/serializer.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
@@ -83,6 +85,8 @@ end
 -- Umlaute „de“-kodieren (ä→ae, ö→oe, ü→ue, Ä→Ae, Ö→Oe, Ü→Ue, ß→ss)
 -- Alte Version: viele gsubs nacheinander; hier 1x Mapping + ein gsub.
 
+---@param s string
+---@return string  -- codierter String (z.B. ohne Umlaute für Keys)
 function de_umlaute(s)
   if s == nil then return nil end
   assert(type(s) == "string", "String erwartet")

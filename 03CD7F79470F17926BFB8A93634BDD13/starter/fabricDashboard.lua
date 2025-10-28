@@ -1,8 +1,7 @@
-local names = { "helper.lua",
-    "serializer.lua",
-    "items.lua",
-    "graphics.lua",
-    "fabricInfo.lua",
+local names = { "shared/helper.lua",
+    "shared/items.lua",
+    "shared/graphics.lua",
+    "fabricRegistry/fabricInfo.lua",
     "fabricBillboard.lua",
     "fabricDashboard.lua",
 }
