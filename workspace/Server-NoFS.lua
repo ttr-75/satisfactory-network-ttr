@@ -1,11 +1,5 @@
+NET_CMD_RESET_ALL = "resetAll"
 
-local LOG_MIN = 1 -- nur Warn und höher
-
-local function log(level, ...)
-    if level >= LOG_MIN then
-        computer.log(level, table.concat({ ... }, " "))
-    end
-end
 --[[ Net-Boot Server ]] --
 
 -- Configuration
@@ -13,6 +7,16 @@ local netBootPort = 8
 local netBootPrograms = {}
 netBootPrograms["station2.lua"] = [[]]
 netBootPrograms["test2.lua"] = [[]]
+netBootPrograms["helper.lua"] = [[]]
+netBootPrograms["items.lua"] = [[]]
+netBootPrograms["graphics.lua"] = [[]]
+netBootPrograms["fabricBillboard.lua"] = [[]]
+netBootPrograms["serializer.lua"] = [[]]
+netBootPrograms["fabricInfo.lua"] = [[]]
+netBootPrograms["fabricRegistry.lua"] = [[]]
+netBootPrograms["fabricDashboard.lua"] = [[]]
+----netBootPrograms["testFolder/testFile.lua"] = [[]]
+--netBootPrograms["testFolder/testFile2.lua"] = [[]]
 
 bootloader2 = {
     --init = nil,
@@ -20,17 +24,6 @@ bootloader2 = {
     srv = "/srv",
     storageMounted = false,
 }
-
---@param s string
---@param x number
-local function is_longer_than(s, x)
-    log(0, "S: " .. s .. "\nTypS: " .. type(s) ..  "\nX: " .. x ..  "\nTypX: " .. type(x))
-    if s == nil then return false end -- nil → nicht länger
-    if x == nil then return false end -- nil → nicht länger
-    if type(s) ~= "string" then return false end
-    if type(x) ~= "number" then return false end
-    return #s > x
-end
 
 local fs = filesystem
 
@@ -42,15 +35,15 @@ function bootloader2:mountStorage(searchFile)
     fs.initFileSystem("/dev")
 
     local devs = fs.children("/dev")
-	for _, dev in pairs(devs) do
-		local drive = filesystem.path("/dev", dev)
+    for _, dev in pairs(devs) do
+        local drive = filesystem.path("/dev", dev)
         fs.mount(drive, self.srv)
         if searchFile == nil or self:programExists(searchFile) then
             self.storageMounted = true
             return true
         end
         fs.unmount(drive)
-	end
+    end
 
     return false
 end
@@ -70,15 +63,15 @@ function bootloader2:loadFromStorage(name)
     end
 
     fd = fs.open("/srv/" .. name, "r")
-	content = ""
-	while true do
-		chunk = fd:read(1024)
-		if chunk == nil or #chunk == 0 then
-			break
-		end
-		content = content .. chunk
-	end
-	return content
+    content = ""
+    while true do
+        chunk = fd:read(1024)
+        if chunk == nil or #chunk == 0 then
+            break
+        end
+        content = content .. chunk
+    end
+    return content
 end
 
 function bootloader2:loadCode(name)
@@ -88,7 +81,7 @@ function bootloader2:loadCode(name)
         computer.log(1, "Loading " .. name .. " from cache")
         return content
     end
-    computer.log(1, content)
+    --computer.log(1, content)
     if not self.storageMounted then
         computer.log(0, "Mounting storage")
         self:mountStorage()
@@ -104,14 +97,13 @@ function bootloader2:loadCode(name)
     end
 
     if not content then
-         --return("Net-Boot: Failed to Start: No Network Card available!")
-    --    computer.log(0, "Loading " .. name .. " from net boot")
-    --    content = self:loadFromNetBoot(name)
+        --return("Net-Boot: Failed to Start: No Network Card available!")
+        --    computer.log(0, "Loading " .. name .. " from net boot")
+        --    content = self:loadFromNetBoot(name)
     end
     netBootPrograms[name] = content
     return content
 end
-
 
 
 local netBootFallbackProgram = [[
@@ -128,11 +120,10 @@ end
 net:open(netBootPort)
 event.listen(net)
 
--- Reset all related Programs
-for programName in pairs(netBootPrograms) do
-    net:broadcast(netBootPort, "reset", programName)
-    print("Broadcasted reset for Program \"" .. programName .. "\"")
-end
+-- Reset all  Programs
+    net:broadcast(netBootPort, NET_CMD_RESET_ALL)
+    print("Broadcasted reset for All Netdevices")
+
 
 -- Serve Net-Boot
 while true do

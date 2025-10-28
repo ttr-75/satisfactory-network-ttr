@@ -1,10 +1,9 @@
-
 local names = { "helper.lua",
     "items.lua",
     "graphics.lua",
     "fabricInfo.lua",
     "fabricBillboard.lua",
-    "fabricDashboard.lua",
+    "net/media/MediaClient.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
@@ -51,6 +50,12 @@ function FabricDashboard.new(opts)
 
     self.inputs        = {} -- array of rows
     self.outputs       = {}
+
+    -- Client
+    self.mediaCli      = MediaClient.new()
+
+
+
     return self
 end
 
@@ -199,22 +204,32 @@ function FabricDashboard:paintOuputWarning(position, size)
         size = Vector2d.new(200, 200)
     end
 
+    local icon = MEDIA_ICON_OK
     local color = Color.GREEN
     for i, it in pairs(self.outputs) do
         local sFrac = it.s / it.sMax
         local cFrac = it.c / it.cMax
         if sFrac < 0.5 then
+            icon = MEDIA_ICON_WARNING
             color = Color.YELLOW
             if cFrac < 0.2 then
+                icon = MEDIA_ICON_ERROR
                 color = Color.RED
             end
         end
         if sFrac < 0.1 then
+            icon = MEDIA_ICON_ERROR
             color = Color.RED
         end
     end
 
-    self.root:drawLocalRect(position, size, color)
+    -- Bild direkt laden
+    local img, err = self.mediaCli:load_png_via_media(icon, 8000)
+    if not img then
+        log(3, "load_png_via_media failed: " .. tostring(err))
+    end
+
+    self.root:drawLocalRect(position, size, color, img)
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({
         position  = Vector2d.new(posX, posY),

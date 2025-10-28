@@ -1,13 +1,38 @@
-----------------------------------------------------------------
--- FileIO.lua – kleine Dateihilfe (instanzbasiert)
--- Features:
---   - Root-Verzeichnis (Chroot-ähnlich) zur Sicherheit
---   - exists/isFile/isDir/list/mkdir/rm
---   - readAllText/readAllBinary (ganze Datei -> String)
---   - writeText/appendText/writeBinary
---   - copy/move
---   - sichere Pfad-Join + Sanitizing (kein '..')
-----------------------------------------------------------------
+LOG_MIN = 1
+
+
+-------------------------------
+-- Logging
+-------------------------------
+-- Hinweis: LOG_MIN sollte global gesetzt sein (z. B. 0=Info, 1=Info+, 2=Warn, 3=Error, 4=Fatal)
+-- Alte Version nutzte table.concat({ ... }, " "), was crasht, wenn ... Nicht-Strings enthält. (fix)
+local function _to_strings(tbl)
+    local out = {}
+    for i = 1, #tbl do out[i] = tostring(tbl[i]) end
+    return out
+end
+
+function log(level, ...)
+    if level >= (LOG_MIN or 0) then
+        local parts = _to_strings({ ... }) -- robust bei Zahlen, Booleans, Tabellen (tostring)
+        computer.log(level, table.concat(parts, " "))
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Konstanten (wie in deiner Originaldatei)
+--------------------------------------------------------------------------------
+NET_PORT_CODE_DISPATCH           = 8
+NET_NAME_CODE_DISPATCH_CLIENT    = "CodeDispatchClient"
+NET_NAME_CODE_DISPATCH_SERVER    = "CodeDispatchServer"
+
+--NET_CMD_CODE_DISPATCH_SET_EEPROM = "CodeDispatchClient.setEEPROM"
+--NET_CMD_CODE_DISPATCH_GET_EEPROM = "CodeDispatchClient.getEEPROM"
+--NET_CMD_CODE_DISPATCH_RESET_ALL      = "CodeDispatchClient.resetAll"
+
+NET_CMD_CODE_DISPATCH_SET_EEPROM = "setEEPROM"
+NET_CMD_CODE_DISPATCH_GET_EEPROM = "getEEPROM"
+NET_CMD_CODE_DISPATCH_RESET_ALL  = "resetAll"
 ----------------------------------------------------------------
 -- FileIO.lua – Dateihilfe mit Auto-Mount
 -- Features:
@@ -19,8 +44,8 @@
 --   - copy/move, tryRead*
 ----------------------------------------------------------------
 
-FileIO = {}
-FileIO.__index = FileIO
+FileIO                           = {}
+FileIO.__index                   = FileIO
 
 -- interne Helfer --------------------------------------------------------------
 
@@ -51,14 +76,12 @@ end
 -- opts.autoMount  : true/false (Default true)
 -- opts.searchFile : optionaler Dateiname, der nach Mount existieren soll
 function FileIO.new(opts)
-    local self       = setmetatable({}, FileIO)
-    self.root        = (opts and opts.root) or "/srv"
-    self.readChunk   = (opts and opts.chunk) or (64 * 1024)
-    self.autoMount   = (opts and opts.autoMount ~= false)
-    self.searchFile  = (opts and opts.searchFile) or nil
-    self._mounted    = false
-    self._mountedDev = nil -- z.B. "/dev/123ABC"
-    self._mountedId  = nil -- z.B. "123ABC"
+    local self      = setmetatable({}, FileIO)
+    self.root       = (opts and opts.root) or "/srv"
+    self.readChunk  = (opts and opts.chunk) or (64 * 1024)
+    self.autoMount  = (opts and opts.autoMount ~= false)
+    self.searchFile = (opts and opts.searchFile) or nil
+    self._mounted   = false
     assert(type(self.root) == "string", "FileIO: root muss string sein")
     return self
 end
@@ -85,8 +108,7 @@ function FileIO:_tryMount()
         -- mounten
         local ok = pcall(function() filesystem.mount(drive, self.root) end)
         if ok then
-            self._mountedDev = drive
-            self._mountedId  = tostring(drive):match("^/dev/(.+)$")
+            -- optional verifizieren
             if not self.searchFile then
                 return true
             else
@@ -94,8 +116,8 @@ function FileIO:_tryMount()
                 if filesystem.exists(testPath) then
                     return true
                 else
+                    -- wieder unmounten, wenn nicht passend
                     pcall(function() filesystem.unmount(drive) end)
-                    self._mountedDev, self._mountedId = nil, nil
                 end
             end
         end
@@ -120,13 +142,6 @@ end
 function FileIO:abs(rel) return _join(self.root, rel) end
 
 -- Abfragen --------------------------------------------------------------------
-function FileIO:getMountedDevice() -- gibt z.B. "/dev/123ABC" oder nil
-    return self._mountedDev
-end
-
-function FileIO:getMountedId() -- nur die ID, z.B. "123ABC" oder nil
-    return self._mountedId
-end
 
 function FileIO:exists(rel)
     self:ensureMounted()
@@ -259,3 +274,140 @@ function FileIO:tryReadBinary(rel)
     if ok then return res end
     return nil, res
 end
+
+-------------------------------------------------------
+--- NetHub
+-------------------------------------------------------
+
+
+NetHub = {
+    nic = nil,
+    listenerId = nil,
+    services = {}, -- [port] = { handler=fn, name="MEDIA", ver=1 }
+}
+
+-- fallback wrapper if safe_listener isn't loaded
+local function _traceback(tag)
+    return function(err)
+        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
+        computer.log(4, tb)
+        return tb
+    end
+end
+local function _wrap(tag, fn)
+    if type(safe_listener) == "function" then
+        return safe_listener(tag, fn)
+    end
+    return function(...)
+        local ok, res = xpcall(fn, _traceback(tag), ...)
+        return res
+    end
+end
+
+function NetHub:init(nic)
+    if self.listenerId then return end
+    self.nic = nic or computer.getPCIDevices(classes.NetworkCard)[1]
+    assert(self.nic, "NetHub: keine NIC gefunden")
+    event.listen(self.nic)
+
+    local f = event.filter { event = "NetworkMessage" }
+    self.listenerId = event.registerListener(f, _wrap("NetHub.Dispatch", function(_, _, fromId, port, cmd, a, b, c, d)
+        local svc = self.services[port]
+        if not svc then return end
+        -- delegate to per-port wrapped handler (already safe-wrapped in :register)
+        return svc._wrapped(fromId, port, cmd, a, b, c, d)
+    end))
+
+    computer.log(0, "NetHub: ready")
+end
+
+function NetHub:register(port, name, ver, handler)
+    assert(type(port) == "number" and handler, "NetHub.register: ungültig")
+    local wrapped = _wrap("NetHub." .. tostring(name or port), handler)
+    self.services[port] = { handler = handler, _wrapped = wrapped, name = name, ver = ver or 1 }
+    self.nic:open(port) -- Port EINMAL hier öffnen
+end
+
+function NetHub:close()
+    if self.listenerId and event.removeListener then event.removeListener(self.listenerId) end
+    self.listenerId = nil
+    self.services = {}
+end
+
+--------------------------------------------------------------------------------
+-- NetwordAdapter
+--------------------------------------------------------------------------------
+
+NET_PORT_DEFAULT = 8
+
+
+NetworkAdapter         = {}
+NetworkAdapter.__index = NetworkAdapter
+
+function NetworkAdapter:new(opts)
+    local self = setmetatable({}, NetworkAdapter)
+    self.port  = (opts and opts.port) or NET_PORT_DEFAULT
+    self.name  = (opts and opts.name) or "NetworkAdapter"
+    self.ver   = (opts and opts.ver) or 1
+    self.net   = (opts and opts.nic) or computer.getPCIDevices(classes.NetworkCard)[1]
+    return self
+end
+
+function NetworkAdapter:registerWith(fn)
+    NetHub:register(self.port, self.name, self.ver, fn)
+end
+
+-------------------------------------------------------------------------------
+--- CodeDispatchServer
+-------------------------------------------------------------------------------
+
+
+CodeDispatchServer = setmetatable({}, { __index = NetworkAdapter })
+CodeDispatchServer.__index = CodeDispatchServer
+
+function CodeDispatchServer.new(opts)
+    local self = NetworkAdapter:new(opts)
+    self.name = NET_NAME_CODE_DISPATCH_SERVER
+    self.port = NET_PORT_CODE_DISPATCH
+    self.ver = 1
+
+    self.fsio = FileIO.new { root = "/srv" }
+    self = setmetatable(self, CodeDispatchServer)
+
+    local netBootFallbackProgram = [[
+    print("Invalid Net-Boot-Program: Program not found!")
+    event.pull(5)
+    computer.reset()
+]]
+
+    local function loadCode(programName)
+        return self.fsio:readAllText(programName)
+    end
+
+
+    self:registerWith(function(from, port, cmd, programName, code)
+        if port == self.port and cmd == NET_CMD_CODE_DISPATCH_GET_EEPROM then
+            print("Program Request for \"" .. programName .. "\" from \"" .. from .. "\"")
+            local code = loadCode(programName) or netBootFallbackProgram;
+            self.net:send(from, self.port, NET_CMD_CODE_DISPATCH_SET_EEPROM, programName, code)
+        end
+    end)
+
+
+    function self:run(timeout)
+        while true do
+            future.run(timeout)
+        end
+    end
+
+    return self
+end
+
+local nic = computer.getPCIDevices(classes.NetworkCard)[1]
+assert(nic, "Keine NIC")
+NetHub:init(nic)
+
+CodeDispatchServer = CodeDispatchServer.new()
+
+CodeDispatchServer:run(0.25)
+

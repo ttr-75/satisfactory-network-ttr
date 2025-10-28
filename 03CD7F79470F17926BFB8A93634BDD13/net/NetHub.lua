@@ -1,3 +1,9 @@
+local names = {
+    "helper.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
 -------------------------------------------------------
 --- NetHub
 -------------------------------------------------------
