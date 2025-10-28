@@ -1,48 +1,75 @@
+---@diagnostic disable: lowercase-global
+
+
+
+local names = {
+    "shared/helperlua",
+    "shared/helper_comments.lua",
+    "net/NetworkAdapter.lua",
+    "net/NetHub.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
+
 -------------------------------------------------------------------------------
 --- CodeDispatchServer
 -------------------------------------------------------------------------------
 
-
-CodeDispatchServer = setmetatable({}, { __index = NetworkAdapter })
+---@class CodeDispatchServer : NetworkAdapter
+---@field fsio FileIO
+local CodeDispatchServer = setmetatable({}, { __index = NetworkAdapter })
 CodeDispatchServer.__index = CodeDispatchServer
 
+---@param opts table|nil
+---@return CodeDispatchServer
 function CodeDispatchServer.new(opts)
-    local self = NetworkAdapter:new(opts)
-    self.name = NET_NAME_CODE_DISPATCH_SERVER
-    self.port = NET_PORT_CODE_DISPATCH
-    self.ver = 1
+    -- generischer Basiskonstruktor → sofort ein CodeDispatchServer-Objekt
+    local self = NetworkAdapter.new(CodeDispatchServer, opts)
+    self.name  = NET_NAME_CODE_DISPATCH_SERVER
+    self.port  = NET_PORT_CODE_DISPATCH
+    self.ver   = 1
 
-    self.fsio = FileIO.new { root = "/srv" }
-    self = setmetatable(self, CodeDispatchServer)
-
-    local netBootFallbackProgram = [[
-    print("Invalid Net-Boot-Program: Program not found!")
-    event.pull(5)
-    computer.reset()
-]]
-
-    local function loadCode(programName)
-        return self.fsio:readAllText(programName)
-    end
-
-    -- Private functions--
+    self.fsio  = FileIO.new { root = "/srv" }
+    -- Listener registrieren (reiner Dispatch)
     self:registerWith(function(from, port, cmd, programName, code)
-        if port == self.port and cmd == NET_CMD_CODE_DISPATCH_GET_EEPROM then
-            log(1, "Program Request for \"" .. programName .. "\" from \"" .. from .. "\"")
-            local code = loadCode(programName) or netBootFallbackProgram; --netBootPrograms[arg1] or netBootFallbackProgram
-            self.net:send(from, self.port, NET_CMD_CODE_DISPATCH_SET_EEPROM, programName, code)
+        if port ~= self.port then return end
+        if cmd == NET_CMD_CODE_DISPATCH_GET_EEPROM then
+            self:onGetEEPROM(from, tostring(programName or ""))
         end
     end)
 
-    function self:run(timeout)
-        self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
-        print("Broadcasted reset for All Netdevices")
-        while true do
-            event.pull(timeout)
-        end
-    end
-
     return self
+end
+
+--=== Prototyp-Methoden =======================================================
+
+--- Antwortet auf GET_EEPROM mit dem angeforderten Code.
+---@param fromId string
+---@param programName string
+function CodeDispatchServer:onGetEEPROM(fromId, programName)
+    local fallback = [[
+        print("Invalid Net-Boot-Program: Program not found!")
+        event.pull(5)
+        computer.reset()
+    ]]
+
+    local ok, code = pcall(function()
+        return strip_lua_comments_and_blank(self.fsio:readAllText(programName))
+    end)
+
+    local payload = (ok and code) or fallback
+    log(1, ('CodeDispatchServer: request "%s" from "%s"'):format(programName, tostring(fromId)))
+    self:send(fromId, NET_CMD_CODE_DISPATCH_SET_EEPROM, programName, payload)
+end
+
+--- Optionale Lauf-Schleife.
+---@param timeout number|nil
+function CodeDispatchServer:run()
+    self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
+    log(1, "CodeDispatchServer: broadcast resetAll")
+    while true do
+        future.run()
+    end
 end
 
 local nic = computer.getPCIDevices(classes.NetworkCard)[1]
@@ -51,13 +78,4 @@ NetHub:init(nic)
 
 CodeDispatchServer = CodeDispatchServer.new()
 
-
---[[
-CodeDispatchClient:loadModule("helper.lua")
-CodeDispatchClient:loadModule("serializer.lua")
-CodeDispatchClient:loadModule("testFolder/testFile.lua")
-
-while not CodeDispatchClient:ready() do
-	future.run()
-end
-]]
+CodeDispatchServer:run(0.25)

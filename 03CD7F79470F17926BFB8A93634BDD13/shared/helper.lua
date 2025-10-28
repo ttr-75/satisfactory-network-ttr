@@ -1,6 +1,7 @@
 ---@diagnostic disable: lowercase-global
 
 local names = {
+  "shared/helper_log.lua",
   "shared/serializer.lua",
 }
 CodeDispatchClient:registerForLoading(names)
@@ -9,30 +10,10 @@ CodeDispatchClient:finished()
 
 
 ----------------------------------------------------------------
--- helper.lua – Kleine Helferlein für Logging, Zeit, Inventories, JSON, Events
+-- helper.lua – Kleine Helferlein für  Zeit, Inventories, JSON, Events
 -- Optimiert & ausführlich kommentiert
 ----------------------------------------------------------------
 
--------------------------------
--- Logging
--------------------------------
--- Hinweis: LOG_MIN sollte global gesetzt sein (z. B. 0=Info, 1=Info+, 2=Warn, 3=Error, 4=Fatal)
--- Alte Version nutzte table.concat({ ... }, " "), was crasht, wenn ... Nicht-Strings enthält. (fix)
-local function _to_strings(tbl)
-  local out = {}
-  for i = 1, #tbl do out[i] = tostring(tbl[i]) end
-  return out
-end
-
-function log(level, ...)
-  if level >= (LOG_MIN or 0) then
-    local parts = _to_strings({ ... }) -- robust bei Zahlen, Booleans, Tabellen (tostring)
-    computer.log(level, table.concat(parts, " "))
-  end
-end
-
--- Beispiel:
--- log(0, "Hello", 123, true)  -> "Hello 123 true"
 
 -------------------------------
 -- Zeit & Sleep
@@ -211,31 +192,3 @@ function pj(value)
   print(pretty_json(value))
 end
 
--------------------------------
--- Listener-Debug-Helfer
--------------------------------
--- Warum xpcall? Viele Event-Dispatcher „schlucken“ Errors.
--- Mit xpcall + traceback loggen wir jeden Fehler *sichtbar* (Level 4).
-local function _traceback(tag)
-  return function(err)
-    local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
-    computer.log(4, tb)
-    return tb
-  end
-end
-
--- safe_listener(tag, fn): verpackt fn in xpcall, sodass Fehler nicht „leise“ bleiben.
-function safe_listener(tag, fn)
-  assert(type(fn) == "function", "safe_listener needs a function")
-  return function(...)
-    local ok, res = xpcall(fn, _traceback(tag), ...)
-    return res
-  end
-end
-
--- hübsches Argument-Logging
-function fmt_args(...)
-  local t = table.pack(...)
-  for i = 1, t.n do t[i] = tostring(t[i]) end
-  return table.concat(t, ", ")
-end

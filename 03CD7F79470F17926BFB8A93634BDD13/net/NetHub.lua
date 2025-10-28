@@ -11,15 +11,6 @@ CodeDispatchClient:finished()
 --- NetHub
 -------------------------------------------------------
 
----@alias NIC any                 -- FN NetworkCard Component-Proxy
----@alias NetPort integer
----@alias NetName string
----@alias NetVersion integer
----@alias NetCommand string
-
---- Signatur für registrierte Paket-Handler (Callback)
----@alias NetHandler fun(fromId: string, port: NetPort, cmd: NetCommand, a: any, b: any, c: any, d: any): any
-
 --- Ein Dienst-Eintrag in NetHub.services
 ---@class NetServiceEntry
 ---@field handler  NetHandler
@@ -71,12 +62,22 @@ function NetHub:init(nic)
     event.listen(self.nic)
 
     local f = event.filter { event = "NetworkMessage" }
-    self.listenerId = event.registerListener(f, _wrap("NetHub.Dispatch", function(_, _, fromId, port, cmd, a, b, c, d)
-        local svc = self.services[port]
-        if not svc then return end
-        -- delegate to per-port wrapped handler (already safe-wrapped in :register)
-        return svc._wrapped(fromId, port, cmd, a, b, c, d)
-    end))
+    self.listenerId = event.registerListener(f, _wrap("NetHub.Dispatch",
+        ---@param _ev string
+        ---@param _nic any
+        ---@param fromId string
+        ---@param port NetPort
+        ---@param cmd NetCommand
+        ---@param a any
+        ---@param b any
+        ---@param c any
+        ---@param d any
+        function(_, _, fromId, port, cmd, a, b, c, d)
+            local svc = self.services[port]
+            if not svc then return end
+            -- delegate to per-port wrapped handler (already safe-wrapped in :register)
+            return svc._wrapped(fromId, port, cmd, a, b, c, d)
+        end))
 
     computer.log(0, "NetHub: ready")
 end

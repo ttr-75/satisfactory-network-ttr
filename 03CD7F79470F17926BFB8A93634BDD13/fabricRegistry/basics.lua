@@ -5,9 +5,6 @@
 -- (Nur Doku/Typisierung – keine Laufzeitänderung)
 --------------------------------------------------------------------------------
 
----@alias NetPort integer
----@alias NetName string
----@alias NetCommand string
 
 ---@type NetPort
 NET_PORT_FABRIC_REGISTRY          = 11

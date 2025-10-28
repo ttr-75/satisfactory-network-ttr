@@ -1,5 +1,10 @@
-LOG_MIN = 1
+---@diagnostic disable: duplicate-doc-field, duplicate-set-field, redefined-local, lowercase-global
 
+
+----------------------------------------------------------------
+-- helper.lua – Kleine Helferlein für Logging
+-- Optimiert & ausführlich kommentiert
+----------------------------------------------------------------
 
 -------------------------------
 -- Logging
@@ -35,6 +40,15 @@ NET_CMD_CODE_DISPATCH_GET_EEPROM = "getEEPROM"
 NET_CMD_CODE_DISPATCH_RESET_ALL  = "resetAll"
 
 
+
+
+
+----------------------------------------------------------------
+-- helper_safe_listern.lua –  Events
+-- Optimiert & ausführlich kommentiert
+----------------------------------------------------------------
+
+
 -------------------------------
 -- Listener-Debug-Helfer
 -------------------------------
@@ -68,14 +82,38 @@ end
 --- NetHub
 -------------------------------------------------------
 
+--- Ein Dienst-Eintrag in NetHub.services
+---@class NetServiceEntry
+---@field handler  NetHandler
+---@field _wrapped NetHandler
+---@field name     NetName|nil
+---@field ver      NetVersion
 
+--- NetHub-Singleton
+---@class NetHubClass
+---@field nic NIC|nil
+---@field listenerId any|nil
+---@field services table<NetPort, NetServiceEntry>
 NetHub = {
     nic = nil,
     listenerId = nil,
     services = {}, -- [port] = { handler=fn, name="MEDIA", ver=1 }
 }
 
+-- fallback wrapper if safe_listener isn't loaded
+---@param tag string
+---@return fun(err:any):string
+local function _traceback(tag)
+    return function(err)
+        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
+        computer.log(4, tb)
+        return tb
+    end
+end
 
+---@param tag string
+---@param fn  NetHandler
+---@return NetHandler
 local function _wrap(tag, fn)
     if type(safe_listener) == "function" then
         return safe_listener(tag, fn)
@@ -86,6 +124,8 @@ local function _wrap(tag, fn)
     end
 end
 
+--- Initialisiert den Hub (einmalig), hört auf NetworkMessage und verteilt pro Port.
+---@param nic NIC|nil  -- optional explizite NIC; sonst erste gefundene
 function NetHub:init(nic)
     if self.listenerId then return end
     self.nic = nic or computer.getPCIDevices(classes.NetworkCard)[1]
@@ -93,16 +133,31 @@ function NetHub:init(nic)
     event.listen(self.nic)
 
     local f = event.filter { event = "NetworkMessage" }
-    self.listenerId = event.registerListener(f, _wrap("NetHub.Dispatch", function(_, _, fromId, port, cmd, a, b, c, d)
-        local svc = self.services[port]
-        if not svc then return end
-        -- delegate to per-port wrapped handler (already safe-wrapped in :register)
-        return svc._wrapped(fromId, port, cmd, a, b, c, d)
-    end))
+    self.listenerId = event.registerListener(f, _wrap("NetHub.Dispatch",
+        ---@param _ev string
+        ---@param _nic any
+        ---@param fromId string
+        ---@param port NetPort
+        ---@param cmd NetCommand
+        ---@param a any
+        ---@param b any
+        ---@param c any
+        ---@param d any
+        function(_, _, fromId, port, cmd, a, b, c, d)
+            local svc = self.services[port]
+            if not svc then return end
+            -- delegate to per-port wrapped handler (already safe-wrapped in :register)
+            return svc._wrapped(fromId, port, cmd, a, b, c, d)
+        end))
 
     computer.log(0, "NetHub: ready")
 end
 
+--- Registriert einen Handler für Port/Name/Version; öffnet den Port auf der NIC.
+---@param port NetPort
+---@param name NetName|nil
+---@param ver  NetVersion|nil
+---@param handler NetHandler
 function NetHub:register(port, name, ver, handler)
     assert(type(port) == "number" and handler, "NetHub.register: ungültig")
     local wrapped = _wrap("NetHub." .. tostring(name or port), handler)
@@ -110,253 +165,273 @@ function NetHub:register(port, name, ver, handler)
     self.nic:open(port) -- Port EINMAL hier öffnen
 end
 
+--- Beendet den Listener und leert die Service-Tabelle.
 function NetHub:close()
     if self.listenerId and event.removeListener then event.removeListener(self.listenerId) end
     self.listenerId = nil
     self.services = {}
 end
 
+-- Standardport (aus deiner Originaldatei)
+---@type integer
+NET_PORT_DEFAULT       = 8
+
 --------------------------------------------------------------------------------
--- NetwordAdapter
+-- NetworkAdapter – Typ-Annotationen (EmmyLua/LuaLS)
+-- Hinweis: Diese Datei verändert KEIN Laufzeitverhalten – nur Kommentare.
+-- Erwartet, dass NetHub global verfügbar ist (mit NetHub:register/init).
 --------------------------------------------------------------------------------
 
-NET_PORT_DEFAULT = 8
-
-
+---@class NetworkAdapter
+---@field port NetPort
+---@field name NetName
+---@field ver  NetVersion
+---@field net  NIC
 NetworkAdapter         = {}
 NetworkAdapter.__index = NetworkAdapter
 
+---@class NetworkAdapterOpts
+---@field port NetPort|nil
+---@field name NetName|nil
+---@field ver  NetVersion|nil
+---@field nic  NIC|nil
+
+---@generic T: NetworkAdapter
+---@param self T
+---@param opts NetworkAdapterOpts|nil
+---@return T
 function NetworkAdapter:new(opts)
-    local self = setmetatable({}, NetworkAdapter)
-    self.port  = (opts and opts.port) or NET_PORT_DEFAULT
-    self.name  = (opts and opts.name) or "NetworkAdapter"
-    self.ver   = (opts and opts.ver) or 1
-    self.net   = (opts and opts.nic) or computer.getPCIDevices(classes.NetworkCard)[1]
-    return self
+    local o = setmetatable({}, self)
+    o.port  = (opts and opts.port) or NET_PORT_DEFAULT
+    o.name  = (opts and opts.name) or "NetworkAdapter"
+    o.ver   = (opts and opts.ver) or 1
+    o.net   = (opts and opts.nic) or computer.getPCIDevices(classes.NetworkCard)[1]
+    return o
 end
 
+--- Registriert einen Paket-Handler beim NetHub auf self.port/self.name/self.ver.
+--- Der Handler wird bei eingehenden NetworkMessage-Paketen auf diesem Port aufgerufen.
+---@param fn NetHandler
 function NetworkAdapter:registerWith(fn)
     NetHub:register(self.port, self.name, self.ver, fn)
 end
 
+--- Sendet eine Direktnachricht an eine Ziel-NIC.
+---@param toId string
+---@param cmd NetCommand
+---@param ... any
 function NetworkAdapter:send(toId, cmd, ...)
     self.net:send(toId, self.port, cmd, ...)
 end
 
+--- Broadcastet eine Nachricht auf diesem Adapter-Port.
+---@param cmd NetCommand
+---@param ... any
 function NetworkAdapter:broadcast(cmd, ...)
     self.net:broadcast(self.port, cmd, ...)
 end
+
+-- Erwartete globale Konstante (nur Typ-Hinweis; keine Zuweisung hier):
+---@type NetPort
+NET_PORT_DEFAULT = NET_PORT_DEFAULT
+
+
 
 -------------------------------------------------------------------------------
 --- CodeDispatchClient
 -------------------------------------------------------------------------------
 
-CodeDispatchClient = setmetatable({}, { __index = NetworkAdapter })
+---@class CodeDispatchClient : NetworkAdapter
+---@field requestCompleted table<string, boolean>
+---@field loadingRegistry  string[]
+---@field codes            table<string, function>
+---@field codeOrder        string[]
+---@field _onReset         fun()|nil
+local CodeDispatchClient = setmetatable({}, { __index = NetworkAdapter })
 CodeDispatchClient.__index = CodeDispatchClient
 
+-- ===== Lokale Utilities (nur Datei-intern) ===================================
+
+local function split_on_finished(content)
+    assert(type(content) == "string", "content must be string")
+    local marker = "CodeDispatchClient:finished()"
+    local s, e = string.find(content, marker, 1, true)
+    if not s then return nil, content end
+    return string.sub(content, 1, s - 1), string.sub(content, e + 1)
+end
+
+local function indexOfIn(a, value)
+    for i = 1, #a do if a[i] == value then return i end end
+    return nil
+end
+
+local function removeFrom(a, value)
+    local i = indexOfIn(a, value)
+    if i then
+        table.remove(a, i); return true
+    end
+    return false
+end
+
+local function insertAt(a, i, v)
+    local n = #a
+    if i == nil then i = n + 1 end
+    if i < 1 then i = 1 end
+    if i > n + 1 then i = n + 1 end
+    table.insert(a, i, v)
+    return i
+end
+
+-- ===== Konstruktor ===========================================================
+
+---@param opts table|nil
+---@return CodeDispatchClient
 function CodeDispatchClient.new(opts)
-    local self = NetworkAdapter:new(opts)
-    self.name = NET_NAME_CODE_DISPATCH_CLIENT
-    self.port = NET_PORT_CODE_DISPATCH
-    self.ver = 1
+    local self            = NetworkAdapter.new(CodeDispatchClient, opts)
+    self.name             = NET_NAME_CODE_DISPATCH_CLIENT
+    self.port             = NET_PORT_CODE_DISPATCH
+    self.ver              = 1
+
     self.requestCompleted = {}
-    self.loadingRegistry = {}
-    self.codes = {}
-    self.codeOrder = {}
-    self = setmetatable(self, CodeDispatchClient)
+    self.loadingRegistry  = {}
+    self.codes            = {}
+    self.codeOrder        = {}
+    self._onReset         = nil
 
-
-    local function existsInRegistry(name)
-        for _, n in pairs(self.loadingRegistry) do
-            if n == name then
-                return true
-            end
-        end
-        return false
-    end
-
-    local function insertAt(a, i, v)
-        local n = #a
-        if i == nil then i = n + 1 end
-        if i < 1 then i = 1 end
-        if i > n + 1 then i = n + 1 end
-        table.insert(a, i, v) -- nutzt die eingebaute Verschiebung
-        return i
-    end
-
-    local function indexOfIn(a, value)
-        for i = 1, #a do
-            if a[i] == value then return i end
-        end
-        return nil
-    end
-
-    local function removeFrom(a, value)
-        local i = indexOfIn(a, value)
-        if i then
-            table.remove(a, i); return true
-        end
-        return false
-    end
-
-
-    -- Private functions--
-    local function split_on_finished(content)
-        assert(type(content) == "string", "content muss String sein")
-        local marker = "CodeDispatchClient:finished()"
-        local s, e = string.find(content, marker, 1, true) -- plain match
-        if not s then
-            return nil, content
-        end
-        local before = string.sub(content, 1, s - 1)
-        local after  = string.sub(content, e + 1)
-        return before, after
-    end
-
-    local function parseModule(name, content)
-        if not content then
-            log(3, "CodeDispatchClient:Could not load " .. name .. ": Not found.")
-            return nil
-        end
-
-
-        local register, content = split_on_finished(content)
-
-        if (register ~= nil) then
-            log(1, "CodeDispatchClient:Parsing loaded register " .. name)
-            local code, err = load(register)
-            if not code then
-                log(4, "Failed to parse register " .. name .. ": " .. tostring(err))
-            end
-
-            if not code then
-                computer.log(4, "CodeDispatchClient:Failed to load module register " .. name)
-                return
-            end
-            log(1, "CodeDispatchClient:Starting Registration " .. name)
-            local ok, err = pcall(code)
-            if not ok then
-                log(4, err)
-            end
-        end
-
-
-        log(1, "CodeDispatchClient:Parsing loaded content " .. name)
-        local code, err = load(content)
-        if not code then
-            log(4, "Failed to parse " .. name .. ": " .. tostring(err))
-        end
-
-        if not code then
-            computer.log(4, "CodeDispatchClient:Failed to load module " .. name)
-            return
-        end
-        log(1, "CodeDispatchClient:Save for Procedure " .. name)
-        self.codes[name] = code
-        self.requestCompleted[name] = true
-    end
-
-    function self:onSetEEPROM(programName, code)
-        parseModule(programName, code)
-    end
-
+    -- Listener registrieren (reiner Dispatch)
     self:registerWith(function(from, port, cmd, programName, code)
-        if port == self.port and cmd == NET_CMD_CODE_DISPATCH_SET_EEPROM then
-            log(0, ('CodeDispatchClient: Got code for "%s" from "%s"'):format(programName, from))
-            self:onSetEEPROM(programName, code)
-        elseif port == self.port and cmd == NET_CMD_CODE_DISPATCH_RESET_ALL then
-            log(2, ('CodeDispatchClient: Received reset command from "%s"'):format(from))
-            if self._onReset ~= nil then
-                log(1, "CodeDispatchClient: Call Reset Callback")
+        if port ~= self.port then return end
+
+        if cmd == NET_CMD_CODE_DISPATCH_SET_EEPROM then
+            log(0, ('CDC: got code for "%s" from "%s"'):format(tostring(programName), tostring(from)))
+            self:onSetEEPROM(tostring(programName or ""), tostring(code or ""))
+        elseif cmd == NET_CMD_CODE_DISPATCH_RESET_ALL then
+            log(2, ('CDC: received resetAll from "%s"'):format(tostring(from)))
+            if self._onReset then
                 local ok, err = pcall(self._onReset)
-                if not ok then log(3, "Reset handler error: " .. tostring(err)) end
+                if not ok then log(3, "CDC: reset handler error: " .. tostring(err)) end
             end
             computer.reset()
         end
     end)
 
-    local function loadModule(name)
-        if self.requestCompleted[name] then
-            log(2, ('CodeDispatchClient: Already loaded "%s"'):format(name))
-            return
-        end
-        self:broadcast(NET_CMD_CODE_DISPATCH_GET_EEPROM, name)
-        log(0, ('CodeDispatchClient: Broadcast-Requesting "%s on port %s"'):format(name, self.port))
-        self.requestCompleted[name] = false
+    return self
+end
+
+-- ===== Prototyp-Methoden =====================================================
+
+--- Optionaler Reset-Callback.
+---@param fn fun()|nil
+function CodeDispatchClient:setResetHandler(fn)
+    assert(fn == nil or type(fn) == "function", "setResetHandler: function or nil expected")
+    self._onReset = fn
+end
+
+--- Verarbeitet eingehenden Code, splittet ggf. Registrierung/Rest, speichert „Rest“.
+---@param programName string
+---@param content string
+function CodeDispatchClient:onSetEEPROM(programName, content)
+    if content == "" then
+        log(3, "CDC:onSetEEPROM: empty content for " .. programName)
+        self.requestCompleted[programName] = true
+        return
     end
 
-    -- Dummy Funktion
-    function self:finished()
-
+    local register, rest = split_on_finished(content)
+    if register ~= nil then
+        log(1, "CDC: parse register " .. programName)
+        local regFn, err = load(register)
+        if not regFn then
+            log(4, "CDC: register parse error " .. tostring(err))
+        else
+            local ok, perr = pcall(regFn)
+            if not ok then log(4, perr) end
+        end
+    else
+        rest = content
     end
 
-    function self:loadAndWait()
-        if #self.loadingRegistry == 0 then
-            self:callAllLoadedFiles()
-            return false
-        end
-        local next = self.loadingRegistry[1]
-
-        while removeFrom(self.loadingRegistry, next) do
-
-        end
-
-
-        loadModule(next)
-
-        while self.requestCompleted[next] == false do
-            future.run()
-        end
-
-        self:loadAndWait()
+    log(1, "CDC: parse content " .. programName)
+    local codeFn, err2 = load(rest)
+    if not codeFn then
+        log(4, "CDC: content parse error " .. tostring(err2))
+        self.requestCompleted[programName] = true
+        return
     end
 
-    function self:callAllLoadedFiles()
-        for i = 1, #self.codeOrder do
-            local name = self.codeOrder[i]
-            log(1, "CodeDispatchClient:Running Code: " .. name)
-            local ok, err = pcall(self.codes[name])
-            if not ok then
-                log(4, err)
-            end
-        end
-        self.codeOrder = {}
-        self.codes = {}
+    self.codes[programName]            = codeFn
+    self.requestCompleted[programName] = true
+end
+
+--- Interner Lader (einzelnes Modul anfordern).
+---@param name string
+function CodeDispatchClient:loadModule(name)
+    if self.requestCompleted[name] then
+        log(2, ('CDC: already loaded "%s"'):format(name))
+        return
+    end
+    self:broadcast(NET_CMD_CODE_DISPATCH_GET_EEPROM, name)
+    log(0, ('CDC: broadcast GET_EEPROM "%s" on port %s'):format(name, self.port))
+    self.requestCompleted[name] = false
+end
+
+--- Marker-Funktion (wird serverseitig erkannt).
+function CodeDispatchClient:finished() end
+
+--- Lädt registrierte Module nacheinander und wartet auf deren Empfang.
+function CodeDispatchClient:loadAndWait()
+    if #self.loadingRegistry == 0 then
+        self:callAllLoadedFiles()
+        return false
     end
 
-    local function register(name)
+    local nextName = self.loadingRegistry[1]
+    while removeFrom(self.loadingRegistry, nextName) do end
+
+    self:loadModule(nextName)
+    while self.requestCompleted[nextName] == false do
+        future.run()
+    end
+
+    self:loadAndWait()
+end
+
+--- Führt alle empfangenen Module in definierter Reihenfolge aus.
+function CodeDispatchClient:callAllLoadedFiles()
+    for i = 1, #self.codeOrder do
+        local name = self.codeOrder[i]
+        log(1, "CDC: run " .. name)
+        local ok, err = pcall(self.codes[name])
+        if not ok then log(4, err) end
+    end
+    self.codeOrder = {}
+    self.codes     = {}
+end
+
+--- Fügt Namen in die Lade-Registrierung ein (dedupliziert, stabilisiert Reihenfolge).
+---@param names string[]
+function CodeDispatchClient:registerForLoading(names)
+    -- invertierte Reihenfolge beibehalten (wie bei dir)
+    local n = #names
+    local out = {}
+    for i = 1, n do out[i] = names[n - i + 1] end
+
+    for i = 1, #out do
+        local name = out[i]
         if self.requestCompleted[name] == nil then
-            if existsInRegistry(name) == false then
-                log(0, "Neu Registiert:  " .. name)
+            if indexOfIn(self.loadingRegistry, name) == nil then
                 insertAt(self.loadingRegistry, 1, name)
                 insertAt(self.codeOrder, 1, name)
+                log(0, "CDC: registered " .. name)
             else
-                log(0, "Nochmals Registiert:  " .. name)
-                while removeFrom(self.loadingRegistry, name) do
-                    -- Delete all
-                end
+                while removeFrom(self.loadingRegistry, name) do end
                 insertAt(self.loadingRegistry, 1, name)
+                while removeFrom(self.codeOrder, name) do end
+                insertAt(self.codeOrder, 1, name)
+                log(0, "CDC: re-ordered " .. name)
             end
-            while removeFrom(self.codeOrder, name) do
-                -- Delete all
-            end
-            insertAt(self.codeOrder, 1, name)
         end
     end
-
-    function self:registerForLoading(names)
-        local n = #names
-        local out = {}
-        for i = 1, n do
-            out[i] = names[n - i + 1]
-        end
-
-        for i = 1, #out do
-            register(out[i])
-        end
-    end
-
-    return self
 end
 
 local nic = computer.getPCIDevices(classes.NetworkCard)[1]

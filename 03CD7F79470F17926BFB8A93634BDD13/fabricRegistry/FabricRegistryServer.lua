@@ -22,49 +22,17 @@ FabricRegistryServer.__index = FabricRegistryServer
 ---@param opts table|nil
 ---@return FabricRegistryServer
 function FabricRegistryServer.new(opts)
-    local self = NetworkAdapter:new(opts)
+    local self = NetworkAdapter.new(FabricRegistryServer, opts)
     self.name = NET_NAME_FABRIC_REGISTRY_SERVER
     self.port = NET_PORT_FABRIC_REGISTRY
     self.ver = 1
-    self = setmetatable(self, FabricRegistryServer)
+
 
     ---@type FabricRegistry
     self.reg = FabricRegistry:new() -- eigene, leere Registry für diesen Server
     ---@type integer
     self.last = 0
 
-    --------------------------------------------------------------------------
-    -- HOOKS
-    --------------------------------------------------------------------------
-
-    --- Wird aufgerufen, wenn ein Client sich registriert.
-    ---@param fromId string
-    ---@param fName string
-    function self:onRegister(fromId, fName)
-        -- KEEP: Original-Server-Logik beim Register (FabricInfo anlegen, speichern, …)
-        local name = tostring(fName or "?")
-
-        local fInfo = FabricInfo:new()
-        fInfo:setName(fName)
-        fInfo:setCoreNetworkCard(fromId)
-        self.reg:add(fInfo)
-        -- ACK an den Absender zurück
-        log(1, ('Server: Registered "%s" from %s'):format(fName, tostring(fromId)))
-        self:send(fromId, NET_CMD_FABRIC_REGISTER_ACK)
-    end
-
-    --- Client schickt ein Update seiner FabricInfo (als JSON).
-    ---@param fromId string
-    ---@param fabricInfoS string
-    function self:onUpdateFabric(fromId, fabricInfoS)
-        -- KEEP: falls Client etwas am Server aktualisiert
-        log(0, ('Net-FabricRegistryServer: Received Update from "%s"'):format(fromId))
-        local J = JSON.new { indent = 2, sort_keys = true }
-        local o = J:decode(fabricInfoS)
-        --print(arg1)
-        --local id = o.fCoreNetworkCard
-        self.reg:update(o)
-    end
 
     -- Netzwerk-Handler für diesen Port registrieren
     self:registerWith(function(from, port, cmd, a, b)
@@ -81,6 +49,39 @@ function FabricRegistryServer.new(opts)
     self:broadcastRegistryReset()
 
     return self
+end
+
+--------------------------------------------------------------------------
+-- HOOKS
+--------------------------------------------------------------------------
+
+--- Wird aufgerufen, wenn ein Client sich registriert.
+---@param fromId string
+---@param fName string
+function FabricRegistryServer:onRegister(fromId, fName)
+    -- KEEP: Original-Server-Logik beim Register (FabricInfo anlegen, speichern, …)
+    local name = tostring(fName or "?")
+
+    local fInfo = FabricInfo:new()
+    fInfo:setName(fName)
+    fInfo:setCoreNetworkCard(fromId)
+    self.reg:add(fInfo)
+    -- ACK an den Absender zurück
+    log(1, ('Server: Registered "%s" from %s'):format(fName, tostring(fromId)))
+    self:send(fromId, NET_CMD_FABRIC_REGISTER_ACK)
+end
+
+--- Client schickt ein Update seiner FabricInfo (als JSON).
+---@param fromId string
+---@param fabricInfoS string
+function FabricRegistryServer:onUpdateFabric(fromId, fabricInfoS)
+    -- KEEP: falls Client etwas am Server aktualisiert
+    log(0, ('Net-FabricRegistryServer: Received Update from "%s"'):format(fromId))
+    local J = JSON.new { indent = 2, sort_keys = true }
+    local o = J:decode(fabricInfoS)
+    --print(arg1)
+    --local id = o.fCoreNetworkCard
+    self.reg:update(o)
 end
 
 --- Fragt zyklisch (1/s) alle bekannten Fabriken nach Updates.
