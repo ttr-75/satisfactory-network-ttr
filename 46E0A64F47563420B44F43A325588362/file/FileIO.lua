@@ -1,4 +1,11 @@
+---@diagnostic disable: lowercase-global
 
+
+local names = {
+    "shared/helper_log.lua",
+}
+CodeDispatchClient:registerForLoading(names)
+CodeDispatchClient:finished()
 
 
 ----------------------------------------------------------------
@@ -8,12 +15,26 @@
 -- - readAllText / readAllBinary / writeText / appendText / writeBinary
 -- - copy / move / tryRead*
 ----------------------------------------------------------------
+-- Hinweis: Diese Datei ist rein Lua/FIN-API-basiert und ändert die
+-- ursprüngliche Logik nicht – es kommen nur Anmerkungen/Kommentare dazu.
+----------------------------------------------------------------
 
+---@class FileIO
+---@field root string              -- Mountpunkt (i. d. R. "/srv")
+---@field readChunk integer        -- Lese-Chunkgröße in Bytes
+---@field autoMount boolean        -- true = bei Bedarf /dev automatisch mounten
+---@field searchFile string|nil    -- optional: Datei, die nach Mount existieren muss
+---@field _mounted boolean         -- interner Status: Root bereit/gemountet
+---@field _mountedDev string|nil   -- z. B. "/dev/XYZ"
+---@field _mountedId string|nil    -- z. B. "XYZ"
 FileIO = {}
 FileIO.__index = FileIO
 
--- ==== interne Helfer ====
+-- ==== interne Helfer =========================================================
 
+--- Entfernt führende Slashes und verbietet ".." in relativen Pfaden.
+---@param rel any
+---@return string
 local function _sanitize(rel)
     rel = tostring(rel or "")
     rel = rel:gsub("^/*", "")
@@ -21,6 +42,10 @@ local function _sanitize(rel)
     return rel
 end
 
+--- Baut einen absoluten Pfad unterhalb von root.
+---@param root string
+---@param rel string
+---@return string
 local function _join(root, rel)
     rel = _sanitize(rel)
     if root == "/" then return "/" .. rel end
@@ -28,7 +53,10 @@ local function _join(root, rel)
     return root .. "/" .. rel
 end
 
--- NEU: echtes dirname
+
+--- Liefert das Elternverzeichnis eines Pfades (echtes dirname).
+---@param p any
+---@return string
 local function _dirname(p)
     p = tostring(p or "")
     -- trailing slashes weg
@@ -39,7 +67,8 @@ local function _dirname(p)
     return dir
 end
 
--- Elternordner des ZIEL-Dateipfads sicherstellen
+--- Stellt sicher, dass das Elternverzeichnis des Zieldateipfades existiert.
+---@param filePath string
 local function _ensure_parent_dir(filePath)
     local dir = _dirname(filePath)
     if dir and not filesystem.exists(dir) then
@@ -48,15 +77,14 @@ local function _ensure_parent_dir(filePath)
 end
 
 
--- isDir kann unterschiedlich heißen; wir nehmen isDir, fallback isDirectory
+-- isDir kann je nach FIN-Version anders heißen
 local _isDirFn = filesystem.isDir or filesystem.isDirectory
 
--- ==== Konstruktor ====
+-- ==== Konstruktor ============================================================
 
--- opts.root       : Mountpunkt (Default "/srv")
--- opts.chunk      : Lesepuffer (Default 64*1024)
--- opts.autoMount  : true/false (Default true)
--- opts.searchFile : optionaler Dateiname zur Verifikation nach Mount
+--- Erzeugt eine neue FileIO-Instanz.
+---@param opts {root?:string, chunk?:integer, autoMount?:boolean, searchFile?:string}|nil
+---@return FileIO
 function FileIO.new(opts)
     local self       = setmetatable({}, FileIO)
     self.root        = (opts and opts.root) or "/srv"
@@ -70,14 +98,18 @@ function FileIO.new(opts)
     return self
 end
 
--- ==== Mount-Logik ====
+-- ==== Mount-Logik ============================================================
 
+--- Prüft heuristisch, ob root bereits „benutzbar“ ist (existiert + children abrufbar).
+---@return boolean
 function FileIO:_rootLooksReady()
     if not filesystem.exists(self.root) then return false end
     local ok = pcall(function() return filesystem.children(self.root) end)
     return ok
 end
 
+--- Versucht, irgendein /dev/* auf root zu mounten (optional verifiziert via searchFile).
+---@return boolean
 function FileIO:_tryMount()
     -- /dev initialisieren (FN)
     pcall(function() filesystem.initFileSystem("/dev") end)
@@ -107,6 +139,8 @@ function FileIO:_tryMount()
     return false
 end
 
+--- Stellt sicher, dass root bereit/montiert ist (führt ggf. Auto-Mount aus).
+---@return boolean mounted
 function FileIO:ensureMounted()
     if self._mounted then return true end
     if self:_rootLooksReady() then
@@ -119,27 +153,43 @@ function FileIO:ensureMounted()
     return self._mounted
 end
 
--- ==== public helpers ====
+-- ==== public helpers =========================================================
 
+--- Absoluten Pfad unterhalb von root bilden.
+---@param rel string
+---@return string
 function FileIO:abs(rel) return _join(self.root, rel) end
 
+--- Liefert das zuletzt gemountete Device (z. B. "/dev/XYZ"), falls bekannt.
+---@return string|nil
 function FileIO:getMountedDevice() return self._mountedDev end -- "/dev/XYZ" oder nil
 
-function FileIO:getMountedId() return self._mountedId end      -- "XYZ" oder nil
+--- Liefert die ID des gemounteten Devices (z. B. "XYZ"), falls bekannt.
+---@return string|nil
+function FileIO:getMountedId() return self._mountedId end -- "XYZ" oder nil
 
--- ==== Abfragen ====
+-- ==== Abfragen ===============================================================
 
+--- true, wenn die relative Ressource existiert.
+---@param rel string
+---@return boolean
 function FileIO:exists(rel)
     self:ensureMounted()
     return filesystem.exists(self:abs(rel))
 end
 
+--- true, wenn die relative Ressource eine Datei ist.
+---@param rel string
+---@return boolean
 function FileIO:isFile(rel)
     self:ensureMounted()
     local p = self:abs(rel)
     return filesystem.exists(p) and filesystem.isFile(p)
 end
 
+--- true, wenn die relative Ressource ein Verzeichnis ist.
+---@param rel string
+---@return boolean
 function FileIO:isDir(rel)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -153,6 +203,9 @@ function FileIO:isDir(rel)
     return ok
 end
 
+--- Listet Kinder eines Verzeichnisses (oder {} wenn nicht existent).
+---@param rel string|nil
+---@return string[]
 function FileIO:list(rel)
     self:ensureMounted()
     local p = self:abs(rel or "")
@@ -160,13 +213,18 @@ function FileIO:list(rel)
     return filesystem.children(p) or {}
 end
 
--- ==== Erstellen / Löschen ====
+-- ==== Erstellen / Löschen ====================================================
 
+--- Erzeugt ein Verzeichnis (rekursiv, falls FIN das so handhabt).
+---@param rel string
 function FileIO:mkdir(rel)
     self:ensureMounted()
     filesystem.createDir(self:abs(rel))
 end
 
+--- Entfernt Datei oder (rekursiv=true) Verzeichnis inkl. Inhalt.
+---@param rel string
+---@param rekursiv boolean|nil
 function FileIO:rm(rel, rekursiv)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -178,8 +236,11 @@ function FileIO:rm(rel, rekursiv)
     filesystem.remove(p)
 end
 
--- ==== Lesen/Schreiben ====
+-- ==== Lesen/Schreiben ========================================================
 
+--- Liest Textdatei komplett (UTF-8/ASCII), wirft assert auf Fehler.
+---@param rel string
+---@return string
 function FileIO:readAllText(rel)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -194,6 +255,9 @@ function FileIO:readAllText(rel)
     return buf
 end
 
+--- Liest Binärdatei komplett als String (Bytes).
+---@param rel string
+---@return string
 function FileIO:readAllBinary(rel)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -208,6 +272,9 @@ function FileIO:readAllBinary(rel)
     return buf
 end
 
+--- Schreibt Text (überschreibt Datei, erzeugt Elternordner bei Bedarf).
+---@param rel string
+---@param text any
 function FileIO:writeText(rel, text)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -218,6 +285,9 @@ function FileIO:writeText(rel, text)
     f:close()
 end
 
+--- Hängt Text an (erzeugt Elternordner bei Bedarf).
+---@param rel string
+---@param text any
 function FileIO:appendText(rel, text)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -228,6 +298,9 @@ function FileIO:appendText(rel, text)
     f:close()
 end
 
+--- Schreibt Binärdaten (String-Bytes), erzeugt Elternordner bei Bedarf.
+---@param rel string
+---@param bytes string|nil
 function FileIO:writeBinary(rel, bytes)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -238,6 +311,9 @@ function FileIO:writeBinary(rel, bytes)
     f:close()
 end
 
+--- Schreibt eine Liste von Byte-Strings nacheinander (z. B. chunkweise).
+---@param rel string
+---@param bytes string[]
 function FileIO:writeBinaryArray(rel, bytes)
     self:ensureMounted()
     local p = self:abs(rel)
@@ -250,24 +326,36 @@ function FileIO:writeBinaryArray(rel, bytes)
     f:close()
 end
 
--- ==== Utilities ====
+-- ==== Utilities ==============================================================
 
+--- Kopiert Datei (binär).
+---@param srcRel string
+---@param dstRel string
 function FileIO:copy(srcRel, dstRel)
     local src = self:readAllBinary(srcRel)
     self:writeBinary(dstRel, src)
 end
 
+--- Verschiebt Datei (kopieren + löschen).
+---@param srcRel string
+---@param dstRel string
 function FileIO:move(srcRel, dstRel)
     self:copy(srcRel, dstRel)
     self:rm(srcRel)
 end
 
+--- Wie readAllText, aber Fehler → nil + Fehlermeldung.
+---@param rel string
+---@return string|nil, any
 function FileIO:tryReadText(rel)
     local ok, res = pcall(function() return self:readAllText(rel) end)
     if ok then return res end
     return nil, res
 end
 
+--- Wie readAllBinary, aber Fehler → nil + Fehlermeldung.
+---@param rel string
+---@return string|nil, any
 function FileIO:tryReadBinary(rel)
     local ok, res = pcall(function() return self:readAllBinary(rel) end)
     if ok then return res end
