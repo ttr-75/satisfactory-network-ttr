@@ -1,14 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-
-local names = {
-    "shared/helper_log.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
-
----@diagnostic disable: lowercase-global
-
+require("shared/helper_log.lua")
 ----------------------------------------------------------------
 -- FileIO (FicsIt Network kompatibel)
 -- - Auto-Mount von /dev/* auf self.root (Default: "/srv")
@@ -30,7 +22,7 @@ CodeDispatchClient:finished()
 ---@field _mounted boolean         -- interner Status: Root bereit/gemountet
 ---@field _mountedDev string|nil   -- z. B. "/dev/XYZ"
 ---@field _mountedId string|nil    -- z. B. "XYZ"
-FileIO = {}
+local FileIO = {}
 FileIO.__index = FileIO
 
 -- ==== interne Helfer =========================================================
@@ -471,3 +463,6 @@ function FileIO:tryReadBinary(rel)
     if ok then return res, nil end
     return nil, err
 end
+
+
+return FileIO

@@ -1,13 +1,9 @@
 ---@diagnostic disable: lowercase-global
 
-local names = {
-    "shared/helper.lua",
-    "factoryRegistry/basics.lua",
-    "factoryRegistry/FactoryInfo.lua",
-    "net/NetworkAdapter.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+require("factoryRegistry/basics.lua")
+local FI = require("factoryRegistry/FactoryInfo.lua")
+local NetworkAdapter = require("net/NetworkAdapter.lua")
+--------------------------------------------------------------------------------
 
 
 --------------------------------------------------------------------------------
@@ -18,7 +14,7 @@ CodeDispatchClient:finished()
 ---@field myFactoryInfo FactoryInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
-FactoryDataCollertor = setmetatable({}, { __index = NetworkAdapter })
+local FactoryDataCollertor = setmetatable({}, { __index = NetworkAdapter })
 FactoryDataCollertor.__index = FactoryDataCollertor
 
 ---@param opts table|nil
@@ -63,7 +59,7 @@ function FactoryDataCollertor.new(opts)
             -- Unerwartete Kommandos sichtbar machen
             log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
         end
-    end) 
+    end)
 
     --------------------------------------------------------------------------
     -- Sofortige Registrierung (Broadcast)
@@ -87,7 +83,7 @@ function FactoryDataCollertor.new(opts)
 
         if opts.fName then
             log(1, ("FRC.register: found name='%s'"):format(opts.fName))
-            self.myFactoryInfo = FactoryInfo:new { fName = opts.fName }
+            self.myFactoryInfo = FI.FactoryInfo:new { fName = opts.fName }
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, opts.fName)
         else
             -- Kein harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
@@ -167,7 +163,7 @@ function FactoryDataCollertor:performUpdate()
                     break
                 end
                 item.max = p.type.max
-                local output = Output:new {
+                local output = FI.Output:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
@@ -176,7 +172,7 @@ function FactoryDataCollertor:performUpdate()
                 }
 
                 -- Container
-                local containers = containerByFactoryStack(self.myFactoryInfo.fName, output)
+                local containers = FI.containerByFactoryStack(self.myFactoryInfo.fName, output)
 
                 local maxSlotsC = 0
                 local totalsC = {}
@@ -203,7 +199,7 @@ function FactoryDataCollertor:performUpdate()
                 local _maxAmountContainer = maxSlotsC * maxStackC
 
                 --Station
-                local trainstations = trainstationByFactoryStack(self.myFactoryInfo.fName, output)
+                local trainstations = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, output)
 
 
                 local maxSlotsS = 0
@@ -234,7 +230,7 @@ function FactoryDataCollertor:performUpdate()
 
                 local _maxAmountTainstation = maxSlotsS * maxStackS
 
-                output = Output:new {
+                output = FI.Output:new {
                     itemClass          = item,
                     amountStation      = counterS,
                     amountContainer    = counterC,
@@ -253,7 +249,7 @@ function FactoryDataCollertor:performUpdate()
 
 
                 item.max = ingredient.type.max
-                local input = Input:new {
+                local input = FI.Input:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
@@ -263,7 +259,7 @@ function FactoryDataCollertor:performUpdate()
 
 
                 -- Container
-                local containers = containerByFactoryStack(self.myFactoryInfo.fName, input)
+                local containers = FI.containerByFactoryStack(self.myFactoryInfo.fName, input)
 
                 local maxSlotsC = 0
                 local totalsC = {}
@@ -293,7 +289,7 @@ function FactoryDataCollertor:performUpdate()
 
 
                 --Station
-                local trainstations = trainstationByFactoryStack(self.myFactoryInfo.fName, input)
+                local trainstations = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, input)
 
 
                 local maxSlotsS = 0
@@ -325,7 +321,7 @@ function FactoryDataCollertor:performUpdate()
 
                 local _maxAmountTainstation = maxSlotsS * maxStackS
 
-                input = Input:new {
+                input = FI.Input:new {
                     itemClass          = item,
                     amountStation      = counterS,
                     amountContainer    = counterC,
@@ -349,7 +345,7 @@ function FactoryDataCollertor:checkTrainsignals()
         self.last = t
 
         for _, input in pairs(self.myFactoryInfo.inputs) do
-            local signal = trainsignalByFactoryStack(self.myFactoryInfo.fName, input)[1]
+            local signal = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)[1]
             local block = signal:getObservedBlock()
             if input.amountStation <= self.stationMin then
                 if block.isPathBlock then
@@ -373,3 +369,5 @@ function FactoryDataCollertor:run()
         future.run()
     end
 end
+
+return FactoryDataCollertor

@@ -2,14 +2,6 @@
 
 
 
-local names = {
-    "shared/helper.lua",
-    "shared/helper_comments.lua",
-    "net/NetworkAdapter.lua",
-    "net/NetHub.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
 
 -------------------------------------------------------------------------------
 --- CodeDispatchServer
@@ -99,3 +91,4 @@ function CodeDispatchServer:run()
         future.run()
     end
 end
+

@@ -1,14 +1,16 @@
 ---@diagnostic disable: lowercase-global
 
 -------------------------------------------------------------------------------
---- CodeDispatchClient (Prototyp-Methoden, gleiche Logik)
+--- CodeDispatchClient – mit in-Memory `require`,
 -------------------------------------------------------------------------------
 
 ---@class CodeDispatchClient : NetworkAdapter
 ---@field requestCompleted table<string, boolean>   -- Name -> ob Code empfangen/geparsed
 ---@field loadingRegistry  string[]                 -- Warteschlange der anzufordernden Dateien
----@field codes            table<string, function>  -- Name -> geladene Chunk-Funktion
----@field codeOrder        string[]                 -- Ausführungsreihenfolge
+---@field codes            table<string, string>    -- Name -> (Rest-)Code als String
+---@field codeOrder        string[]                 -- Ausführungsreihenfolge (wie gehabt)
+---@field modules          table<string, any>       -- Name -> ausgewertetes Modul (Cache)
+---@field loading          table<string, boolean>   -- Name -> "wird gerade geladen" (Zyklus-Schutz)
 ---@field _onReset         (fun()|nil)              -- optionaler Reset-Callback
 CodeDispatchClient = setmetatable({}, { __index = NetworkAdapter })
 CodeDispatchClient.__index = CodeDispatchClient
@@ -18,7 +20,6 @@ CodeDispatchClient.__index = CodeDispatchClient
 ---@param opts table|nil
 ---@return CodeDispatchClient
 function CodeDispatchClient.new(opts)
-    -- Generischer Basiskonstruktor: gibt bereits CodeDispatchClient zurück
     local self            = NetworkAdapter.new(CodeDispatchClient, opts)
     self.name             = NET_NAME_CODE_DISPATCH_CLIENT
     self.port             = NET_PORT_CODE_DISPATCH
@@ -28,9 +29,13 @@ function CodeDispatchClient.new(opts)
     self.loadingRegistry  = {}
     self.codes            = {}
     self.codeOrder        = {}
+
+    -- Neu für require:
+    self.modules          = {}
+    self.loading          = {}
+
     self._onReset         = nil
 
-    -- Listener registrieren (reiner Dispatch → ruft Prototyp-Methoden)
     self:registerWith(function(from, port, cmd, programName, code)
         if port ~= self.port then return end
 
@@ -50,9 +55,8 @@ function CodeDispatchClient.new(opts)
     return self
 end
 
--- ========= Hilfs-Methoden (aus lokalen Funktionen gemacht) ===================
+-- ========= Utilities =========================================================
 
---- Prüft, ob ein Name in der Registry steht.
 ---@param name string
 ---@return boolean
 function CodeDispatchClient:existsInRegistry(name)
@@ -62,21 +66,17 @@ function CodeDispatchClient:existsInRegistry(name)
     return false
 end
 
---- Sucht den Index eines Werts in einem Array.
 ---@param a string[]
 ---@param value string
 ---@return integer|nil
 function CodeDispatchClient:indexOfIn(a, value)
-    for i = 1, #a do
-        if a[i] == value then return i end
-    end
+    for i = 1, #a do if a[i] == value then return i end end
     return nil
 end
 
---- Entfernt das erste Vorkommen eines Werts aus einem Array.
 ---@param a string[]
 ---@param value string
----@return boolean removed
+---@return boolean
 function CodeDispatchClient:removeFrom(a, value)
     local i = self:indexOfIn(a, value)
     if i then
@@ -85,11 +85,10 @@ function CodeDispatchClient:removeFrom(a, value)
     return false
 end
 
---- Fügt an Position i ein (mit Bounds-Clamp).
 ---@param a string[]
 ---@param i integer|nil
 ---@param v string
----@return integer pos
+---@return integer
 function CodeDispatchClient:insertAt(a, i, v)
     local n = #a
     if i == nil then i = n + 1 end
@@ -99,37 +98,21 @@ function CodeDispatchClient:insertAt(a, i, v)
     return i
 end
 
---- Splittet Content an Marker "CodeDispatchClient:finished()".
----@param content string
----@return string|nil before
----@return string after
-function CodeDispatchClient:split_on_finished(content)
-    assert(type(content) == "string", "content muss String sein")
-    local marker = "CodeDispatchClient:finished()"
-    local s, e = string.find(content, marker, 1, true)
-    if not s then
-        return nil, content
-    end
-    return string.sub(content, 1, s - 1), string.sub(content, e + 1)
-end
+-- ========= Öffentliche API ===================================================
 
--- ========= Öffentliche Methoden (Logik beibehalten) ==========================
-
---- Optionaler Reset-Callback setzen.
 ---@param fn fun()|nil
 function CodeDispatchClient:setResetHandler(fn)
     assert(fn == nil or type(fn) == "function", "setResetHandler: function or nil expected")
     self._onReset = fn
 end
 
---- Handler: eingehenden Code verarbeiten.
 ---@param programName string
 ---@param content string
 function CodeDispatchClient:onSetEEPROM(programName, content)
     self:parseModule(programName, content)
 end
 
---- Parst „Register“-Teil (optional) und speichert den ausführbaren Rest.
+--- Parst Register-Teil (optional) und speichert den ausführbaren Rest **als String**.
 ---@param name string
 ---@param content string|nil
 function CodeDispatchClient:parseModule(name, content)
@@ -138,29 +121,8 @@ function CodeDispatchClient:parseModule(name, content)
         return
     end
 
-    local register, rest = self:split_on_finished(content)
-
-    if register ~= nil then
-        log(1, "CDC: parse register " .. tostring(name))
-        local regFn, err = load(register)
-        if not regFn then
-            log(4, "CDC: register parse error " .. tostring(err))
-        else
-            local ok, perr = pcall(regFn)
-            if not ok then log(4, perr) end
-        end
-    else
-        rest = content
-    end
-
-    log(1, "CDC: parse content " .. tostring(name))
-    local codeFn, err2 = load(rest)
-    if not codeFn then
-        log(4, "CDC: content parse error " .. tostring(err2))
-        return
-    end
-
-    self.codes[name]            = codeFn
+    -- WICHTIG: String speichern, nicht (nur) Funktion – wir brauchen eine eigene Env für require.
+    self.codes[name]            = tostring(content or "")
     self.requestCompleted[name] = true
     log(1, "CDC: stored chunk for " .. tostring(name))
 end
@@ -177,10 +139,8 @@ function CodeDispatchClient:loadModule(name)
     self.requestCompleted[name] = false
 end
 
---- Marker-Funktion (wird serverseitig am Code erkannt).
-function CodeDispatchClient:finished() end
 
---- Lädt registrierte Module nacheinander und wartet auf deren Empfang.
+--- Lädt registrierte Module nacheinander und wartet auf deren Empfang (wie gehabt).
 ---@return boolean|nil false wenn sofort alles ausgeführt wurde
 function CodeDispatchClient:loadAndWait()
     if #self.loadingRegistry == 0 then
@@ -192,7 +152,6 @@ function CodeDispatchClient:loadAndWait()
     while self:removeFrom(self.loadingRegistry, nextName) do end
 
     self:loadModule(nextName)
-
     while self.requestCompleted[nextName] == false do
         future.run()
     end
@@ -200,19 +159,20 @@ function CodeDispatchClient:loadAndWait()
     self:loadAndWait()
 end
 
---- Führt alle gespeicherten Module in definierter Reihenfolge aus.
+--- Führt alle gespeicherten Module in definierter Reihenfolge aus
+--- (jetzt via _require, damit Rückgabewerte/Namespaces landen).
 function CodeDispatchClient:callAllLoadedFiles()
     for i = 1, #self.codeOrder do
         local name = self.codeOrder[i]
         log(1, "CDC: run " .. tostring(name))
-        local ok, err = pcall(self.codes[name])
+        local ok, err = pcall(function() self:_require(name) end)
         if not ok then log(4, err) end
     end
     self.codeOrder = {}
     self.codes     = {}
 end
 
---- Interner Registrierer (wie dein ursprüngliches `register`).
+--- Interner Registrierer (wie zuvor).
 ---@param name string
 function CodeDispatchClient:_register(name)
     if self.requestCompleted[name] == nil then
@@ -230,21 +190,76 @@ function CodeDispatchClient:_register(name)
     end
 end
 
---- Fügt mehrere Namen zur Ladeliste hinzu (reihenfolgebehaftet wie zuvor).
 ---@param names string[]
 function CodeDispatchClient:registerForLoading(names)
-    local n = #names
-    local out = {}
-    for i = 1, n do out[i] = names[n - i + 1] end
-    for i = 1, #out do
-        self:_register(out[i])
-    end
+    local n, out = #names, {}
+    for i = 1, n do out[i] = names[n - i + 1] end -- reverse
+    for i = 1, #out do self:_register(out[i]) end
 end
 
---- Fügt name zur Ladeliste hinzu und startet den CLient.
----@param name string | nil
+--- Komfort: ein Modul registrieren und direkt laden
+---@param name string
 function CodeDispatchClient:startClient(name)
     assert(name, "CodeDispatchClient:startClient(name): name can not be nil")
     self:registerForLoading({ name })
     self:loadAndWait()
+end
+
+-- ========= In-Memory `require` ==============================================
+
+--- Führt ein Modul (String) in eigener Env mit lokalem `require` aus und cached das Ergebnis.
+---@param name string
+---@return any module
+function CodeDispatchClient:_executeModule(name)
+    local chunk = self.codes[name]
+    if not chunk then
+        error("CDC: no code for module " .. tostring(name))
+    end
+
+    if self.loading[name] then
+        error("CDC: cyclic require: " .. tostring(name))
+    end
+    self.loading[name] = true
+
+    local env = setmetatable({
+        require = function(dep) return self:_require(dep) end,
+        exports = {}, -- Fallback, falls Modul nichts returned
+    }, { __index = _G, __newindex = _G })
+
+    local fn, perr = load(chunk, name, "t", env)
+    if not fn then
+        self.loading[name] = nil
+        error("CDC: load env error for " .. tostring(name) .. ": " .. tostring(perr))
+    end
+
+    local ok, ret = pcall(fn)
+    self.loading[name] = nil
+    if not ok then error("CDC: runtime error in " .. tostring(name) .. ": " .. tostring(ret)) end
+
+    local mod = (ret ~= nil) and ret or (next(env.exports) and env.exports) or true
+    self.modules[name] = mod
+    return mod
+end
+
+--- In-Memory-Require mit Nachladen/Warten/Cache
+---@param name string
+---@return any module
+function CodeDispatchClient:_require(name)
+    if self.modules[name] ~= nil then
+        return self.modules[name]
+    end
+
+    -- Code bereits vorhanden?
+    if not self.codes[name] then
+        -- Nachfordern & warten – das erlaubt require() *innerhalb* von Modulen
+        self:loadModule(name)
+        while self.requestCompleted[name] == false do
+            future.run()
+        end
+        if not self.codes[name] then
+            error("require('" .. tostring(name) .. "'): no code after fetch")
+        end
+    end
+
+    return self:_executeModule(name)
 end

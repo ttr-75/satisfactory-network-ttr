@@ -1,11 +1,3 @@
-local names = {
-    "helper.lua",
-    "file/FileIO.lua",
-    "net/media/basics.lua",
-    "net/NetworkAdapter.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
 
 -------------------------------------------------------------------------------
 -- MediaServer – liefert Dateien (z. B. PNG) in Chunks

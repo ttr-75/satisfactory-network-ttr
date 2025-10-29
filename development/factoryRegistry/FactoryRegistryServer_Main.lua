@@ -1,13 +1,10 @@
 ---@diagnostic disable: lowercase-global
 
-local names = {
-    "factoryRegistry/basics.lua",
-    "factoryRegistry/FactoryInfo.lua",
-    "factoryRegistry/FactoryRegistry.lua",
-    "net/NetworkAdapter.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+require("factoryRegistry/basics.lua")
+local FI = require("factoryRegistry/FactoryInfo.lua")
+local FactoryRegistry = require("factoryRegistry/FactoryRegistry.lua")
+local NetworkAdapter = require("net/NetworkAdapter.lua")
+
 
 --------------------------------------------------------------------------------
 -- Server
@@ -16,7 +13,7 @@ CodeDispatchClient:finished()
 ---@class FactoryRegistryServer : NetworkAdapter
 ---@field reg FactoryRegistry
 ---@field last integer
-FactoryRegistryServer = setmetatable({}, { __index = NetworkAdapter })
+local FactoryRegistryServer = setmetatable({}, { __index = NetworkAdapter })
 FactoryRegistryServer.__index = FactoryRegistryServer
 
 ---@param opts table|nil
@@ -56,6 +53,7 @@ function FactoryRegistryServer.new(opts)
             log(0, "Request for Address of " .. (a or "unknown"))
             if a then
                 local fi = self.reg:getByName(a)
+                pj(self.reg)
                 if not fi then
                     log(4, "FactoryRegistryServer.getAddress:There is no factory called " .. a)
                     self:send(from, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS_NO_FACTORY)
@@ -93,7 +91,7 @@ function FactoryRegistryServer:onRegister(fromId, fName)
     -- KEEP: Original-Server-Logik beim Register (FactoryInfo anlegen, speichern, …)
     local name = tostring(fName or "?")
 
-    local fInfo = FactoryInfo:new()
+    local fInfo = FI.FactoryInfo:new()
     fInfo:setName(fName)
     fInfo:setCoreNetworkCard(fromId)
     self.reg:add(fInfo)
@@ -154,3 +152,6 @@ while true do
   event.pull(0.1)
   if not cli.registered then cli:register("Mehrzweckgeruest") end
 end]]
+
+
+return FactoryRegistryServer

@@ -1,11 +1,10 @@
-local names = { "shared/helper.lua",
-    "shared/items/items[-LANGUAGE-].lua",
-    "shared/graphics.lua",
-    "factoryRegistry/FactoryInfo.lua",
-    "factoryBillboard.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+require("shared/helper.lua")
+require("shared/items/items[-LANGUAGE-].lua")
+require("shared/graphics.lua")
+require("factoryRegistry/FactoryInfo.lua")
+--require("factoryBillboard.lua")
+
+
 
 ----------------------------------------------------------------
 -- FactoryDashboard – passt direkt zu deiner FactoryInfo-Struktur

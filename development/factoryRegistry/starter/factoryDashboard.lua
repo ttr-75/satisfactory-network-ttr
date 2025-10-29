@@ -1,14 +1,8 @@
-local names = {
-    "config.lua",
-    "shared/helper.lua",
-    "shared/items/items[-LANGUAGE-].lua",
-    "shared/graphics.lua",
-    "factoryRegistry/FactoryInfo.lua",
-    "factoryBillboard.lua",
-    "factoryDashboard.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+FactoryDashboardClient = require("factoryRegistry/FactoryDashboard_Main.lua")
+
+
+--}
+
 
 
 local cli = FactoryDashboardClient.new { fName = fName }

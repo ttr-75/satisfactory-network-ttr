@@ -1,11 +1,9 @@
 ---@diagnostic disable: lowercase-global
 
-local names = {
-  "shared/helper_log.lua",
-  "shared/serializer.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+require("shared/helper_log.lua")
+require("shared/serializer.lua")
+
+
 
 
 

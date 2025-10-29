@@ -1,9 +1,8 @@
-local names = {
-    "config.lua",
-    "factoryRegistry/FactoryDataCollertor_Main.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+
+require("config.lua")
+FactoryDataCollertor = require("factoryRegistry/FactoryDataCollertor_Main.lua")
+
+
 
 
 

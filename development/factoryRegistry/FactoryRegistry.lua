@@ -1,12 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-local names = {
-    "factoryRegistry/basics.lua",
-    "shared/helper_log.lua",
-    "factoryRegistry/FactoryInfo.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+local FI = require("factoryRegistry/FactoryInfo.lua")
 
 --------------------------------------------------------------------------------
 -- FactoryRegistry
@@ -14,7 +8,7 @@ CodeDispatchClient:finished()
 
 ---@class FactoryRegistry
 ---@field factorys table<string, FactoryInfo>  -- key = fCoreNetworkCard (Sender-ID)
-FactoryRegistry = {
+local FactoryRegistry = {
     factorys = {}
 }
 FactoryRegistry.__index = FactoryRegistry
@@ -54,22 +48,27 @@ function FactoryRegistry:update(factory)
         return
     end
     local id = factory.fCoreNetworkCard
-    local cur = self.factorys[id]
-    if not cur then
-        -- Optional: wenn nicht vorhanden, als add behandeln
-        self.factorys[id] = factory
-        log(0, ("FactoryRegistry:update -> insert id=%s"):format(tostring(id)))
+    if not id then
+        log(3, "FactoryRegistry:update: no fCoreNetworkCard in factory")
         return
+    else
+        local cur = self.factorys[id]
+        if not cur then
+            -- Optional: wenn nicht vorhanden, als add behandeln
+            self.factorys[id] = factory
+            log(0, ("FactoryRegistry:update -> insert id=%s"):format(tostring(id)))
+            return
+        end
+        cur:update(factory)
+        log(0, ("FactoryRegistry:update -> merged id=%s"):format(tostring(id)))
     end
-    cur:update(factory)
-    log(0, ("FactoryRegistry:update -> merged id=%s"):format(tostring(id)))
 end
 
 --- Minimalprüfung delegiert an FactoryInfo:check
 ---@param factory FactoryInfo|nil
 ---@return boolean
 function FactoryRegistry:checkMinimum(factory)
-    return FactoryInfo:check(factory)
+    return FI.FactoryInfo:check(factory)
 end
 
 --- Liefert alle Einträge (ID → FactoryInfo).
@@ -122,3 +121,5 @@ end
 function FactoryRegistry:clear()
     self.factorys = {}
 end
+
+return FactoryRegistry

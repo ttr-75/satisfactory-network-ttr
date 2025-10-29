@@ -1,13 +1,7 @@
 ---@diagnostic disable: lowercase-global
-
-local names = {
-    "factoryRegistry/basics.lua",
-    "factoryRegistry/FactoryInfo.lua",
-    "net/NetworkAdapter.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
-
+require("factoryRegistry/basics.lua")
+local NetworkAdapter = require("net/NetworkAdapter.lua")
+local FI = require("factoryRegistry/FactoryInfo.lua")
 
 --------------------------------------------------------------------------------
 -- Client
@@ -19,7 +13,7 @@ CodeDispatchClient:finished()
 ---@field stationMin integer
 ---@field scr any|nil
 ---@field gpu GPUProxy|nil
-FactoryDashboardClient = setmetatable({}, { __index = NetworkAdapter })
+local FactoryDashboardClient = setmetatable({}, { __index = NetworkAdapter })
 FactoryDashboardClient.__index = FactoryDashboardClient
 
 ---@param opts table|nil
@@ -137,7 +131,7 @@ end
 
 ---@param factoryName string
 function FactoryDashboardClient:setFactoryInfo(factoryName)
-    self.myFactoryInfo = FactoryInfo:new({ fName = factoryName })
+    self.myFactoryInfo = FI.FactoryInfo:new({ fName = factoryName })
     self:broadcast(NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS, factoryName)
 end
 
@@ -178,3 +172,5 @@ function FactoryDashboardClient:callForUpdate()
         end
     end
 end
+
+return FactoryDashboardClient

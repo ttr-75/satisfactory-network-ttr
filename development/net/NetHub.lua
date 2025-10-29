@@ -1,11 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-
-local names = {
-    "shared/helper.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+require("shared/helper.lua")
 
 -------------------------------------------------------
 --- NetHub

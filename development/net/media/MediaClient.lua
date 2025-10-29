@@ -1,12 +1,4 @@
-local names = {
-    "helper.lua",
-    "file/FileIO.lua",
-    "net/media/basics.lua",
-    "net/NetworkAdapter.lua",
-    "net/NetHub.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+
 
 
 assert(type(FileIO) == "table" and type(FileIO.new) == "function", "MediaClient: FileIO benötigt")

@@ -1,11 +1,9 @@
 ---@diagnostic disable: lowercase-global
 
-local names = {
-    "shared/helper.lua",
-    "shared/items/items[-LANGUAGE-].lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+
+require("shared/helper.lua")
+require("shared/items/items[-LANGUAGE-].lua")
+
 
 --------------------------------------------------------------------------------
 -- Basisklasse: FactoryStack
@@ -17,7 +15,7 @@ CodeDispatchClient:finished()
 ---@field amountContainer integer
 ---@field maxAmountStation integer
 ---@field maxAmountContainer integer
-FactoryStack = {}
+local FactoryStack = {}
 FactoryStack.__index = FactoryStack
 
 --- Generischer Basiskonstruktor:
@@ -47,7 +45,7 @@ function FactoryStack:isOutput() return false end
 -- Subklasse: Input
 --------------------------------------------------------------------------------
 ---@class Input : FactoryStack
-Input = setmetatable({ __name = "Input" }, FactoryStack)
+local Input = setmetatable({ __name = "Input" }, FactoryStack)
 Input.__index = Input
 
 ---@param o table|nil
@@ -68,7 +66,7 @@ function Input:isOutput() return false end
 -- Subklasse: Output
 --------------------------------------------------------------------------------
 ---@class Output : FactoryStack
-Output = setmetatable({ __name = "Output" }, FactoryStack)
+local Output = setmetatable({ __name = "Output" }, FactoryStack)
 Output.__index = Output
 
 ---@param o table|nil
@@ -103,7 +101,7 @@ print(b, b:isInput(), b:isOutput())   -- Output{...}  false true]]
 ---@field fType MyItem | nil
 ---@field inputs  table<string, Input>   -- key: Itemname
 ---@field outputs table<string, Output>  -- key: Itemname
-FactoryInfo = {
+local FactoryInfo = {
     __name = "FactoryInfo",
     fName = nil,
     fType = nil,
@@ -209,7 +207,7 @@ end
 ---@param factoryName string
 ---@param itemStack FactoryStack
 ---@return any  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
-function containerByFactoryStack(factoryName, itemStack)
+local function containerByFactoryStack(factoryName, itemStack)
     local nick = "Container "
 
     if itemStack:isOutput() then
@@ -224,7 +222,7 @@ end
 ---@param factoryName string
 ---@param itemStack FactoryStack
 ---@return any
-function trainstationByFactoryStack(factoryName, itemStack)
+local function trainstationByFactoryStack(factoryName, itemStack)
     local nick = "Trainstation "
 
     if itemStack:isOutput() then
@@ -238,7 +236,7 @@ end
 ---@param factoryName string
 ---@param itemStack FactoryStack
 ---@return Build_RailroadBlockSignal_C
-function trainsignalByFactoryStack(factoryName, itemStack)
+local function trainsignalByFactoryStack(factoryName, itemStack)
     local nick = "Trainsignal "
 
     if itemStack:isOutput() then
@@ -248,3 +246,15 @@ function trainsignalByFactoryStack(factoryName, itemStack)
     end
     return byAllNick(nick)
 end
+
+
+-- Modul-Export ----------------------------------------------------------------
+return {
+  FactoryStack = FactoryStack,
+  Input        = Input,
+  Output       = Output,
+  FactoryInfo  = FactoryInfo,
+  containerByFactoryStack = containerByFactoryStack,
+  trainstationByFactoryStack = trainstationByFactoryStack,
+  trainsignalByFactoryStack  = trainsignalByFactoryStack,
+}

@@ -16,7 +16,7 @@ NET_PORT_DEFAULT       = 8
 ---@field name NetName
 ---@field ver  NetVersion
 ---@field net  NIC
-NetworkAdapter         = {}
+local NetworkAdapter         = {}
 NetworkAdapter.__index = NetworkAdapter
 
 ---@class NetworkAdapterOpts
@@ -63,3 +63,5 @@ end
 -- Erwartete globale Konstante (nur Typ-Hinweis; keine Zuweisung hier):
 ---@type NetPort
 NET_PORT_DEFAULT = NET_PORT_DEFAULT
+
+return NetworkAdapter

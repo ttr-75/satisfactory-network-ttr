@@ -1,13 +1,13 @@
-names = { "shared/helper.lua",
-    "shared/items/items[-LANGUAGE-].lua",
-    "shared/graphics.lua",
-    "factoryRegistry/FactoryInfo.lua",
-    "factoryRegistry/FactoryRegistry.lua",
-    "factoryRegistry/FactoryDashboard_Main.lua",
-    "factoryDashboard.lua",
-}
-CodeDispatchClient:registerForLoading(names)
-CodeDispatchClient:finished()
+require("config.lua")
+require("shared/helper.lua")
+require("shared/items/items[-LANGUAGE-].lua")
+require("shared/graphics.lua")
+require("factoryRegistry/FactoryInfo.lua")
+require("factoryRegistry/FactoryRegistry.lua")
+require("factoryRegistry/FactoryDashboard_Main.lua")
+require("factoryDashboard.lua")
+
+
 
 --------------------------------------------------------------------------------
 -- Headline
