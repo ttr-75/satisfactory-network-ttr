@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watch: copy development -> out",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/.vscode/scripts/copy-on-change.ps1",
+        "-Source", "${workspaceFolder}/development",
+        "-Dest",   "${workspaceFolder}/out"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "runOn": "folderOpen" }     // startet automatisch beim Öffnen des Workspace
+    },
+
+    {
+      "label": "copy once (robocopy)",
+      "type": "shell",
+      "command": "robocopy",
+      "args": [
+        "${workspaceFolder}\\development",
+        "${workspaceFolder}\\out",
+        "*.*", "/E", "/XO"                       // rekursiv, nur neuere/fehlende Dateien
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
