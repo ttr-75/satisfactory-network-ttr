@@ -11,11 +11,15 @@ CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
 
 
-
+local cli = FarbricDashboardClient.new { fName = fName }
+cli:run()
 -- MediaSubsystem (liefert Icon-Referenzen)
 --local media = computer.media
 --assert(media, "MediaSubsystem nicht gefunden")
 
+
+
+--[[
 NICK_SCREEN = "MyScreen"
 
 local scr = byNick(NICK_SCREEN)
@@ -35,3 +39,4 @@ log(1, "Billboard Creation")
 
 FactoryBillbard:init(gpu, scr)
 FactoryBillbard:run()
+]]

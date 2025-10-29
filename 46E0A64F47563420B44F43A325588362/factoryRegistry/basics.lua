@@ -7,26 +7,26 @@
 
 
 ---@type NetPort
-NET_PORT_FACTORY_REGISTRY                   = 11
+NET_PORT_FACTORY_REGISTRY                                    = 11
 
 ---@type NetName
-NET_NAME_FACTORY_REGISTRY_CLIENT            = "FactoryRegistryClient"
+NET_NAME_FACTORY_REGISTRY_CLIENT                             = "FactoryRegistryClient"
 ---@type NetName
-NET_NAME_FACTORY_REGISTRY_SERVER            = "FactoryRegistryServer"
+NET_NAME_FACTORY_REGISTRY_SERVER                             = "FactoryRegistryServer"
 
 ---@type NetCommand
-NET_CMD_FACTORY_REGISTER                    = "FactoryRegistry.registerFactory"
+NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY                    = "FactoryRegistry.registerFactory"
 ---@type NetCommand
-NET_CMD_FACTORY_REGISTER_ACK                = "FactoryRegistry.registerFactoryAck"
+NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK                = "FactoryRegistry.registerFactoryAck"
 ---@type NetCommand
-NET_CMD_CALL_FACTORYS_FOR_UPDATES           = "FactoryRegistry.callFactorysForUpdates"
+NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE          = "FactoryRegistry.requestFactoryUpdate"
 ---@type NetCommand
-NET_CMD_UPDATE_FACTORY_IN_REGISTRY          = "FactoryRegistry.updateFactoryInRegistry"
+NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE         = "FactoryRegistry.responseFactoryUpdate"
 ---@type NetCommand
-NET_CMD_RESET_FACTORYREGISTRY               = "FactoryRegistry.resetFactoryRegistry"
+NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY               = "FactoryRegistry.resetFactoryRegistry"
 ---@type NetCommand
-NET_CMD_GET_FACTORY_FROM_REGISTRY           = "FactoryRegistry.getFactoryFromRegistry"
+NET_CMD_FACTORY_REGISTRY_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY = "FactoryRegistry.shutDownDublicate"
 ---@type NetCommand
-NET_CMD_SET_FACTORY_FROM_REGISTRY           = "FactoryRegistry.setFactoryFromRegistry"
+NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS             = "FactoryRegistry.requestFactoryAddress"
 ---@type NetCommand
-NET_CMD_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY = "FactoryRegistry.shutDownDublicate"
+NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS            = "FactoryRegistry.responseFactoryAddress"

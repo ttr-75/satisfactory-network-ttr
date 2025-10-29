@@ -25,15 +25,15 @@ FactoryDataCollertor.__index = FactoryDataCollertor
 ---@return FactoryDataCollertor
 function FactoryDataCollertor.new(opts)
     assert(NetworkAdapter, "FactoryRegistryClient.new: NetworkAdapter not loaded")
-    opts              = opts or {}
-    local self        = NetworkAdapter.new(FactoryDataCollertor, opts)
-    self.name         = NET_NAME_FACTORY_REGISTRY_CLIENT
-    self.port         = NET_PORT_FACTORY_REGISTRY
-    self.ver          = 1
+    opts               = opts or {}
+    local self         = NetworkAdapter.new(FactoryDataCollertor, opts)
+    self.name          = NET_NAME_FACTORY_REGISTRY_CLIENT
+    self.port          = NET_PORT_FACTORY_REGISTRY
+    self.ver           = 1
     ---@type FactoryInfo|nil
     self.myFactoryInfo = opts and opts.factoryInfo or nil
-    self.registered   = false
-    self.stationMin   = opts and opts.stationMin or 0
+    self.registered    = false
+    self.stationMin    = opts and opts.stationMin or 0
 
     -- NIC MUSS existieren (sonst kann nichts gesendet/gehört werden)
     assert(self.net, "FactoryRegistryClient.new: no NIC available (self.net == nil)")
@@ -49,13 +49,13 @@ function FactoryDataCollertor.new(opts)
         -- Eingehendes Paket protokollieren (Low-Noise → Level 1)
         log(0, ("FRC.rx: from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
 
-        if port == self.port and cmd == NET_CMD_FACTORY_REGISTER_ACK then
+        if port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK then
             self:onRegisterAck(from)
-        elseif port == self.port and cmd == NET_CMD_RESET_FACTORYREGISTRY then
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY then
             self:onRegistryReset(from)
-        elseif port == self.port and cmd == NET_CMD_CALL_FACTORYS_FOR_UPDATES then
-            self:onGetFactoryUpdate(from, a, b)
-        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTER then
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE then
+            self:onGetFactoryUpdate(from, a)
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY then
             -- Nothing just catch
         else
             -- Unerwartete Kommandos sichtbar machen
@@ -78,8 +78,8 @@ function FactoryDataCollertor.new(opts)
             log(3, "FRC.register: cannot broadcast – myFactoryInfo.fName is empty")
         else
             log(1, ("FRC.register: broadcasting '%s' name='%s' on port %d")
-                :format(NET_CMD_FACTORY_REGISTER, factoryName, self.port))
-            self:broadcast(NET_CMD_FACTORY_REGISTER, factoryName)
+                :format(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName, self.port))
+            self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName)
         end
     else
         log(1, "FRC.register: FactoryInfo not set try name")
@@ -87,7 +87,7 @@ function FactoryDataCollertor.new(opts)
         if opts.fName then
             log(1, ("FRC.register: found name='%s'"):format(opts.fName))
             self.myFactoryInfo = FactoryInfo:new { fName = opts.fName }
-            self:broadcast(NET_CMD_FACTORY_REGISTER, opts.fName)
+            self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, opts.fName)
         else
             -- Kein harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
             log(2, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
@@ -122,17 +122,22 @@ end
 
 --- Server fordert ein Update an
 ---@param fromId string
----@param payloadA any
----@param payloadB any
-function FactoryDataCollertor:onGetFactoryUpdate(fromId, payloadA, payloadB)
+---@param fName string
+function FactoryDataCollertor:onGetFactoryUpdate(fromId, fName)
     log(0, "Net-FactoryRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
 
     self:performUpdate()
 
-    local J = JSON.new { indent = 2, sort_keys = true }
-    local serialized = J:encode(self.myFactoryInfo)
-    self:send(fromId, NET_CMD_UPDATE_FACTORY_IN_REGISTRY, serialized)
-    log(0, "Net-FactoryRegistryClient::update send to  \"" .. fromId .. "\"")
+    if fName and self.myFactoryInfo and fName == self.myFactoryInfo.fName then
+        local J = JSON.new { indent = 2, sort_keys = true }
+        local serialized = J:encode(self.myFactoryInfo)
+        self:send(fromId, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE, serialized)
+        log(0, "Net-FactoryRegistryClient::update send to  \"" .. fromId .. "\"")
+    else
+        log(4,
+            "Net-FactoryRegistryClient::requested update name does not match requested=\"" ..
+            fName .. "\" localFactopry=\"" .. (self.myFactoryInfo and self.myFactoryInfo.fName or "unknown") .. "\"")
+    end
 end
 
 -- statt: function performUpdate() ... end

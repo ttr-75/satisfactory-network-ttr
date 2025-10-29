@@ -3,7 +3,7 @@ names = { "shared/helper.lua",
     "shared/graphics.lua",
     "factoryRegistry/FactoryInfo.lua",
     "factoryRegistry/FactoryRegistry.lua",
-    "factoryRegistry/FactoryRegistryServer.lua",
+    "factoryRegistry/FactoryDashboard_Main.lua",
     "factoryDashboard.lua",
 }
 CodeDispatchClient:registerForLoading(names)

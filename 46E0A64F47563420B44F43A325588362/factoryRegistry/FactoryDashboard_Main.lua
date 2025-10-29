@@ -23,19 +23,20 @@ FarbricDashboardClient.__index = FarbricDashboardClient
 ---@param opts table|nil
 ---@return FarbricDashboardClient
 function FarbricDashboardClient.new(opts)
-    assert(NetworkAdapter, "FactoryRegistryClient.new: NetworkAdapter not loaded")
-    opts              = opts or {}
-    local self        = NetworkAdapter.new(FarbricDashboardClient, opts)
-    self.name         = NET_NAME_FACTORY_REGISTRY_CLIENT
-    self.port         = NET_PORT_FACTORY_REGISTRY
-    self.ver          = 1
+    assert(NetworkAdapter, "FarbricDashboardClient.new: NetworkAdapter not loaded")
+    opts               = opts or {}
+    local self         = NetworkAdapter.new(FarbricDashboardClient, opts)
+    self.name          = NET_NAME_FACTORY_REGISTRY_CLIENT
+    self.port          = NET_PORT_FACTORY_REGISTRY
+    self.ver           = 1
     ---@type FactoryInfo|nil
     self.myFactoryInfo = opts and opts.factoryInfo or nil
-    self.registered   = false
-    self.stationMin   = opts and opts.stationMin or 0
+    ---@type integer
+    self.last          = 0
+
 
     -- NIC MUSS existieren (sonst kann nichts gesendet/gehört werden)
-    assert(self.net, "FactoryRegistryClient.new: no NIC available (self.net == nil)")
+    assert(self.net, "FarbricDashboardClient.new: no NIC available (self.net == nil)")
 
     -- Initial-Log
     log(1, ("FRC.new: port=%s name=%s ver=%s nic=%s")
@@ -48,49 +49,24 @@ function FarbricDashboardClient.new(opts)
         -- Eingehendes Paket protokollieren (Low-Noise → Level 1)
         log(0, ("FRC.rx: from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
 
-        if port == self.port and cmd == NET_CMD_FACTORY_REGISTER_ACK then
-            self:onRegisterAck(from)
-        elseif port == self.port and cmd == NET_CMD_RESET_FACTORYREGISTRY then
+        if port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS then
+            self:onResponseFactoryAddress(from)
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY then
             self:onRegistryReset(from)
-        elseif port == self.port and cmd == NET_CMD_CALL_FACTORYS_FOR_UPDATES then
-            self:onGetFactoryUpdate(from, a, b)
-        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTER then
-            -- Nothing just catch
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE then
+            self:onUpdateFactory(from, a, b)
         else
             -- Unerwartete Kommandos sichtbar machen
             log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
         end
     end)
 
-
-    --------------------------------------------------------------------------
-    -- Sofortige Registrierung (Broadcast)
-    -- - Kein return false mehr; nur Logs, damit der Aufrufer immer ein Objekt hat
-    --------------------------------------------------------------------------
-    if self.myFactoryInfo then
-        -- Sanity-Check: sieht es aus wie eine FactoryInfo?
-        assert(type(self.myFactoryInfo.setCoreNetworkCard) == "function",
-            "FactoryRegistryClient.new: myFactoryInfo does not look like a FactoryInfo (missing setCoreNetworkCard)")
-
-        local factoryName = tostring(self.myFactoryInfo.fName or "")
-        if factoryName == "" then
-            log(3, "FRC.register: cannot broadcast – myFactoryInfo.fName is empty")
-        else
-            log(1, ("FRC.register: broadcasting '%s' name='%s' on port %d")
-                :format(NET_CMD_FACTORY_REGISTER, factoryName, self.port))
-            self:broadcast(NET_CMD_FACTORY_REGISTER, factoryName)
-        end
+    if opts.fName then
+        self:setFactoryInfo(opts.fName)
     else
-        log(1, "FRC.register: FactoryInfo not set try name")
-
-        if opts.fName then
-            log(1, ("FRC.register: found name='%s'"):format(opts.fName))
-            self.myFactoryInfo = FactoryInfo:new { fName = opts.fName }
-            self:broadcast(NET_CMD_FACTORY_REGISTER, opts.fName)
-        else
-            -- Kein harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
-            log(2, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
-        end
+        -- Harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
+        log(4, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
+        computer.stop()
     end
 
     return self
@@ -102,12 +78,10 @@ end
 
 --- ACK nach Registrierung
 ---@param fromId string
-function FarbricDashboardClient:onRegisterAck(fromId)
+function FarbricDashboardClient:onResponseFactoryAddress(fromId)
     -- KEEP: deine bisherige Logik, wenn ACK eingeht (z.B. Flags setzen, Logs)
-    log(1, "Client: Registration ACK from " .. tostring(fromId) .. " Build FactoryInfo now.")
+    log(1, "FarbricDashboardClient: Got Address '" .. tostring(fromId) .. "' for Factory " .. self.myFactoryInfo.fName)
     self.myFactoryInfo:setCoreNetworkCard(self.net.id)
-    self:performUpdate()
-    self.registered = true
 end
 
 --- Server hat Registry zurückgesetzt
@@ -119,242 +93,46 @@ function FarbricDashboardClient:onRegistryReset(fromId)
     computer.reset()
 end
 
---- Server fordert ein Update an
----@param fromId string
----@param payloadA any
----@param payloadB any
-function FarbricDashboardClient:onGetFactoryUpdate(fromId, payloadA, payloadB)
-    log(0, "Net-FactoryRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
-
-    self:performUpdate()
-
-    local J = JSON.new { indent = 2, sort_keys = true }
-    local serialized = J:encode(self.myFactoryInfo)
-    self:send(fromId, NET_CMD_UPDATE_FACTORY_IN_REGISTRY, serialized)
-    log(0, "Net-FactoryRegistryClient::update send to  \"" .. fromId .. "\"")
-end
-
--- statt: function performUpdate() ... end
-function FarbricDashboardClient:performUpdate()
-    local comp = component.findComponent(classes.Manufacturer)
-    if #comp > 0 then
-        local manufacturer = component.proxy(comp[1])
-        ---@cast manufacturer Manufacturer
-        if not manufacturer then return end
-
-        local recipe = manufacturer:getRecipe()
-
-        if string_contains(manufacturer:getType().name, MyItem.ASSEMBLER.name, false) then
-            self.myFactoryInfo.fType = MyItem.ASSEMBLER
-        else
-            log(2, "Net-FactoryRegistryClient::Unknown Manufacturer Type \"" .. manufacturer:getType().name .. "\"")
-        end
-
-
-        if recipe ~= nil then
-            local products = recipe:getProducts()
-            for _, product in pairs(products) do
-                local p = product
-                local item = MyItemList:get_by_Name(p.type.name)
-                item.max = p.type.max
-                local output = Output:new {
-                    itemClass          = item,
-                    amountStation      = 0,
-                    amountContainer    = 0,
-                    maxAmountStation   = 3000,
-                    maxAmountContainer = 3000
-                }
-
-                -- Container
-                local containers = containerByFactoryStack(self.myFactoryInfo.fName, output)
-
-                local maxSlotsC = 0
-                local totalsC = {}
-                local typesC = {}
-
-
-                for _, container in pairs(containers) do
-                    maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
-                    totalsC, typesC = readInventory(container, totalsC, typesC)
-                end
-
-                local counterC = 0
-                local maxStackC = item.max
-                for key, cnt in pairs(totalsC) do
-                    local t = typesC[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    -- maxStackC = (t and t.max) or 0
-                    counterC = counterC + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountContainer = maxSlotsC * maxStackC
-
-                --Station
-                local trainstations = trainstationByFactoryStack(self.myFactoryInfo.fName, output)
-
-
-                local maxSlotsS = 0
-                local totalsS = {}
-                local typesS = {}
-
-
-                for _, trainstation in pairs(trainstations) do
-                    local platforms = trainstation:getAllConnectedPlatforms()
-
-                    for _, platform in pairs(platforms) do
-                        totalsS, typesS = readInventory(platform, totalsS, typesS)
-                        maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
-                    end
-                end
-
-                local counterS = 0
-                local maxStackS = item.max
-                for key, cnt in pairs(totalsS) do
-                    local t = typesS[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    --maxStackS = (t and t.max) or 0
-                    counterS = counterS + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountTainstation = maxSlotsS * maxStackS
-
-                output = Output:new {
-                    itemClass          = item,
-                    amountStation      = counterS,
-                    amountContainer    = counterC,
-                    maxAmountStation   = _maxAmountTainstation,
-                    maxAmountContainer = _maxAmountContainer
-                }
-
-                self.myFactoryInfo:updateOutput(output) -- <– korrektes Feld
-                --pj(self.myFactoryInfo)
-            end
-            for _, ingredient in pairs(recipe:getIngredients()) do
-                local item = MyItemList:get_by_Name(ingredient.type.name)
-                item.max = ingredient.type.max
-                local input = Input:new {
-                    itemClass          = item,
-                    amountStation      = 0,
-                    amountContainer    = 0,
-                    maxAmountStation   = 3000,
-                    maxAmountContainer = 3000
-                }
-
-
-                -- Container
-                local containers = containerByFactoryStack(self.myFactoryInfo.fName, input)
-
-                local maxSlotsC = 0
-                local totalsC = {}
-                local typesC = {}
-
-
-                for _, container in pairs(containers) do
-                    maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
-                    totalsC, typesC = readInventory(container, totalsC, typesC)
-                end
-
-                local counterC = 0
-                local maxStackC = item.max
-                for key, cnt in pairs(totalsC) do
-                    local t = typesC[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    --maxStackC = (t and t.max) or 0
-                    counterC = counterC + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountContainer = maxSlotsC * maxStackC
-
-
-
-
-                --Station
-                local trainstations = trainstationByFactoryStack(self.myFactoryInfo.fName, input)
-
-
-                local maxSlotsS = 0
-                local totalsS = {}
-                local typesS = {}
-
-
-                for _, trainstation in pairs(trainstations) do
-                    local platforms = trainstation:getAllConnectedPlatforms()
-
-                    for _, platform in pairs(platforms) do
-                        totalsS, typesS = readInventory(platform, totalsS, typesS)
-                        maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
-                    end
-                    --print(container.nick)
-                end
-
-                local counterS = 0
-                local maxStackS = item.max
-                for key, cnt in pairs(totalsS) do
-                    local t = typesS[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    -- maxStackS = (t and t.max) or 0
-                    counterS = counterS + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountTainstation = maxSlotsS * maxStackS
-
-                input = Input:new {
-                    itemClass          = item,
-                    amountStation      = counterS,
-                    amountContainer    = counterC,
-                    maxAmountStation   = _maxAmountTainstation,
-                    maxAmountContainer = _maxAmountContainer
-                }
-
-                self.myFactoryInfo:updateInput(input) -- <– korrektes Feld
-            end
-        end
-    end
-end
-
---- Server hat Registry zurückgesetzt
-function FarbricDashboardClient:checkTrainsignals()
-    local t = now_ms()
-    if not self.last then
-        self.last = 0
-    end
-    if t - self.last >= 1000 then
-        self.last = t
-
-        for _, input in pairs(self.myFactoryInfo.inputs) do
-            local signal = trainsignalByFactoryStack(self.myFactoryInfo.fName, input)[1]
-            local block = signal:getObservedBlock()
-            if input.amountStation <= self.stationMin then
-                if block.isPathBlock then
-                    block.isPathBlock = false
-                    log(0, "Switching Signal " .. signal.nick .. " to green")
-                end
-            else
-                if not block.isPathBlock then
-                    log(0, "Switching Signal " .. signal.nick .. " to red")
-                    block.isPathBlock = true
-                end
-            end
-        end
-    end
+---@param factoryName string
+function FarbricDashboardClient:setFactoryInfo(factoryName)
+    self.myFactoryInfo = FactoryInfo:new({ fName = factoryName })
+    self:broadcast(NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS, factoryName)
 end
 
 --- Server hat Registry zurückgesetzt
 function FarbricDashboardClient:run()
     while true do
-        self:checkTrainsignals()
+        self:callForUpdate()
         future.run()
+    end
+end
+
+--- Client schickt ein Update seiner FactoryInfo (als JSON).
+---@param fromId string
+---@param factoryInfoS string
+function FarbricDashboardClient:onUpdateFactory(fromId, factoryInfoS)
+    -- KEEP: falls Client etwas am Server aktualisiert
+    log(0, ('Net-FarbricDashboardClient: Received Update from "%s"'):format(fromId))
+    local J = JSON.new { indent = 2, sort_keys = true }
+    local o = J:decode(factoryInfoS)
+    --print(arg1)
+    --local id = o.fCoreNetworkCard
+    ---@cast o FactoryInfo
+    self.myFactoryInfo:update(o)
+end
+
+--- Fragt zyklisch (1/s) alle bekannten Fabriken nach Updates.
+function FarbricDashboardClient:callForUpdate()
+    local t = now_ms()
+    if t - self.last >= 1000 then
+        self.last = t
+
+        if self.myFactoryInfo:check(self.myFactoryInfo) then
+            local fromId = self.myFactoryInfo.fCoreNetworkCard or ""
+            local name = self.myFactoryInfo.fName
+            log(0, "Net-FarbricDashboardClient: Send UpdateRequest for " .. name)
+            self:send(fromId, NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE, name)
+        else
+        end
     end
 end

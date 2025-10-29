@@ -36,20 +36,33 @@ function FactoryRegistryServer.new(opts)
 
     -- Netzwerk-Handler für diesen Port registrieren
     self:registerWith(function(from, port, cmd, a, b)
-        if port == self.port and cmd == NET_CMD_FACTORY_REGISTER then
+        if port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY then
             self:onRegister(from, a)
-        elseif port == self.port and cmd == NET_CMD_UPDATE_FACTORY_IN_REGISTRY then
-            self:onUpdateFactory(from, a)
-        elseif port == self.port and cmd == NET_CMD_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY then
+            -- elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_UPDATE_FACTORY_IN_REGISTRY then
+            --    self:onUpdateFactory(from, a)
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY then
             log(4, "UPSI....... I thought I'll be alone thx '" .. from .. "'")
             log(4, " ... Shutting down now")
             computer.stop()
-        elseif port == self.port and cmd == NET_CMD_RESET_FACTORYREGISTRY then
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY then
             if from == self.net.id then
                 log(0, "It's me, Mario")
             else
                 log(4, "There is a second FactoryRsistry started: Now send kill signal to " .. from)
-                self:send(from, NET_CMD_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY)
+                self:send(from, NET_CMD_FACTORY_REGISTRY_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY)
+            end
+            -- self:onRegistryReset(from)
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS then
+            log(0, "Request for Address of " .. (a or "unknown"))
+            if a then
+                local fi = self.reg:getByName(a)
+                if not fi then
+                    log(4, "FactoryRegistryServer.getAddress:There is no factory called " .. a)
+                else
+                    self:send(from, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS, fi.fCoreNetworkCard)
+                end
+            else
+                log(4, "FactoryRegistryServer.getAddress: The name must been set " .. from)
             end
             -- self:onRegistryReset(from)
         else
@@ -81,40 +94,7 @@ function FactoryRegistryServer:onRegister(fromId, fName)
     self.reg:add(fInfo)
     -- ACK an den Absender zurück
     log(1, ('Server: Registered "%s" from %s'):format(fName, tostring(fromId)))
-    self:send(fromId, NET_CMD_FACTORY_REGISTER_ACK)
-end
-
---- Client schickt ein Update seiner FactoryInfo (als JSON).
----@param fromId string
----@param factoryInfoS string
-function FactoryRegistryServer:onUpdateFactory(fromId, factoryInfoS)
-    -- KEEP: falls Client etwas am Server aktualisiert
-    log(0, ('Net-FactoryRegistryServer: Received Update from "%s"'):format(fromId))
-    local J = JSON.new { indent = 2, sort_keys = true }
-    local o = J:decode(factoryInfoS)
-    --print(arg1)
-    --local id = o.fCoreNetworkCard
-    ---@cast o FactoryInfo
-    self.reg:update(o)
-end
-
---- Fragt zyklisch (1/s) alle bekannten Fabriken nach Updates.
-function FactoryRegistryServer:callForUpdates()
-    local t = now_ms()
-    if t - self.last >= 1000 then
-        self.last = t
-
-        local factorys = self.reg:getAll()
-        for name2, factory in pairs(factorys) do
-            if self.reg:checkMinimum(factory) then
-                local fromId = factory.fCoreNetworkCard or ""
-                local name = factory.fName
-                log(0, "Net-FactoryRegistryServer: Send UpdateRequest for " .. name)
-                self:send(fromId, NET_CMD_CALL_FACTORYS_FOR_UPDATES)
-            else
-            end
-        end
-    end
+    self:send(fromId, NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK)
 end
 
 --[[
@@ -141,7 +121,7 @@ end
 --- Registry-Reset broadcasten (und ggf. lokal leeren).
 function FactoryRegistryServer:broadcastRegistryReset()
     self:clearRegistry()
-    self:broadcast(NET_CMD_RESET_FACTORYREGISTRY)
+    self:broadcast(NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY)
     log(2, "Server: broadcast registry reset")
 end
 
