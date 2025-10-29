@@ -22,7 +22,7 @@ CodeDispatchClient:finished()
 local function _traceback(tag)
   return function(err)
     local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
-    computer.log(4, tb)
+    log(4, tb)
     return tb
   end
 end

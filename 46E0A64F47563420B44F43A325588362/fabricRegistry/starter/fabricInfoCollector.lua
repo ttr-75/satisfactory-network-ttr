@@ -1,7 +1,5 @@
-local names = { "shared/helper.lua",
-    "shared/items.lua",
-    "fabricRegistry/FabricInfo.lua",
-    "fabricRegistry/FabricDataCollertor.lua",
+local names = {
+    "fabricRegistry/FabricDataCollertor_Main.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()

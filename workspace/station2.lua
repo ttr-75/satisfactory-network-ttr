@@ -84,25 +84,42 @@ end
 --@param nick_name string
 --@return string id
 local function getStationID(nick_name)
-    return component.findComponent("Trainstation " .. nick_name)[1];
+    local comp =  component.findComponent("Trainstation " .. nick_name);
+    return comp[1];
 end
 
 
 --@param nick_name string
 --@return string id
 local function getSignalID(nick_name)
-    return component.findComponent("Trainsignal " .. nick_name)[1];
+    local comp = component.findComponent("Trainsignal " .. nick_name)
+    return comp[1];
 end
 
 --@param nick_name string
 --@return string id
 local function getMiniPanellID(nick_name)
-    return component.findComponent("MiniPanel " .. nick_name)[1];
+    local comp =  component.findComponent("MiniPanel " .. nick_name);
+    return comp[1];
 end
 
 local stationid = getStationID(nick_name);
+if stationid == nil then
+     log(2, "No Station available")
+     computer.stop()
+end
+
 local signalid = getSignalID(nick_name);
+if signalid == nil then
+     log(2, "No Signal available")
+     computer.stop()
+end
+
 local miniPanelid = getMiniPanellID(nick_name);
+if miniPanelid == nil then
+     log(2, "No Panel available")
+     computer.stop()
+end
 
 log(1, nick_name);
 log(1, stationid);
@@ -124,12 +141,18 @@ end
 --@param id  string
 --@param status boolean
 local function setSignal(id, status)
-    signal = component.proxy(id)
-    block = signal:getObservedBlock()
+    local signal = component.proxy(id)
+    local block = signal:getObservedBlock()
     if status then
-        block.isPathBlock = false
+        if block.isPathBlock then
+            block.isPathBlock = false
+            log(1, "Switching Signal " .. nick_name .. " to green")
+        end
     else
-        block.isPathBlock = true
+        if not block.isPathBlock then
+            log(1, "Switching Signal " .. nick_name .. " to red")
+            block.isPathBlock = true
+        end
     end
 end
 
@@ -138,4 +161,6 @@ while true do
     ---log(0,_shouldTrainBeSend)
     setIndicator(miniPanelid, _shouldTrainBeSend)
     setSignal(signalid, _shouldTrainBeSend)
+    log(0, "Check Updates")
+    event.pull(1);
 end

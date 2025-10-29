@@ -1,8 +1,8 @@
 names = { "shared/helper.lua",
-    "shared/items.lua",
+    "shared/items/items[-LANGUAGE-].lua",
     "shared/graphics.lua",
     "fabricRegistry/FabricInfo.lua",
-    "fabricRegistry/fabricRegistry.lua",
+    "fabricRegistry/FabricRegistry.lua",
     "fabricRegistry/FabricRegistryServer.lua",
     "fabricDashboard.lua",
 }

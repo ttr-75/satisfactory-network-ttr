@@ -17,15 +17,15 @@ CodeDispatchClient:finished()
 ---@field myFabricInfo FabricInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
-FabricDataCollertor = setmetatable({}, { __index = NetworkAdapter })
-FabricDataCollertor.__index = FabricDataCollertor
+FarbricDashboardClient = setmetatable({}, { __index = NetworkAdapter })
+FarbricDashboardClient.__index = FarbricDashboardClient
 
 ---@param opts table|nil
 ---@return FabricRegistryClient
-function FabricDataCollertor.new(opts)
+function FarbricDashboardClient.new(opts)
     assert(NetworkAdapter, "FabricRegistryClient.new: NetworkAdapter not loaded")
     opts              = opts or {}
-    local self        = NetworkAdapter.new(FabricDataCollertor, opts)
+    local self        = NetworkAdapter.new(FarbricDashboardClient, opts)
     self.name         = NET_NAME_FABRIC_REGISTRY_CLIENT
     self.port         = NET_PORT_FABRIC_REGISTRY
     self.ver          = 1
@@ -102,7 +102,7 @@ end
 
 --- ACK nach Registrierung
 ---@param fromId string
-function FabricDataCollertor:onRegisterAck(fromId)
+function FarbricDashboardClient:onRegisterAck(fromId)
     -- KEEP: deine bisherige Logik, wenn ACK eingeht (z.B. Flags setzen, Logs)
     log(1, "Client: Registration ACK from " .. tostring(fromId) .. " Build FabricInfo now.")
     self.myFabricInfo:setCoreNetworkCard(self.net.id)
@@ -112,7 +112,7 @@ end
 
 --- Server hat Registry zurückgesetzt
 ---@param fromId string
-function FabricDataCollertor:onRegistryReset(fromId)
+function FarbricDashboardClient:onRegistryReset(fromId)
     -- KEEP: deine bisherige Logik beim Registry-Reset (früher: computer.reset())
     log(2, 'Client: Registry reset requested by "' .. tostring(fromId) .. '"')
     self.registered = false
@@ -123,7 +123,7 @@ end
 ---@param fromId string
 ---@param payloadA any
 ---@param payloadB any
-function FabricDataCollertor:onGetFabricUpdate(fromId, payloadA, payloadB)
+function FarbricDashboardClient:onGetFabricUpdate(fromId, payloadA, payloadB)
     log(0, "Net-FabricRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
 
     self:performUpdate()
@@ -135,7 +135,7 @@ function FabricDataCollertor:onGetFabricUpdate(fromId, payloadA, payloadB)
 end
 
 -- statt: function performUpdate() ... end
-function FabricDataCollertor:performUpdate()
+function FarbricDashboardClient:performUpdate()
     local comp = component.findComponent(classes.Manufacturer)
     if #comp > 0 then
         local manufacturer = component.proxy(comp[1])
@@ -325,7 +325,7 @@ function FabricDataCollertor:performUpdate()
 end
 
 --- Server hat Registry zurückgesetzt
-function FabricDataCollertor:checkTrainsignals()
+function FarbricDashboardClient:checkTrainsignals()
     local t = now_ms()
     if not self.last then
         self.last = 0
@@ -352,7 +352,7 @@ function FabricDataCollertor:checkTrainsignals()
 end
 
 --- Server hat Registry zurückgesetzt
-function FabricDataCollertor:run()
+function FarbricDashboardClient:run()
     while true do
         self:checkTrainsignals()
         future.run()

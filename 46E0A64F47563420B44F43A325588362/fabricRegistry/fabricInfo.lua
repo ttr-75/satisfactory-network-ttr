@@ -2,7 +2,7 @@
 
 local names = {
     "shared/helper.lua",
-    "shared/items.lua",
+    "shared/items/items[-LANGUAGE-].lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()

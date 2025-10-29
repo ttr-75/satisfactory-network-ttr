@@ -35,7 +35,7 @@ NetHub = {
 local function _traceback(tag)
     return function(err)
         local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
-        computer.log(4, tb)
+        log(4, tb)
         return tb
     end
 end
@@ -79,7 +79,7 @@ function NetHub:init(nic)
             return svc._wrapped(fromId, port, cmd, a, b, c, d)
         end))
 
-    computer.log(0, "NetHub: ready")
+    log(0, "NetHub: ready")
 end
 
 --- Registriert einen Handler für Port/Name/Version; öffnet den Port auf der NIC.
