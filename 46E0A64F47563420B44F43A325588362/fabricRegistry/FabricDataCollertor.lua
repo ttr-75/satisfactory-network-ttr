@@ -16,20 +16,23 @@ CodeDispatchClient:finished()
 ---@class FabricRegistryClient : NetworkAdapter
 ---@field myFabricInfo FabricInfo|nil
 ---@field registered boolean
-FabricRegistryClient = setmetatable({}, { __index = NetworkAdapter })
-FabricRegistryClient.__index = FabricRegistryClient
+---@field stationMin integer
+FabricDataCollertor = setmetatable({}, { __index = NetworkAdapter })
+FabricDataCollertor.__index = FabricDataCollertor
 
 ---@param opts table|nil
 ---@return FabricRegistryClient
-function FabricRegistryClient.new(opts)
+function FabricDataCollertor.new(opts)
     assert(NetworkAdapter, "FabricRegistryClient.new: NetworkAdapter not loaded")
-    local self        = NetworkAdapter.new(FabricRegistryClient, opts)
+    opts              = opts or {}
+    local self        = NetworkAdapter.new(FabricDataCollertor, opts)
     self.name         = NET_NAME_FABRIC_REGISTRY_CLIENT
     self.port         = NET_PORT_FABRIC_REGISTRY
     self.ver          = 1
     ---@type FabricInfo|nil
     self.myFabricInfo = opts and opts.fabricInfo or nil
     self.registered   = false
+    self.stationMin   = opts and opts.stationMin or 0
 
     -- NIC MUSS existieren (sonst kann nichts gesendet/gehört werden)
     assert(self.net, "FabricRegistryClient.new: no NIC available (self.net == nil)")
@@ -51,6 +54,8 @@ function FabricRegistryClient.new(opts)
             self:onRegistryReset(from)
         elseif port == self.port and cmd == NET_CMD_CALL_FABRICS_FOR_UPDATES then
             self:onGetFabricUpdate(from, a, b)
+        elseif port == self.port and cmd == NET_CMD_FABRIC_REGISTER then
+            -- Nothing just catch
         else
             -- Unerwartete Kommandos sichtbar machen
             log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
@@ -76,8 +81,16 @@ function FabricRegistryClient.new(opts)
             self:broadcast(NET_CMD_FABRIC_REGISTER, fabricName)
         end
     else
-        -- Kein harter Fehler: Client kann später myFabricInfo setzen & erneut registrieren
-        log(2, "FRC.register: myFabricInfo not provided; will skip initial broadcast")
+        log(1, "FRC.register: FabricInfo not set try name")
+
+        if opts.fName then
+            log(1, ("FRC.register: found name='%s'"):format(opts.fName))
+            self.myFabricInfo = FabricInfo:new { fName = opts.fName }
+            self:broadcast(NET_CMD_FABRIC_REGISTER, opts.fName)
+        else
+            -- Kein harter Fehler: Client kann später myFabricInfo setzen & erneut registrieren
+            log(2, "FRC.register: myFabricInfo not provided; will skip initial broadcast")
+        end
     end
 
     return self
@@ -89,7 +102,7 @@ end
 
 --- ACK nach Registrierung
 ---@param fromId string
-function FabricRegistryClient:onRegisterAck(fromId)
+function FabricDataCollertor:onRegisterAck(fromId)
     -- KEEP: deine bisherige Logik, wenn ACK eingeht (z.B. Flags setzen, Logs)
     log(1, "Client: Registration ACK from " .. tostring(fromId) .. " Build FabricInfo now.")
     self.myFabricInfo:setCoreNetworkCard(self.net.id)
@@ -99,7 +112,7 @@ end
 
 --- Server hat Registry zurückgesetzt
 ---@param fromId string
-function FabricRegistryClient:onRegistryReset(fromId)
+function FabricDataCollertor:onRegistryReset(fromId)
     -- KEEP: deine bisherige Logik beim Registry-Reset (früher: computer.reset())
     log(2, 'Client: Registry reset requested by "' .. tostring(fromId) .. '"')
     self.registered = false
@@ -110,7 +123,7 @@ end
 ---@param fromId string
 ---@param payloadA any
 ---@param payloadB any
-function FabricRegistryClient:onGetFabricUpdate(fromId, payloadA, payloadB)
+function FabricDataCollertor:onGetFabricUpdate(fromId, payloadA, payloadB)
     log(0, "Net-FabricRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
 
     self:performUpdate()
@@ -122,11 +135,21 @@ function FabricRegistryClient:onGetFabricUpdate(fromId, payloadA, payloadB)
 end
 
 -- statt: function performUpdate() ... end
-function FabricRegistryClient:performUpdate()
+function FabricDataCollertor:performUpdate()
     local comp = component.findComponent(classes.Manufacturer)
     if #comp > 0 then
         local manufacturer = component.proxy(comp[1])
+        ---@cast manufacturer Manufacturer
+        if not manufacturer then return end
+
         local recipe = manufacturer:getRecipe()
+
+        if string_contains(manufacturer:getType().name, MyItem.ASSEMBLER.name, false) then
+            self.myFabricInfo.fType = MyItem.ASSEMBLER
+        else
+            log(2, "Net-FabricRegistryClient::Unknown Manufacturer Type \"" .. manufacturer:getType().name .. "\"")
+        end
+
 
         if recipe ~= nil then
             local products = recipe:getProducts()
@@ -153,7 +176,6 @@ function FabricRegistryClient:performUpdate()
                 for _, container in pairs(containers) do
                     maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
                     totalsC, typesC = readInventory(container, totalsC, typesC)
-                    --print(container.nick)
                 end
 
                 local counterC = 0
@@ -181,15 +203,11 @@ function FabricRegistryClient:performUpdate()
 
                 for _, trainstation in pairs(trainstations) do
                     local platforms = trainstation:getAllConnectedPlatforms()
-                    log(0, "# platforms:" .. tostring(#platforms))
-
-
 
                     for _, platform in pairs(platforms) do
                         totalsS, typesS = readInventory(platform, totalsS, typesS)
                         maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
                     end
-                    --print(container.nick)
                 end
 
                 local counterS = 0
@@ -240,7 +258,6 @@ function FabricRegistryClient:performUpdate()
                 for _, container in pairs(containers) do
                     maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
                     totalsC, typesC = readInventory(container, totalsC, typesC)
-                    --print(container.nick)
                 end
 
                 local counterC = 0
@@ -271,9 +288,6 @@ function FabricRegistryClient:performUpdate()
 
                 for _, trainstation in pairs(trainstations) do
                     local platforms = trainstation:getAllConnectedPlatforms()
-                    log(0, "# platforms:" .. tostring(#platforms))
-
-
 
                     for _, platform in pairs(platforms) do
                         totalsS, typesS = readInventory(platform, totalsS, typesS)
@@ -307,5 +321,40 @@ function FabricRegistryClient:performUpdate()
                 self.myFabricInfo:updateInput(input) -- <– korrektes Feld
             end
         end
+    end
+end
+
+--- Server hat Registry zurückgesetzt
+function FabricDataCollertor:checkTrainsignals()
+    local t = now_ms()
+    if not self.last then
+        self.last = 0
+    end
+    if t - self.last >= 1000 then
+        self.last = t
+
+        for _, input in pairs(self.myFabricInfo.inputs) do
+            local signal = trainsignalByFabricStack(self.myFabricInfo.fName, input)[1]
+            local block = signal:getObservedBlock()
+            if input.amountStation <= self.stationMin then
+                if block.isPathBlock then
+                    block.isPathBlock = false
+                    log(0, "Switching Signal " .. signal.nick .. " to green")
+                end
+            else
+                if not block.isPathBlock then
+                    log(0, "Switching Signal " .. signal.nick .. " to red")
+                    block.isPathBlock = true
+                end
+            end
+        end
+    end
+end
+
+--- Server hat Registry zurückgesetzt
+function FabricDataCollertor:run()
+    while true do
+        self:checkTrainsignals()
+        future.run()
     end
 end

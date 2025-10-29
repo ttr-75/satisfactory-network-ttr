@@ -1,9 +1,31 @@
+---@diagnostic disable: lowercase-global
 
+--------------------------------------------------------------------------------
+-- Typ-Stubs für bessere IntelliSense (keine Runtime-Wirkung)
+--------------------------------------------------------------------------------
 
+---@class GPUProxy
+---@field drawText fun(self:GPUProxy, pos:Vector2d, text:string, size:number, color:Color|nil, monospace:boolean|nil)
+---@field drawRect fun(self:GPUProxy, pos:Vector2d, size:Vector2d, color:Color|nil, image:any|nil, rotation:number|nil)
+---@field drawBox  fun(self:GPUProxy, boxSettings:table)
+---@field drawLines fun(self:GPUProxy, points:Vector2d[], thickness:number, color:Color|nil)
+---@field measureText fun(self:GPUProxy, text:string, size:number, monospace:boolean|nil):Vector2d
+---@field flush fun(self:GPUProxy)
 
 --------------------------------------------------------------------------------
 -- Color
 --------------------------------------------------------------------------------
+
+---@class Color
+---@diagnostic disable-next-line: duplicate-doc-field
+---@field r number
+---@diagnostic disable-next-line: duplicate-doc-field
+---@field g number
+---@diagnostic disable-next-line: duplicate-doc-field
+---@field b number
+---@diagnostic disable-next-line: duplicate-doc-field
+---@field a number
+---@field pattern string
 Color = {
     r = 0.0,
     g = 0.0,
@@ -18,7 +40,7 @@ Color.__index = Color
 ---@param g number
 ---@param b number
 ---@param a number
----@return Color
+---@return Color|nil
 function Color.new(r, g, b, a)
     if r == nil or type(r) ~= "number" then return nil end
     if g == nil or type(g) ~= "number" then return nil end
@@ -48,58 +70,67 @@ Color.YELLOW        = Color.new(1.000, 1.000, 0.000, 1.0)
 --------------------------------------------------------------------------------
 -- Vector 2d
 --------------------------------------------------------------------------------
-Vector2d            = {
-    x = 0,
-    y = 0,
-    pattern = '{x=%d,y=%d}',
-}
-Vector2d.__index    = Vector2d
 
----Create a new Vector2d and return it
----@param x number
----@param y number
+
+
+---@class Vector2d
+---@field x integer
+---@field y integer
+Vector2d         = {}
+Vector2d.__index = Vector2d
+
+---@param x any
+---@param y any
 ---@return Vector2d
 function Vector2d.new(x, y)
-    if x == nil or type(x) ~= "number" then return nil end
-    if y == nil or type(y) ~= "number" then return nil end
+    x = tonumber(x) or 0
+    y = tonumber(y) or 0
     local o = { x = math.floor(x), y = math.floor(y) }
-    setmetatable(o, { __index = Vector2d })
-    return o
+    return setmetatable(o, Vector2d)
 end
 
 --------------------------------------------------------------------------------
--- ScreenElement (base)
+-- ScreenElement (Base)
 --------------------------------------------------------------------------------
--- Base for drawable elements that translates local -> screen coords
-ScreenElement = {
-    gpu = nil,
-    position = nil,
-    dimensions = nil,
-    -- subElements intentionally NOT on class (no shared state)
-}
+
+---@class ScreenElement
+---@field gpu GPUProxy|nil
+---@field position Vector2d           -- immer gesetzt (0,0 default)
+---@field dimensions Vector2d|nil     -- optional; Subklassen können Default setzen
+---@field subElements ScreenElement[] -- Kinder
+ScreenElement = {}
 ScreenElement.__index = ScreenElement
 
-function ScreenElement:new(o)
+---Generischer Konstruktor: sorgt für Defaults & richtigen Metatable-Bind
+---@generic T: ScreenElement
+---@param cls T                      -- Klassen-Table (z. B. Progressbar)
+---@param o table|nil
+---@return T
+function ScreenElement.new(cls, o)
     o             = o or {}
-    self.__index  = self
-    -- per-instance defaults
-    o.subElements = o.subElements or {}
     o.position    = o.position or Vector2d.new(0, 0)
-    -- dimensions may remain nil
-    return setmetatable(o, self)
+    o.dimensions  = o.dimensions or o.dimensions -- bleibt ggf. nil
+    o.subElements = o.subElements or {}
+    return setmetatable(o, cls)
 end
 
+---Initialize element with gpu, position and dimensions
+---@param gpu GPUProxy
+---@param position Vector2d
+---@param dimensions Vector2d|nil
 function ScreenElement:init(gpu, position, dimensions)
     self.gpu        = gpu
     self.position   = position or Vector2d.new(0, 0)
     self.dimensions = dimensions
 end
 
+---Append a child element
+---@param e ScreenElement|nil
 function ScreenElement:addElement(e)
     if e then table.insert(self.subElements, e) end
 end
 
--- Draw children
+---Draw children (override in subclasses to render self first)
 function ScreenElement:draw()
     for _, element in ipairs(self.subElements) do
         if element.draw then element:draw() end
@@ -110,26 +141,45 @@ function ScreenElement:flush()
     error('ScreenElement:flush() should not be called; call draw(), then gpu:flush()')
 end
 
+---Measure a text string
+---@param Text string
+---@param Size number
+---@param bMonospace boolean|nil
+---@return Vector2d
 function ScreenElement:measureText(Text, Size, bMonospace)
     return self.gpu:measureText(Text, Size, bMonospace)
 end
 
---- Draws Text at local position
+---Draw text at local position
+---@param position Vector2d
+---@param text string
+---@param size number
+---@param color Color|nil
+---@param monospace boolean|nil
 function ScreenElement:drawText(position, text, size, color, monospace)
     self.gpu:drawText(self:reposition(position), text, size, color, monospace)
 end
 
---- Draws Rect at local position
+---Draw rectangle at local position
+---@param position Vector2d
+---@param size Vector2d
+---@param color Color|nil
+---@param image any|nil
+---@param rotation number|nil
 function ScreenElement:drawRect(position, size, color, image, rotation)
     self.gpu:drawRect(self:reposition(position), size, color, image, rotation)
 end
 
---- Draws box (already absolute in gpu-space)
+---Draws a prebuilt box (already in gpu-space)
+---@param boxSettings table
 function ScreenElement:drawBox(boxSettings)
     self.gpu:drawBox(boxSettings)
 end
 
---- Draws polyline
+---Draw a polyline (local points)
+---@param points Vector2d[]
+---@param thickness number
+---@param color Color|nil
 function ScreenElement:drawLines(points, thickness, color)
     if not points or #points < 2 then return end
     local newPoints = {}
@@ -139,27 +189,49 @@ function ScreenElement:drawLines(points, thickness, color)
     self.gpu:drawLines(newPoints, thickness, color)
 end
 
+---Translate local coords to absolute gpu coords
+---@param vector Vector2d
+---@return Vector2d
 function ScreenElement:reposition(vector)
     local px = (self.position and self.position.x or 0) + vector.x
     local py = (self.position and self.position.y or 0) + vector.y
     return Vector2d.new(px, py)
 end
 
--- ===== Local drawing helpers (KEIN reposition) =====
+-- ===== Local drawing helpers (NO reposition) =====
+
+---Draw local rect (already relative to self.position)
+---@param position Vector2d
+---@param size Vector2d
+---@param color Color|nil
+---@param image any|nil
+---@param rotation number|nil
 function ScreenElement:drawLocalRect(position, size, color, image, rotation)
     -- position ist bereits lokal relativ zu self.position
     self.gpu:drawRect(position, size, color, image, rotation)
 end
 
+---Draw local text
+---@param position Vector2d
+---@param text string
+---@param size number
+---@param color Color|nil
+---@param monospace boolean|nil
 function ScreenElement:drawLocalText(position, text, size, color, monospace)
     self.gpu:drawText(position, text, size, color, monospace)
 end
 
+---Draw local polyline
+---@param points Vector2d[]
+---@param thickness number
+---@param color Color|nil
 function ScreenElement:drawLocalLines(points, thickness, color)
     -- erwartet lokale Punkte; NICHT verschieben
     self.gpu:drawLines(points, thickness, color)
 end
 
+---Draw local box
+---@param boxSettings table
 function ScreenElement:drawLocalBox(boxSettings)
     self.gpu:drawBox(boxSettings)
 end
@@ -167,19 +239,29 @@ end
 --------------------------------------------------------------------------------
 -- ItemImage
 --------------------------------------------------------------------------------
-ItemImage = ScreenElement:new()
+
+---@class ItemImage : ScreenElement
+---@field box table        -- z.B. { position=Vector2d, size=Vector2d, color=Color, image=?, rotation=? }
+---@field bg  Color        -- Fallback-Hintergrund (falls box.color fehlt)
+---@field fg  Color|nil    -- nicht zwingend genutzt, aber vorhanden für Layout
+ItemImage = setmetatable({}, { __index = ScreenElement })
 ItemImage.__index = ItemImage
 
+---@param o table|nil
+---@return ItemImage
 function ItemImage.new(o)
-    o     = o or {}
-    o.box = o.box or {}
-    o.bg  = o.bg or Color.WHITE
-    o.fg  = o.fg or nil
-    return setmetatable(o, ItemImage)
+    local self = ScreenElement.new(ItemImage, o or {})
+    self.box   = self.box or {}
+    self.bg    = self.bg or Color.WHITE
+    self.fg    = self.fg or nil
+    return self
 end
 
+---Set box settings (position/size,..)
+---@param box table
 function ItemImage:setBox(box) self.box = box or {} end
 
+---Draw item image (box first), then children
 function ItemImage:draw()
     if not self.position and self.box.position then
         self.position = self.box.position
@@ -193,23 +275,35 @@ end
 --------------------------------------------------------------------------------
 -- Plotter
 --------------------------------------------------------------------------------
-Plotter = ScreenElement:new()
+
+---@class Plotter : ScreenElement
+---@field color         Color
+---@field lineThickness number
+---@field dataSource    table|nil   -- erwartet: :iterate(cb), :getMaxSize(), currSize
+---@field graph         Graph|nil
+---@field scaleFactorX  number|nil
+Plotter = setmetatable({}, { __index = ScreenElement })
 Plotter.__index = Plotter
 
--- defaults per-instance
+---@param o table|nil
+---@return Plotter
 function Plotter.new(o)
-    local plotter         = setmetatable(o or {}, Plotter)
-    plotter.color         = plotter.color or Color.GREY_0500
-    plotter.lineThickness = plotter.lineThickness or 10
-    plotter.dataSource    = plotter.dataSource or nil
-    plotter.graph         = plotter.graph or nil
-    plotter.scaleFactorX  = plotter.scaleFactorX or nil
-    if plotter.dataSource and plotter.graph then
-        plotter:setDataSource(plotter.dataSource)
+    local self         = ScreenElement.new(Plotter, o or {})
+    self.color         = self.color or Color.GREY_0500
+    self.lineThickness = self.lineThickness or 10
+    self.dataSource    = self.dataSource or nil
+    self.graph         = self.graph or nil
+    self.scaleFactorX  = self.scaleFactorX or nil
+
+    -- Wenn bereits Source & Graph vorhanden → X-Skalierung vorab bestimmen
+    if self.dataSource and self.graph then
+        self:setDataSource(self.dataSource)
     end
-    return plotter
+    return self
 end
 
+---Bind data source & compute X scaling
+---@param dataSource table|nil
 function Plotter:setDataSource(dataSource)
     self.dataSource = dataSource
     if not (self.graph and self.graph.dimensions and self.dataSource and self.dataSource.getMaxSize) then
@@ -224,10 +318,13 @@ function Plotter:setDataSource(dataSource)
     end
 end
 
+---@param color Color
 function Plotter:setColor(color) self.color = color end
 
+---@param lineThickness number
 function Plotter:setLineThickness(lineThickness) self.lineThickness = lineThickness end
 
+---Render polyline from data source
 function Plotter:draw()
     if not (self.dataSource and self.dataSource.iterate) then return end
     if not (self.graph and self.graph.dimensions) then return end
@@ -254,20 +351,31 @@ end
 --------------------------------------------------------------------------------
 -- Graph
 --------------------------------------------------------------------------------
-Graph = ScreenElement:new()
+
+---@class Graph : ScreenElement
+---@field scaleFactorY      number|nil
+---@field maxVal            number|nil
+---@field scaleMarginFactor number    -- z.B. 0.2 → 20% Luft über Datenmaximum
+---@field dataSources       table[]   -- Quellen, aus denen maxVal berechnet wird
+---@field plotters          table<string, Plotter>
+Graph = setmetatable({}, { __index = ScreenElement })
 Graph.__index = Graph
 
+---@param o table|nil
+---@return Graph
 function Graph.new(o)
-    local g             = setmetatable(o or {}, Graph)
-    g.scaleFactorY      = g.scaleFactorY or nil
-    g.maxVal            = g.maxVal or nil
-    g.dimensions        = g.dimensions or nil
-    g.scaleMarginFactor = g.scaleMarginFactor or 0.2
-    g.dataSources       = g.dataSources or {}
-    g.plotters          = g.plotters or {}
-    return g
+    local self             = ScreenElement.new(Graph, o or {})
+    self.scaleFactorY      = self.scaleFactorY or nil
+    self.maxVal            = self.maxVal or nil
+    self.scaleMarginFactor = self.scaleMarginFactor or 0.2
+    self.dataSources       = self.dataSources or {}
+    self.plotters          = self.plotters or {}
+    return self
 end
 
+---Add a named plotter
+---@param name string
+---@param config table|nil
 function Graph:addPlotter(name, config)
     local plotter = Plotter.new()
     self.plotters[name] = plotter
@@ -276,6 +384,9 @@ function Graph:addPlotter(name, config)
     end
 end
 
+---Configure an existing plotter
+---@param name string
+---@param config table
 function Graph:configurePlotter(name, config)
     local plotter = self.plotters[name]
     for k, v in pairs(config) do plotter[k] = v end
@@ -288,6 +399,8 @@ function Graph:configurePlotter(name, config)
     end
 end
 
+---Set max Y value (recomputes Y scale)
+---@param maxVal number
 function Graph:setMaxVal(maxVal)
     if not maxVal or maxVal <= 0 then maxVal = 1 end
     self.maxVal = maxVal
@@ -296,6 +409,8 @@ function Graph:setMaxVal(maxVal)
     end
 end
 
+---Set graph dimensions and propagate to DS/plotters
+---@param dimensions Vector2d
 function Graph:setDimensions(dimensions)
     self.dimensions = dimensions
     -- push dimensions to data sources if they want it
@@ -308,6 +423,7 @@ function Graph:setDimensions(dimensions)
     end
 end
 
+---Draw all plotters (auto-resize if needed)
 function Graph:draw()
     if self.maxVal == nil then self:autoResize() end
     for _, plotter in pairs(self.plotters) do
@@ -315,6 +431,7 @@ function Graph:draw()
     end
 end
 
+---Auto-adjust Y scale to data (with margin)
 function Graph:autoResize()
     local maxVal = self:getMaxVal()
     if not maxVal then return end
@@ -330,6 +447,8 @@ function Graph:autoResize()
     end
 end
 
+---(Re)compute Y scale from maxVal and margin
+---@param maxVal number
 function Graph:initScaleFactors(maxVal)
     maxVal = (maxVal and maxVal > 0) and maxVal or 1e-8
     if self.dimensions then
@@ -337,6 +456,8 @@ function Graph:initScaleFactors(maxVal)
     end
 end
 
+---Compute overall max across data sources
+---@return number
 function Graph:getMaxVal()
     local maxVal = 0
     for _, ds in ipairs(self.dataSources) do
@@ -351,26 +472,40 @@ end
 --------------------------------------------------------------------------------
 -- Progressbar
 --------------------------------------------------------------------------------
-Progressbar = ScreenElement:new()
+
+---@class Progressbar : ScreenElement
+---@field value number         -- 0..1
+---@field bg    Color          -- Hintergrundfarbe
+---@field fg    Color|nil      -- optionale Füllfarbe (sonst grün→rot Verlauf)
+Progressbar = setmetatable({}, { __index = ScreenElement })
 Progressbar.__index = Progressbar
 
+---@param o table|nil
+---@return Progressbar
 function Progressbar.new(o)
-    local p = setmetatable(o or {}, Progressbar)
-    p.value = p.value or 0
-    p.bg    = p.bg or Color.WHITE
-    p.fg    = p.fg or nil
-    return p
+    -- Basisklasse initialisieren → position = (0,0), subElements = {}
+    local self = ScreenElement.new(Progressbar, o or {})
+    self.value = self.value or 0
+    self.bg    = self.bg or Color.WHITE
+    self.fg    = self.fg or nil
+    -- dimensions bleiben absichtlich nil; werden beim Zeichnen mit Default belegt
+    return self
 end
 
+---Set clamped value
+---@param value number
 function Progressbar:setValue(value)
     if value < 0 then value = 0 elseif value > 1 then value = 1 end
     self.value = value
 end
 
+---@param bg Color
 function Progressbar:setBackground(bg) self.bg = bg end
 
+---@param fg Color|nil
 function Progressbar:setForeground(fg) self.fg = fg end
 
+---Render progress bar (background + fill)
 function Progressbar:draw()
     -- robust clamp
     local v = self.value

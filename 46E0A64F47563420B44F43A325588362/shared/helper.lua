@@ -76,6 +76,29 @@ function de_umlaute(s)
   --return s
 end
 
+-- true, wenn sub als *reiner* Teilstring in s vorkommt (kein Pattern)
+---@param s string
+---@param sub string
+---@param caseSensitiv boolean
+---@return boolean   -- true, wenn sub als *reiner* Teilstring in s vorkommt (kein Pattern)
+function string_contains(s, sub, caseSensitiv)
+  if not caseSensitiv then
+    caseSensitiv = true
+  end
+  if caseSensitiv then
+    if s == nil or sub == nil then return false end
+    return string.find(s, sub, 1, true) ~= nil
+  else
+    return string_icontains(s, sub)
+  end
+end
+
+-- case-insensitive Suche (ebenfalls ohne Patterns)
+function string_icontains(s, sub)
+  if s == nil or sub == nil then return false end
+  return string.find(string.lower(s), string.lower(sub), 1, true) ~= nil
+end
+
 -------------------------------
 -- Komponenten
 -------------------------------
@@ -191,4 +214,3 @@ end
 function pj(value)
   print(pretty_json(value))
 end
-

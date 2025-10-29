@@ -100,7 +100,7 @@ print(b, b:isInput(), b:isOutput())   -- Output{...}  false true]]
 ---@class FabricInfo
 ---@field fName string|nil
 ---@field fCoreNetworkCard string|nil
----@field fType integer|string|nil
+---@field fType MyItem | nil
 ---@field inputs  table<string, Input>   -- key: Itemname
 ---@field outputs table<string, Output>  -- key: Itemname
 FabricInfo = {
@@ -131,7 +131,7 @@ function FabricInfo:setName(name)
     self.fName = name
 end
 
----@param type string|integer
+---@param type MyItem
 function FabricInfo:setType(type)
     self.fType = type
 end
@@ -202,7 +202,6 @@ function FabricInfo:check(fabric)
     return true
 end
 
-
 --------------------------------------------------------------------------------
 -- Hilfsfunktionen (Namensbildung → deine Komponenten-Suche)
 --------------------------------------------------------------------------------
@@ -216,7 +215,7 @@ function containerByFabricStack(fabricName, itemStack)
     if itemStack:isOutput() then
         nick = nick .. de_umlaute(itemStack.itemClass.name)
     else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. fabricName
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(fabricName)
     end
 
     return byAllNick(nick)
@@ -231,7 +230,21 @@ function trainstationByFabricStack(fabricName, itemStack)
     if itemStack:isOutput() then
         nick = nick .. de_umlaute(itemStack.itemClass.name)
     else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. fabricName
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(fabricName)
+    end
+    return byAllNick(nick)
+end
+
+---@param fabricName string
+---@param itemStack FabricStack
+---@return Build_RailroadBlockSignal_C
+function trainsignalByFabricStack(fabricName, itemStack)
+    local nick = "Trainsignal "
+
+    if itemStack:isOutput() then
+        nick = nick .. de_umlaute(itemStack.itemClass.name)
+    else
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(fabricName)
     end
     return byAllNick(nick)
 end

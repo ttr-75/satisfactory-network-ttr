@@ -141,8 +141,8 @@ end
 --@param id  string
 --@param status boolean
 local function setSignal(id, status)
-    signal = component.proxy(id)
-    block = signal:getObservedBlock()
+    local signal = component.proxy(id)
+    local block = signal:getObservedBlock()
     if status then
         if block.isPathBlock then
             block.isPathBlock = false

@@ -1,7 +1,7 @@
 names = { "shared/helper.lua",
     "shared/items.lua",
     "shared/graphics.lua",
-    "fabricRegistry/fabricInfo.lua",
+    "fabricRegistry/FabricInfo.lua",
     "fabricRegistry/fabricRegistry.lua",
     "fabricRegistry/FabricRegistryServer.lua",
     "fabricDashboard.lua",

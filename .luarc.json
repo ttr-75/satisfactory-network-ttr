@@ -1,0 +1,9 @@
+{
+  "workspace.library": [
+    "library"
+  ],
+  "workspace.ignoreDir": [
+    "workspace",
+    "EEPROM"
+  ]
+}
