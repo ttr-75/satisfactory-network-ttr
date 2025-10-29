@@ -1,5 +1,3 @@
-LOG_MIN = 0
-
 ---@diagnostic disable: duplicate-doc-field, duplicate-set-field, redefined-local, lowercase-global
 
 
@@ -7,7 +5,7 @@ LOG_MIN = 0
 -- helper.lua – Kleine Helferlein für Logging
 -- Optimiert & ausführlich kommentiert
 ----------------------------------------------------------------
-
+LOG_MIN = 1
 -------------------------------
 -- Logging
 -------------------------------
@@ -42,279 +40,33 @@ NET_CMD_CODE_DISPATCH_GET_EEPROM = "getEEPROM"
 NET_CMD_CODE_DISPATCH_RESET_ALL  = "resetAll"
 
 
-
-
-----------------------------------------------------------------
--- FileIO (FicsIt Network kompatibel)
--- - Auto-Mount von /dev/* auf self.root (Default: "/srv")
--- - exists / isFile / isDir / list / mkdir / rm
--- - readAllText / readAllBinary / writeText / appendText / writeBinary
--- - copy / move / tryRead*
-----------------------------------------------------------------
-
-FileIO = {}
-FileIO.__index = FileIO
-
--- ==== interne Helfer ====
-
-local function _sanitize(rel)
-    rel = tostring(rel or "")
-    rel = rel:gsub("^/*", "")
-    assert(not rel:find("%.%.", 1, true), "FileIO: Pfad darf kein '..' enthalten")
-    return rel
-end
-
-local function _join(root, rel)
-    rel = _sanitize(rel)
-    if root == "/" then return "/" .. rel end
-    if root:sub(-1) == "/" then return root .. rel end
-    return root .. "/" .. rel
-end
-
--- NEU: echtes dirname
-local function _dirname(p)
-    p = tostring(p or "")
-    -- trailing slashes weg
-    p = p:gsub("/+$", "")
-    -- alles bis vor dem letzten / behalten
-    local dir = p:match("^(.*)/[^/]*$") or ""
-    if dir == "" then return "/" end
-    return dir
-end
-
--- Elternordner des ZIEL-Dateipfads sicherstellen
-local function _ensure_parent_dir(filePath)
-    local dir = _dirname(filePath)
-    if dir and not filesystem.exists(dir) then
-        filesystem.createDir(dir) -- FN: createDir
+-------------------------------
+-- Listener-Debug-Helfer
+-------------------------------
+-- Warum xpcall? Viele Event-Dispatcher „schlucken“ Errors.
+-- Mit xpcall + traceback loggen wir jeden Fehler *sichtbar* (Level 4).
+local function _traceback(tag)
+    return function(err)
+        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
+        computer.log(4, tb)
+        return tb
     end
 end
 
-
--- isDir kann unterschiedlich heißen; wir nehmen isDir, fallback isDirectory
-local _isDirFn = filesystem.isDir or filesystem.isDirectory
-
--- ==== Konstruktor ====
-
--- opts.root       : Mountpunkt (Default "/srv")
--- opts.chunk      : Lesepuffer (Default 64*1024)
--- opts.autoMount  : true/false (Default true)
--- opts.searchFile : optionaler Dateiname zur Verifikation nach Mount
-function FileIO.new(opts)
-    local self       = setmetatable({}, FileIO)
-    self.root        = (opts and opts.root) or "/srv"
-    self.readChunk   = (opts and opts.chunk) or (64 * 1024)
-    self.autoMount   = (opts and opts.autoMount ~= false)
-    self.searchFile  = (opts and opts.searchFile) or nil
-
-    self._mounted    = false
-    self._mountedDev = nil -- z.B. "/dev/XYZ"
-    self._mountedId  = nil -- z.B. "XYZ"
-    return self
-end
-
--- ==== Mount-Logik ====
-
-function FileIO:_rootLooksReady()
-    if not filesystem.exists(self.root) then return false end
-    local ok = pcall(function() return filesystem.children(self.root) end)
-    return ok
-end
-
-function FileIO:_tryMount()
-    -- /dev initialisieren (FN)
-    pcall(function() filesystem.initFileSystem("/dev") end)
-
-    local devs = filesystem.children("/dev") or {}
-    for _, dev in pairs(devs) do
-        local drive = filesystem.path("/dev", dev)
-        local ok = pcall(function() filesystem.mount(drive, self.root) end)
-        if ok then
-            -- Merken, welches Device wir gemountet haben
-            self._mountedDev = drive
-            self._mountedId  = tostring(drive):match("^/dev/(.+)$")
-
-            if not self.searchFile then
-                return true
-            else
-                local testPath = _join(self.root, self.searchFile)
-                if filesystem.exists(testPath) then
-                    return true
-                else
-                    pcall(function() filesystem.unmount(drive) end)
-                    self._mountedDev, self._mountedId = nil, nil
-                end
-            end
-        end
+-- safe_listener(tag, fn): verpackt fn in xpcall, sodass Fehler nicht „leise“ bleiben.
+function safe_listener(tag, fn)
+    assert(type(fn) == "function", "safe_listener needs a function")
+    return function(...)
+        local ok, res = xpcall(fn, _traceback(tag), ...)
+        return res
     end
-    return false
 end
 
-function FileIO:ensureMounted()
-    if self._mounted then return true end
-    if self:_rootLooksReady() then
-        self._mounted = true
-        return true
-    end
-    if not self.autoMount then return false end
-    local ok = self:_tryMount()
-    self._mounted = ok and self:_rootLooksReady() or false
-    return self._mounted
-end
-
--- ==== public helpers ====
-
-function FileIO:abs(rel) return _join(self.root, rel) end
-
-function FileIO:getMountedDevice() return self._mountedDev end -- "/dev/XYZ" oder nil
-
-function FileIO:getMountedId() return self._mountedId end      -- "XYZ" oder nil
-
--- ==== Abfragen ====
-
-function FileIO:exists(rel)
-    self:ensureMounted()
-    return filesystem.exists(self:abs(rel))
-end
-
-function FileIO:isFile(rel)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    return filesystem.exists(p) and filesystem.isFile(p)
-end
-
-function FileIO:isDir(rel)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    if not filesystem.exists(p) then return false end
-    if _isDirFn then
-        return _isDirFn(p)
-    end
-    -- Fallback (falls weder isDir noch isDirectory existiert):
-    -- Heuristik: ein Pfad ist "Dir", wenn children nicht fehlschlägt.
-    local ok = pcall(function() return filesystem.children(p) end)
-    return ok
-end
-
-function FileIO:list(rel)
-    self:ensureMounted()
-    local p = self:abs(rel or "")
-    if not filesystem.exists(p) then return {} end
-    return filesystem.children(p) or {}
-end
-
--- ==== Erstellen / Löschen ====
-
-function FileIO:mkdir(rel)
-    self:ensureMounted()
-    filesystem.createDir(self:abs(rel))
-end
-
-function FileIO:rm(rel, rekursiv)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    if rekursiv and ((_isDirFn and _isDirFn(p)) or (not _isDirFn and filesystem.exists(p))) then
-        for _, name in ipairs(filesystem.children(p) or {}) do
-            self:rm(_sanitize(rel) .. "/" .. name, true)
-        end
-    end
-    filesystem.remove(p)
-end
-
--- ==== Lesen/Schreiben ====
-
-function FileIO:readAllText(rel)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    local f = filesystem.open(p, "r")
-    assert(f, "FileIO: kann Datei nicht öffnen (r): " .. p)
-    local buf, chunk = "", nil
-    repeat
-        chunk = f:read(self.readChunk)
-        if chunk then buf = buf .. chunk end
-    until not chunk
-    f:close()
-    return buf
-end
-
-function FileIO:readAllBinary(rel)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    local f = filesystem.open(p, "rb")
-    assert(f, "FileIO: kann Datei nicht öffnen (rb): " .. p)
-    local buf, chunk = "", nil
-    repeat
-        chunk = f:read(self.readChunk)
-        if chunk then buf = buf .. chunk end
-    until not chunk
-    f:close()
-    return buf
-end
-
-function FileIO:writeText(rel, text)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    _ensure_parent_dir(p)
-    local f = filesystem.open(p, "w")
-    assert(f, "FileIO: kann Datei nicht öffnen (w): " .. p)
-    f:write(tostring(text or ""))
-    f:close()
-end
-
-function FileIO:appendText(rel, text)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    _ensure_parent_dir(p)
-    local f = filesystem.open(p, "a")
-    assert(f, "FileIO: kann Datei nicht öffnen (a): " .. p)
-    f:write(tostring(text or ""))
-    f:close()
-end
-
-function FileIO:writeBinary(rel, bytes)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    _ensure_parent_dir(p)
-    local f = filesystem.open(p, "wb")
-    assert(f, "FileIO: kann Datei nicht öffnen (wb): " .. p)
-    f:write(bytes or "")
-    f:close()
-end
-
-function FileIO:writeBinaryArray(rel, bytes)
-    self:ensureMounted()
-    local p = self:abs(rel)
-    _ensure_parent_dir(p)
-    local f = filesystem.open(p, "wb")
-    assert(f, "FileIO: kann Datei nicht öffnen (wb): " .. p)
-    for i = 1, #bytes do
-        f:write(bytes[i] or "")
-    end
-    f:close()
-end
-
--- ==== Utilities ====
-
-function FileIO:copy(srcRel, dstRel)
-    local src = self:readAllBinary(srcRel)
-    self:writeBinary(dstRel, src)
-end
-
-function FileIO:move(srcRel, dstRel)
-    self:copy(srcRel, dstRel)
-    self:rm(srcRel)
-end
-
-function FileIO:tryReadText(rel)
-    local ok, res = pcall(function() return self:readAllText(rel) end)
-    if ok then return res end
-    return nil, res
-end
-
-function FileIO:tryReadBinary(rel)
-    local ok, res = pcall(function() return self:readAllBinary(rel) end)
-    if ok then return res end
-    return nil, res
+-- hübsches Argument-Logging
+function fmt_args(...)
+    local t = table.pack(...)
+    for i = 1, t.n do t[i] = tostring(t[i]) end
+    return table.concat(t, ", ")
 end
 
 -------------------------------------------------------
@@ -475,73 +227,280 @@ end
 NET_PORT_DEFAULT = NET_PORT_DEFAULT
 
 
-----------------------------------------------------------------
--- helper_comments.lua – Kleine Helferlein
-----------------------------------------------------------------
+---@diagnostic disable: lowercase-global
+
 -------------------------------------------------------------------------------
---- CodeDispatchServer
+--- CodeDispatchClient (Prototyp-Methoden, gleiche Logik)
 -------------------------------------------------------------------------------
 
----@class CodeDispatchServer : NetworkAdapter
----@field fsio FileIO
-local CodeDispatchServer = setmetatable({}, { __index = NetworkAdapter })
-CodeDispatchServer.__index = CodeDispatchServer
+---@class CodeDispatchClient : NetworkAdapter
+---@field requestCompleted table<string, boolean>   -- Name -> ob Code empfangen/geparsed
+---@field loadingRegistry  string[]                 -- Warteschlange der anzufordernden Dateien
+---@field codes            table<string, function>  -- Name -> geladene Chunk-Funktion
+---@field codeOrder        string[]                 -- Ausführungsreihenfolge
+---@field _onReset         (fun()|nil)              -- optionaler Reset-Callback
+CodeDispatchClient = setmetatable({}, { __index = NetworkAdapter })
+CodeDispatchClient.__index = CodeDispatchClient
+
+-- ========= Konstruktor =======================================================
 
 ---@param opts table|nil
----@return CodeDispatchServer
-function CodeDispatchServer.new(opts)
-    -- generischer Basiskonstruktor → sofort ein CodeDispatchServer-Objekt
-    local self = NetworkAdapter.new(CodeDispatchServer, opts)
-    self.name  = NET_NAME_CODE_DISPATCH_SERVER
-    self.port  = NET_PORT_CODE_DISPATCH
-    self.ver   = 1
+---@return CodeDispatchClient
+function CodeDispatchClient.new(opts)
+    -- Generischer Basiskonstruktor: gibt bereits CodeDispatchClient zurück
+    local self            = NetworkAdapter.new(CodeDispatchClient, opts)
+    self.name             = NET_NAME_CODE_DISPATCH_CLIENT
+    self.port             = NET_PORT_CODE_DISPATCH
+    self.ver              = 1
 
-    self.fsio  = FileIO.new { root = "/srv" }
-    -- Listener registrieren (reiner Dispatch)
+    self.requestCompleted = {}
+    self.loadingRegistry  = {}
+    self.codes            = {}
+    self.codeOrder        = {}
+    self._onReset         = nil
+
+    -- Listener registrieren (reiner Dispatch → ruft Prototyp-Methoden)
     self:registerWith(function(from, port, cmd, programName, code)
         if port ~= self.port then return end
-        if cmd == NET_CMD_CODE_DISPATCH_GET_EEPROM then
-            self:onGetEEPROM(from, tostring(programName or ""))
+
+        if cmd == NET_CMD_CODE_DISPATCH_SET_EEPROM then
+            log(0, ('CDC: got code for "%s" from "%s"'):format(tostring(programName), tostring(from)))
+            self:onSetEEPROM(tostring(programName or ""), tostring(code or ""))
+        elseif cmd == NET_CMD_CODE_DISPATCH_RESET_ALL then
+            log(2, ('CDC: received resetAll from "%s"'):format(tostring(from)))
+            if self._onReset then
+                local ok, err = pcall(self._onReset)
+                if not ok then log(3, "CDC: reset handler error: " .. tostring(err)) end
+            end
+            computer.reset()
         end
     end)
 
     return self
 end
 
+-- ========= Hilfs-Methoden (aus lokalen Funktionen gemacht) ===================
 
---- Antwortet auf GET_EEPROM mit dem angeforderten Code.
----@param fromId string
----@param programName string
-function CodeDispatchServer:onGetEEPROM(fromId, programName)
-    local fallback = [[
-        print("Invalid Net-Boot-Program: Program not found!")
-        event.pull(5)
-        computer.reset()
-    ]]
-
-    local ok, code = pcall(function()
-    local text = self.fsio:readAllText(programName)
-        return text
-    end)
-
-    local payload = (ok and code) or fallback
-    log(1, ('CodeDispatchServer: request "%s" from "%s"'):format(programName, tostring(fromId)))
-    self:send(fromId, NET_CMD_CODE_DISPATCH_SET_EEPROM, programName, payload)
+--- Prüft, ob ein Name in der Registry steht.
+---@param name string
+---@return boolean
+function CodeDispatchClient:existsInRegistry(name)
+    for _, n in pairs(self.loadingRegistry) do
+        if n == name then return true end
+    end
+    return false
 end
 
-function CodeDispatchServer:run()
-    self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
-    log(1, "CodeDispatchServer: broadcast resetAll")
-    while true do
+--- Sucht den Index eines Werts in einem Array.
+---@param a string[]
+---@param value string
+---@return integer|nil
+function CodeDispatchClient:indexOfIn(a, value)
+    for i = 1, #a do
+        if a[i] == value then return i end
+    end
+    return nil
+end
+
+--- Entfernt das erste Vorkommen eines Werts aus einem Array.
+---@param a string[]
+---@param value string
+---@return boolean removed
+function CodeDispatchClient:removeFrom(a, value)
+    local i = self:indexOfIn(a, value)
+    if i then
+        table.remove(a, i); return true
+    end
+    return false
+end
+
+--- Fügt an Position i ein (mit Bounds-Clamp).
+---@param a string[]
+---@param i integer|nil
+---@param v string
+---@return integer pos
+function CodeDispatchClient:insertAt(a, i, v)
+    local n = #a
+    if i == nil then i = n + 1 end
+    if i < 1 then i = 1 end
+    if i > n + 1 then i = n + 1 end
+    table.insert(a, i, v)
+    return i
+end
+
+--- Splittet Content an Marker "CodeDispatchClient:finished()".
+---@param content string
+---@return string|nil before
+---@return string after
+function CodeDispatchClient:split_on_finished(content)
+    assert(type(content) == "string", "content muss String sein")
+    local marker = "CodeDispatchClient:finished()"
+    local s, e = string.find(content, marker, 1, true)
+    if not s then
+        return nil, content
+    end
+    return string.sub(content, 1, s - 1), string.sub(content, e + 1)
+end
+
+-- ========= Öffentliche Methoden (Logik beibehalten) ==========================
+
+--- Optionaler Reset-Callback setzen.
+---@param fn fun()|nil
+function CodeDispatchClient:setResetHandler(fn)
+    assert(fn == nil or type(fn) == "function", "setResetHandler: function or nil expected")
+    self._onReset = fn
+end
+
+--- Handler: eingehenden Code verarbeiten.
+---@param programName string
+---@param content string
+function CodeDispatchClient:onSetEEPROM(programName, content)
+    self:parseModule(programName, content)
+end
+
+--- Parst „Register“-Teil (optional) und speichert den ausführbaren Rest.
+---@param name string
+---@param content string|nil
+function CodeDispatchClient:parseModule(name, content)
+    if not content then
+        log(3, "CodeDispatchClient:Could not load " .. tostring(name) .. ": Not found.")
+        return
+    end
+
+    local register, rest = self:split_on_finished(content)
+
+    if register ~= nil then
+        log(1, "CDC: parse register " .. tostring(name))
+        local regFn, err = load(register)
+        if not regFn then
+            log(4, "CDC: register parse error " .. tostring(err))
+        else
+            local ok, perr = pcall(regFn)
+            if not ok then log(4, perr) end
+        end
+    else
+        rest = content
+    end
+
+    log(1, "CDC: parse content " .. tostring(name))
+    local codeFn, err2 = load(rest)
+    if not codeFn then
+        log(4, "CDC: content parse error " .. tostring(err2))
+        return
+    end
+
+    self.codes[name]            = codeFn
+    self.requestCompleted[name] = true
+    log(1, "CDC: stored chunk for " .. tostring(name))
+end
+
+--- Fordert ein einzelnes Modul an (wenn noch nicht empfangen).
+---@param name string
+function CodeDispatchClient:loadModule(name)
+    if self.requestCompleted[name] then
+        log(2, ('CDC: already loaded "%s"'):format(name))
+        return
+    end
+    self:broadcast(NET_CMD_CODE_DISPATCH_GET_EEPROM, name)
+    log(0, ('CDC: broadcast GET_EEPROM "%s" on port %s'):format(name, self.port))
+    self.requestCompleted[name] = false
+end
+
+--- Marker-Funktion (wird serverseitig am Code erkannt).
+function CodeDispatchClient:finished() end
+
+--- Lädt registrierte Module nacheinander und wartet auf deren Empfang.
+---@return boolean|nil false wenn sofort alles ausgeführt wurde
+function CodeDispatchClient:loadAndWait()
+    if #self.loadingRegistry == 0 then
+        self:callAllLoadedFiles()
+        return false
+    end
+
+    local nextName = self.loadingRegistry[1]
+    while self:removeFrom(self.loadingRegistry, nextName) do end
+
+    self:loadModule(nextName)
+
+    while self.requestCompleted[nextName] == false do
         future.run()
     end
+
+    self:loadAndWait()
 end
-LOG_MIN = 0
+
+--- Führt alle gespeicherten Module in definierter Reihenfolge aus.
+function CodeDispatchClient:callAllLoadedFiles()
+    for i = 1, #self.codeOrder do
+        local name = self.codeOrder[i]
+        log(1, "CDC: run " .. tostring(name))
+        local ok, err = pcall(self.codes[name])
+        if not ok then log(4, err) end
+    end
+    self.codeOrder = {}
+    self.codes     = {}
+end
+
+--- Interner Registrierer (wie dein ursprüngliches `register`).
+---@param name string
+function CodeDispatchClient:_register(name)
+    if self.requestCompleted[name] == nil then
+        if not self:existsInRegistry(name) then
+            log(0, "CDC: register " .. tostring(name))
+            self:insertAt(self.loadingRegistry, 1, name)
+            self:insertAt(self.codeOrder, 1, name)
+        else
+            log(0, "CDC: re-register " .. tostring(name))
+            while self:removeFrom(self.loadingRegistry, name) do end
+            self:insertAt(self.loadingRegistry, 1, name)
+        end
+        while self:removeFrom(self.codeOrder, name) do end
+        self:insertAt(self.codeOrder, 1, name)
+    end
+end
+
+--- Fügt mehrere Namen zur Ladeliste hinzu (reihenfolgebehaftet wie zuvor).
+---@param names string[]
+function CodeDispatchClient:registerForLoading(names)
+    local n = #names
+    local out = {}
+    for i = 1, n do out[i] = names[n - i + 1] end
+    for i = 1, #out do
+        self:_register(out[i])
+    end
+end
+
 
 local nic = computer.getPCIDevices(classes.NetworkCard)[1]
 assert(nic, "Keine NIC")
 NetHub:init(nic)
 
-CodeDispatchServer = CodeDispatchServer.new()
+CodeDispatchClient = CodeDispatchClient.new()
 
-CodeDispatchServer:run()
+names = {"fabricRegistry/starter/fabricRegistry.lua"}
+--names = {"net/media/MediaClient.lua"}
+--names = {"shared/helper.lua"}
+CodeDispatchClient:registerForLoading(names)
+
+CodeDispatchClient:loadAndWait()
+
+
+--local msRef = component.findComponent(FINMediaSubsystem.classes)[1]
+--print(computer.media)
+
+--[[
+CodeDispatchClient:loadModule("helper.lua")
+CodeDispatchClient:loadModule("serializer.lua")
+CodeDispatchClient:loadModule("testFolder/testFile.lua")
+
+while not CodeDispatchClient:ready() do
+	future.run()
+end
+
+
+ODER
+
+
+names = {"helper.lua","serializer.lua","testFolder/testFile.lua","fabricRegistry/basics.lua"}
+CodeDispatchClient:loadAndWait(names)
+]]

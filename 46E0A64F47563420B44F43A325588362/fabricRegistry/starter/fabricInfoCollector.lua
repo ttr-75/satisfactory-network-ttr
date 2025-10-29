@@ -1,4 +1,5 @@
 local names = {
+    "config.lua",
     "fabricRegistry/FabricDataCollertor_Main.lua",
 }
 CodeDispatchClient:registerForLoading(names)

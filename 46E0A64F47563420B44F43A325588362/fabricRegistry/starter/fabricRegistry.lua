@@ -1,4 +1,6 @@
-local names = { "shared/helper.lua",
+local names = { 
+    "config.lua",
+    "shared/helper.lua",
    "shared/items/items[-LANGUAGE-].lua",
     "shared/graphics.lua",
     "fabricRegistry/FabricInfo.lua",

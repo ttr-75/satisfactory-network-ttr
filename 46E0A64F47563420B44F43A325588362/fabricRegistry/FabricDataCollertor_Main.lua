@@ -14,7 +14,7 @@ CodeDispatchClient:finished()
 -- Client
 --------------------------------------------------------------------------------
 
----@class FabricRegistryClient : NetworkAdapter
+---@class FabricDataCollertor : NetworkAdapter
 ---@field myFabricInfo FabricInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
@@ -22,7 +22,7 @@ FabricDataCollertor = setmetatable({}, { __index = NetworkAdapter })
 FabricDataCollertor.__index = FabricDataCollertor
 
 ---@param opts table|nil
----@return FabricRegistryClient
+---@return FabricDataCollertor
 function FabricDataCollertor.new(opts)
     assert(NetworkAdapter, "FabricRegistryClient.new: NetworkAdapter not loaded")
     opts              = opts or {}
@@ -157,6 +157,9 @@ function FabricDataCollertor:performUpdate()
             for _, product in pairs(products) do
                 local p = product
                 local item = MyItemList:get_by_Name(p.type.name)
+                if item == nil then
+                    break
+                end
                 item.max = p.type.max
                 local output = Output:new {
                     itemClass          = item,
@@ -238,6 +241,11 @@ function FabricDataCollertor:performUpdate()
             end
             for _, ingredient in pairs(recipe:getIngredients()) do
                 local item = MyItemList:get_by_Name(ingredient.type.name)
+                if item == nil then
+                    break
+                end
+
+
                 item.max = ingredient.type.max
                 local input = Input:new {
                     itemClass          = item,

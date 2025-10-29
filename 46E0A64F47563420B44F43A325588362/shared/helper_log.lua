@@ -18,7 +18,7 @@ local function _to_strings(tbl)
 end
 
 function log(level, ...)
-    if level >= (LOG_MIN or TTR_FIN_Config.LOG_LEVEL or 0) then
+    if level >= (LOG_MIN or TTR_FIN_Config and TTR_FIN_Config.LOG_LEVEL or 0) then
         local parts = _to_strings({ ... }) -- robust bei Zahlen, Booleans, Tabellen (tostring)
         computer.log(level, table.concat(parts, " "))
     end

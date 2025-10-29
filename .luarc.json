@@ -4,6 +4,6 @@
   ],
   "workspace.ignoreDir": [
     "workspace",
-    "EEPROM"
+    "*EEPROM*"
   ]
 }

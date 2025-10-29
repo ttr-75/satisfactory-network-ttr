@@ -19,10 +19,10 @@ CodeDispatchClient.__index = CodeDispatchClient
 ---@return CodeDispatchClient
 function CodeDispatchClient.new(opts)
     -- Generischer Basiskonstruktor: gibt bereits CodeDispatchClient zurück
-    local self = NetworkAdapter.new(CodeDispatchClient, opts)
-    self.name  = NET_NAME_CODE_DISPATCH_CLIENT
-    self.port  = NET_PORT_CODE_DISPATCH
-    self.ver   = 1
+    local self            = NetworkAdapter.new(CodeDispatchClient, opts)
+    self.name             = NET_NAME_CODE_DISPATCH_CLIENT
+    self.port             = NET_PORT_CODE_DISPATCH
+    self.ver              = 1
 
     self.requestCompleted = {}
     self.loadingRegistry  = {}
@@ -79,7 +79,9 @@ end
 ---@return boolean removed
 function CodeDispatchClient:removeFrom(a, value)
     local i = self:indexOfIn(a, value)
-    if i then table.remove(a, i); return true end
+    if i then
+        table.remove(a, i); return true
+    end
     return false
 end
 
@@ -217,7 +219,7 @@ function CodeDispatchClient:_register(name)
         if not self:existsInRegistry(name) then
             log(0, "CDC: register " .. tostring(name))
             self:insertAt(self.loadingRegistry, 1, name)
-            self:insertAt(self.codeOrder,      1, name)
+            self:insertAt(self.codeOrder, 1, name)
         else
             log(0, "CDC: re-register " .. tostring(name))
             while self:removeFrom(self.loadingRegistry, name) do end
@@ -239,3 +241,10 @@ function CodeDispatchClient:registerForLoading(names)
     end
 end
 
+--- Fügt name zur Ladeliste hinzu und startet den CLient.
+---@param name string | nil
+function CodeDispatchClient:startClient(name)
+    assert(name, "CodeDispatchClient:startClient(name): name can not be nil")
+    self:registerForLoading({ name })
+    self:loadAndWait()
+end

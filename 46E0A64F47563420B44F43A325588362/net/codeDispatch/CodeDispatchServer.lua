@@ -75,7 +75,11 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
     log(1, ('CodeDispatchServer: request "%s" from "%s"'):format(programName, tostring(fromId)))
 
     local ok, code = pcall(function()
-        local content = self.fsio:readAllText(programName)
+        local ok, content, err = self.fsio:readAllText(programName)
+        if not ok then
+            log(3, "Failed to read " .. programName, err)
+            return
+        end
         content = replace_language_chunk(content, TTR_FIN_Config.language)
         --content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
         return content
@@ -88,7 +92,6 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
 end
 
 --- Optionale Lauf-Schleife.
----@param timeout number|nil
 function CodeDispatchServer:run()
     self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
     log(1, "CodeDispatchServer: broadcast resetAll")

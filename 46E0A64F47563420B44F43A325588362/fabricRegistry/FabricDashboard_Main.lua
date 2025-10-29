@@ -13,7 +13,7 @@ CodeDispatchClient:finished()
 -- Client
 --------------------------------------------------------------------------------
 
----@class FabricRegistryClient : NetworkAdapter
+---@class FarbricDashboardClient : NetworkAdapter
 ---@field myFabricInfo FabricInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
@@ -21,7 +21,7 @@ FarbricDashboardClient = setmetatable({}, { __index = NetworkAdapter })
 FarbricDashboardClient.__index = FarbricDashboardClient
 
 ---@param opts table|nil
----@return FabricRegistryClient
+---@return FarbricDashboardClient
 function FarbricDashboardClient.new(opts)
     assert(NetworkAdapter, "FabricRegistryClient.new: NetworkAdapter not loaded")
     opts              = opts or {}

@@ -40,8 +40,21 @@ function FabricRegistryServer.new(opts)
             self:onRegister(from, a)
         elseif port == self.port and cmd == NET_CMD_UPDATE_FABRIC_IN_REGISTRY then
             self:onUpdateFabric(from, a)
-            -- elseif port == self.port and cmd == NET_CMD_RESET_ALL then
-            --     self:onGetFabricUpdate(fromId, a, b)
+        elseif port == self.port and cmd == NET_CMD_SHUT_DOWN_DUBLICATE_FABRICREGISTRY then
+            log(4, "UPSI....... I thought I'll be alone thx '" .. from .. "'")
+            log(4, " ... Shutting down now")
+            computer.stop()
+        elseif port == self.port and cmd == NET_CMD_RESET_FABRICREGISTRY then
+            if from == self.net.id then
+                log(0, "It's me, Mario")
+            else
+                log(4, "There is a second FabricRsistry started: Now send kill signal to " .. from)
+                self:send(from, NET_CMD_SHUT_DOWN_DUBLICATE_FABRICREGISTRY)
+            end
+            -- self:onRegistryReset(from)
+        else
+            -- Unerwartete Kommandos sichtbar machen
+            log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
         end
     end)
 
@@ -81,6 +94,7 @@ function FabricRegistryServer:onUpdateFabric(fromId, fabricInfoS)
     local o = J:decode(fabricInfoS)
     --print(arg1)
     --local id = o.fCoreNetworkCard
+    ---@cast o FabricInfo
     self.reg:update(o)
 end
 
@@ -93,7 +107,7 @@ function FabricRegistryServer:callForUpdates()
         local fabrics = self.reg:getAll()
         for name2, fabric in pairs(fabrics) do
             if self.reg:checkMinimum(fabric) then
-                local fromId = fabric.fCoreNetworkCard
+                local fromId = fabric.fCoreNetworkCard or ""
                 local name = fabric.fName
                 log(0, "Net-FabricRegistryServer: Send UpdateRequest for " .. name)
                 self:send(fromId, NET_CMD_CALL_FABRICS_FOR_UPDATES)
