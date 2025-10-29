@@ -3,9 +3,9 @@ local names = {
     "shared/helper.lua",
     "shared/items/items[-LANGUAGE-].lua",
     "shared/graphics.lua",
-    "fabricRegistry/FabricInfo.lua",
-    "fabricBillboard.lua",
-    "fabricDashboard.lua",
+    "factoryRegistry/FactoryInfo.lua",
+    "factoryBillboard.lua",
+    "factoryDashboard.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
@@ -33,5 +33,5 @@ log(1, "Billboard Creation")
 
 
 
-FabricBillbard:init(gpu, scr)
-FabricBillbard:run()
+FactoryBillbard:init(gpu, scr)
+FactoryBillbard:run()

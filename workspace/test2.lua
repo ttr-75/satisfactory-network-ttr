@@ -280,7 +280,7 @@ NetHub:init(nic)
 CodeDispatchClient = CodeDispatchClient.new()
 
 
-names = {"helper.lua","serializer.lua","testFolder/testFile.lua","fabricRegistry/FabricRegistryClient_loader.lua"}
+names = {"helper.lua","serializer.lua","testFolder/testFile.lua","factoryRegistry/FactoryRegistryClient_loader.lua"}
 CodeDispatchClient:registerForLoading(names)
 
 CodeDispatchClient:loadAndWait()
@@ -292,7 +292,7 @@ CodeDispatchClient:loadAndWait()
 
 
 
-names = {"helper.lua","serializer.lua","testFolder/testFile.lua","fabricRegistry/basics.lua"}
+names = {"helper.lua","serializer.lua","testFolder/testFile.lua","factoryRegistry/basics.lua"}
 CodeDispatchClient:loadAndWait(names)
 ]]
 --while not CodeDispatchClient:ready() do

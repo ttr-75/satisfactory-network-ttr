@@ -3,15 +3,15 @@ local names = {
     "shared/helper.lua",
    "shared/items/items[-LANGUAGE-].lua",
     "shared/graphics.lua",
-    "fabricRegistry/FabricInfo.lua",
-    "fabricRegistry/FabricRegistryServer_Main.lua",
+    "factoryRegistry/FactoryInfo.lua",
+    "factoryRegistry/FactoryRegistryServer_Main.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
 
 
 
-local regServer = FabricRegistryServer.new()
+local regServer = FactoryRegistryServer.new()
 
 
 while true do

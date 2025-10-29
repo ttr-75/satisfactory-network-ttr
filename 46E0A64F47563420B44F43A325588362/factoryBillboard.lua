@@ -1,10 +1,10 @@
 names = { "shared/helper.lua",
     "shared/items/items[-LANGUAGE-].lua",
     "shared/graphics.lua",
-    "fabricRegistry/FabricInfo.lua",
-    "fabricRegistry/FabricRegistry.lua",
-    "fabricRegistry/FabricRegistryServer.lua",
-    "fabricDashboard.lua",
+    "factoryRegistry/FactoryInfo.lua",
+    "factoryRegistry/FactoryRegistry.lua",
+    "factoryRegistry/FactoryRegistryServer.lua",
+    "factoryDashboard.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
@@ -18,56 +18,56 @@ Headline.textColor = Color.GREY_0750
 Headline.textVerticalOffset = -22
 
 
-FabricBillbard = {
+FactoryBillbard = {
     regServer = nil,
     gpu = nil,
     scr = nil,
-    currentFabric = nil,
+    currentFactory = nil,
     pollInterval = 1,
 }
 
-function FabricBillbard:init(gpu, scr)
-    print("\nInitialising FabricBillbard\n")
+function FactoryBillbard:init(gpu, scr)
+    print("\nInitialising FactoryBillbard\n")
     self.gpu = gpu
     self.scr = scr
-    self.regServer = FabricRegistryServer.new()
+    self.regServer = FactoryRegistryServer.new()
     self.regServer:broadcastRegistryReset()
 end
 
-function FabricBillbard:run()
-    local dash = FabricDashboard.new {}
+function FactoryBillbard:run()
+    local dash = FactoryDashboard.new {}
 
     local w, h = self.scr:getSize()
 
 
     dash:init(self.gpu, self.scr, w * 300, h * 300)
 
-    -- aus deiner FabricInfo befüllen:
-    --dash:setFromFabricInfo(myFabricInfo)
+    -- aus deiner FactoryInfo befüllen:
+    --dash:setFromFactoryInfo(myFactoryInfo)
 
     -- Loop
     while true do
         --local args = table.pack(event.pull(self.pollInterval))
         future.run()
         -- self.regServer:callbackEvent(args)
-        self.regServer:callForUpdates(self.currentFabric)
+        self.regServer:callForUpdates(self.currentFactory)
         --self:collectData()
 
-        if self.currentFabric == nil then
+        if self.currentFactory == nil then
             local reg = self.regServer:getRegistry()
             local all = reg:getAll()
-            for id, fabric in pairs(all) do
-                log(0, "Registered Fabrics id:" .. id)
-                if fabric ~= nil then
-                    self.currentFabric = fabric;
+            for id, factory in pairs(all) do
+                log(0, "Registered Factorys id:" .. id)
+                if factory ~= nil then
+                    self.currentFactory = factory;
                 end
             end
         end
 
-        dash:setFromFabricInfo(self.currentFabric)
+        dash:setFromFactoryInfo(self.currentFactory)
 
-        -- ggf. myFabricInfo:update(...) → dann erneut mappen:
-        -- dash:setFromFabricInfo(myFabricInfo)
+        -- ggf. myFactoryInfo:update(...) → dann erneut mappen:
+        -- dash:setFromFactoryInfo(myFactoryInfo)
         dash:paint() -- throttled: max 1x/s
     end
 
@@ -84,28 +84,28 @@ function FabricBillbard:run()
     while true do
         local args = table.pack(event.pull(self.pollInterval))
         self.regServer:callbackEvent(args)
-        self.regServer:callForUpdates(self.currentFabric)
+        self.regServer:callForUpdates(self.currentFactory)
         self:collectData()
 
-        if self.currentFabric == nil then
+        if self.currentFactory == nil then
             local reg = self.regServer:getRegistry()
             local all = reg:getAll()
-            for id, fabric in pairs(all) do
-                log(0, "Registered Fabrics id:" .. id)
-                if fabric ~= nil then
-                    self.currentFabric = fabric;
+            for id, factory in pairs(all) do
+                log(0, "Registered Factorys id:" .. id)
+                if factory ~= nil then
+                    self.currentFactory = factory;
                 end
             end
         end
 
-        if self.currentFabric ~= nil then
+        if self.currentFactory ~= nil then
             p:setValue(i)
 
             local myItem = nil
 
 
 
-            for _, output in pairs(self.currentFabric.outputs) do
+            for _, output in pairs(self.currentFactory.outputs) do
                 local itemName = output.itemClass.name
                 myItem = MyItemList:get_by_Name(itemName)
             end
@@ -125,13 +125,13 @@ function FabricBillbard:run()
     end]]
 end
 
-function FabricBillbard:collectData()
+function FactoryBillbard:collectData()
     -- for i = 1, #self.input do
     --   local inp = self.input[i]
     --end
 end
 
-function FabricBillbard:imageBox(position, item)
+function FactoryBillbard:imageBox(position, item)
     return {
         position = position,
         size = Vector2d.new(256, 256),

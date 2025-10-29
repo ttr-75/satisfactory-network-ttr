@@ -8,24 +8,24 @@ CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
 
 --------------------------------------------------------------------------------
--- Basisklasse: FabricStack
+-- Basisklasse: FactoryStack
 --------------------------------------------------------------------------------
 
----@class FabricStack
+---@class FactoryStack
 ---@field itemClass MyItem|nil
 ---@field amountStation integer
 ---@field amountContainer integer
 ---@field maxAmountStation integer
 ---@field maxAmountContainer integer
-FabricStack = {}
-FabricStack.__index = FabricStack
+FactoryStack = {}
+FactoryStack.__index = FactoryStack
 
 --- Generischer Basiskonstruktor:
----@generic T : FabricStack
+---@generic T : FactoryStack
 ---@param self T
 ---@param o table|nil
 ---@return T
-function FabricStack:new(o)
+function FactoryStack:new(o)
     o                    = o or {}
     -- Standard-Properties
     o.itemClass          = o.itemClass or nil
@@ -38,16 +38,16 @@ end
 
 -- Platzhalter-Implementierungen (werden in Subklassen überschrieben)
 ---@return boolean
-function FabricStack:isInput() return false end
+function FactoryStack:isInput() return false end
 
 ---@return boolean
-function FabricStack:isOutput() return false end
+function FactoryStack:isOutput() return false end
 
 --------------------------------------------------------------------------------
 -- Subklasse: Input
 --------------------------------------------------------------------------------
----@class Input : FabricStack
-Input = setmetatable({ __name = "Input" }, FabricStack)
+---@class Input : FactoryStack
+Input = setmetatable({ __name = "Input" }, FactoryStack)
 Input.__index = Input
 
 ---@param o table|nil
@@ -55,7 +55,7 @@ Input.__index = Input
 function Input:new(o)
     o = o or {}
     ---@cast o Input
-    return FabricStack.new(self, o) -- ruft Eltern-Constructor
+    return FactoryStack.new(self, o) -- ruft Eltern-Constructor
 end
 
 ---@return boolean
@@ -67,8 +67,8 @@ function Input:isOutput() return false end
 --------------------------------------------------------------------------------
 -- Subklasse: Output
 --------------------------------------------------------------------------------
----@class Output : FabricStack
-Output = setmetatable({ __name = "Output" }, FabricStack)
+---@class Output : FactoryStack
+Output = setmetatable({ __name = "Output" }, FactoryStack)
 Output.__index = Output
 
 ---@param o table|nil
@@ -76,7 +76,7 @@ Output.__index = Output
 function Output:new(o)
     o = o or {}
     ---@cast o Output
-    return FabricStack.new(self, o)
+    return FactoryStack.new(self, o)
 end
 
 ---@return boolean
@@ -92,19 +92,19 @@ local b = Output:new{ itemClass="Screw", amountStation=300, amountContainer=1500
 print(a, a:isInput(), a:isOutput())   -- Input{...}   true  false
 print(b, b:isInput(), b:isOutput())   -- Output{...}  false true]]
 
---- Fabric Info
+--- Factory Info
 
 --------------------------------------------------------------------------------
--- FabricInfo
+-- FactoryInfo
 --------------------------------------------------------------------------------
----@class FabricInfo
+---@class FactoryInfo
 ---@field fName string|nil
 ---@field fCoreNetworkCard string|nil
 ---@field fType MyItem | nil
 ---@field inputs  table<string, Input>   -- key: Itemname
 ---@field outputs table<string, Output>  -- key: Itemname
-FabricInfo = {
-    __name = "FabricInfo",
+FactoryInfo = {
+    __name = "FactoryInfo",
     fName = nil,
     fType = nil,
     fCoreNetworkCard = nil,
@@ -113,43 +113,43 @@ FabricInfo = {
 }
 
 ---@param o table|nil
----@return FabricInfo
-function FabricInfo:new(o)
+---@return FactoryInfo
+function FactoryInfo:new(o)
     o                  = o or {}
     o.fName            = o.fName or nil
     o.fType            = o.fType or nil
     o.fCoreNetworkCard = o.fCoreNetworkCard or nil
     o.inputs           = o.inputs or {} -- ← NEU (sonst shared!)
     o.outputs          = o.outputs or {}
-    o.__name           = "FabricInfo"
+    o.__name           = "FactoryInfo"
     self.__index       = self
     return setmetatable(o, self)
 end
 
 ---@param name string
-function FabricInfo:setName(name)
+function FactoryInfo:setName(name)
     self.fName = name
 end
 
 ---@param type MyItem
-function FabricInfo:setType(type)
+function FactoryInfo:setType(type)
     self.fType = type
 end
 
 ---@param coreNetworkCard string
-function FabricInfo:setCoreNetworkCard(coreNetworkCard)
+function FactoryInfo:setCoreNetworkCard(coreNetworkCard)
     self.fCoreNetworkCard = coreNetworkCard
 end
 
---- Merge eines eintreffenden FabricInfo-Snapshots in diese Instanz.
----@param fabric FabricInfo
-function FabricInfo:update(fabric)
+--- Merge eines eintreffenden FactoryInfo-Snapshots in diese Instanz.
+---@param factory FactoryInfo
+function FactoryInfo:update(factory)
     -- Outputs zuerst, dann Inputs (Reihenfolge beliebig, semantisch getrennt)
-    for _, outStack in pairs(fabric.outputs) do
+    for _, outStack in pairs(factory.outputs) do
         ---@cast outStack Output
         self:updateOutput(outStack)
     end
-    for _, inStack in pairs(fabric.inputs) do
+    for _, inStack in pairs(factory.inputs) do
         ---@cast inStack Input
         self:updateInput(inStack)
     end
@@ -157,7 +157,7 @@ end
 
 --- Einzelnen Output-Stack aktualisieren/setzen.
 ---@param output Output
-function FabricInfo:updateOutput(output)
+function FactoryInfo:updateOutput(output)
     if self.outputs[output.itemClass.name] == nil then
         self.outputs[output.itemClass.name] = output
     else
@@ -170,7 +170,7 @@ end
 
 --- Einzelnen Input-Stack aktualisieren/setzen.
 ---@param input Input
-function FabricInfo:updateInput(input)
+function FactoryInfo:updateInput(input)
     if self.inputs[input.itemClass.name] == nil then
         self.inputs[input.itemClass.name] = input
     else
@@ -179,23 +179,23 @@ function FabricInfo:updateInput(input)
     end
 end
 
----@param fabric FabricInfo|nil
+---@param factory FactoryInfo|nil
 ---@return boolean
-function FabricInfo:check(fabric)
-    if not fabric then
-        log(3, "Fabric is nil")
+function FactoryInfo:check(factory)
+    if not factory then
+        log(3, "Factory is nil")
         return false
     end
 
-    local id = fabric.fCoreNetworkCard
+    local id = factory.fCoreNetworkCard
     if not id then
-        log(3, "Fabric has no CoreNetworkCardId")
+        log(3, "Factory has no CoreNetworkCardId")
         return false
     end
 
-    local name = fabric.fName
+    local name = factory.fName
     if not name then
-        log(3, "Fabric has no Name")
+        log(3, "Factory has no Name")
         return false
     end
 
@@ -206,45 +206,45 @@ end
 -- Hilfsfunktionen (Namensbildung → deine Komponenten-Suche)
 --------------------------------------------------------------------------------
 
----@param fabricName string
----@param itemStack FabricStack
+---@param factoryName string
+---@param itemStack FactoryStack
 ---@return any  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
-function containerByFabricStack(fabricName, itemStack)
+function containerByFactoryStack(factoryName, itemStack)
     local nick = "Container "
 
     if itemStack:isOutput() then
         nick = nick .. de_umlaute(itemStack.itemClass.name)
     else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(fabricName)
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(factoryName)
     end
 
     return byAllNick(nick)
 end
 
----@param fabricName string
----@param itemStack FabricStack
+---@param factoryName string
+---@param itemStack FactoryStack
 ---@return any
-function trainstationByFabricStack(fabricName, itemStack)
+function trainstationByFactoryStack(factoryName, itemStack)
     local nick = "Trainstation "
 
     if itemStack:isOutput() then
         nick = nick .. de_umlaute(itemStack.itemClass.name)
     else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(fabricName)
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(factoryName)
     end
     return byAllNick(nick)
 end
 
----@param fabricName string
----@param itemStack FabricStack
+---@param factoryName string
+---@param itemStack FactoryStack
 ---@return Build_RailroadBlockSignal_C
-function trainsignalByFabricStack(fabricName, itemStack)
+function trainsignalByFactoryStack(factoryName, itemStack)
     local nick = "Trainsignal "
 
     if itemStack:isOutput() then
         nick = nick .. de_umlaute(itemStack.itemClass.name)
     else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(fabricName)
+        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(factoryName)
     end
     return byAllNick(nick)
 end

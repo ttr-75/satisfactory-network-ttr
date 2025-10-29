@@ -152,12 +152,12 @@ c:loadModule("helper.lua");
 c:loadModule("serializer.lua");
 c:loadModule("items.lua");
 c:loadModule("graphics.lua");
-c:loadModule("fabricInfo.lua");
-c:loadModule("fabricRegistry.lua");
+c:loadModule("factoryInfo.lua");
+c:loadModule("factoryRegistry.lua");
 c:close()
 sleep_s(1)
 
-local fi = FabricInfo:new()
+local fi = FactoryInfo:new()
 fi.fType = MyItem.ASSEMBLER
 fi.fName = "Mehrzweckgeruest"
 
@@ -166,7 +166,7 @@ fi.fName = "Mehrzweckgeruest"
 comp = component.findComponent(classes.Manufacturer)
 
 
-local cli = FabricRegistryClient.new { port = 11 }
+local cli = FactoryRegistryClient.new { port = 11 }
 cli:initNetworkt()
 cli:initRegisterListener()
 cli:setResetHandler(function(fromId)

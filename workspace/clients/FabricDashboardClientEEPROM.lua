@@ -148,10 +148,10 @@ c:loadModule("helper.lua");
 c:loadModule("serializer.lua");
 c:loadModule("items.lua");
 c:loadModule("graphics.lua");
-c:loadModule("fabricInfo.lua");
-c:loadModule("fabricRegistry.lua");
-c:loadModule("fabricBillboard.lua");
-c:loadModule("fabricDashboard.lua");
+c:loadModule("factoryInfo.lua");
+c:loadModule("factoryRegistry.lua");
+c:loadModule("factoryBillboard.lua");
+c:loadModule("factoryDashboard.lua");
 c:close()
 
 -- MediaSubsystem (liefert Icon-Referenzen)
@@ -184,6 +184,6 @@ if testing then
     gpu:drawRect(Vector2d.new(0, 0), Vector2d.new(300, 290), Color.WHITE, nil, nil)
     gpu:flush()
 else
-    FabricBillbard:init(gpu, scr)
-    FabricBillbard:run()
+    FactoryBillbard:init(gpu, scr)
+    FactoryBillbard:run()
 end

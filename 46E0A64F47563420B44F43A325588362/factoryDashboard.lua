@@ -1,14 +1,14 @@
 local names = { "shared/helper.lua",
     "shared/items/items[-LANGUAGE-].lua",
     "shared/graphics.lua",
-    "fabricRegistry/FabricInfo.lua",
-    "fabricBillboard.lua",
+    "factoryRegistry/FactoryInfo.lua",
+    "factoryBillboard.lua",
 }
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
 
 ----------------------------------------------------------------
--- FabricDashboard – passt direkt zu deiner FabricInfo-Struktur
+-- FactoryDashboard – passt direkt zu deiner FactoryInfo-Struktur
 ----------------------------------------------------------------
 local function now_ms()
     return (computer and computer.millis and computer.millis())
@@ -28,11 +28,11 @@ local function get_icon_for(itemName)
     return _icon_cache[itemName]
 end
 
-FabricDashboard = {}
-FabricDashboard.__index = FabricDashboard
+FactoryDashboard = {}
+FactoryDashboard.__index = FactoryDashboard
 
-function FabricDashboard.new(opts)
-    local self         = setmetatable({}, FabricDashboard)
+function FactoryDashboard.new(opts)
+    local self         = setmetatable({}, FactoryDashboard)
     self.title         = (opts and opts.title) or "Fabrik-Übersicht"
     self.pad           = 14
     self.rowH          = 100
@@ -58,10 +58,10 @@ function FabricDashboard.new(opts)
     return self
 end
 
--- Aus deiner FabricInfo mappen:
+-- Aus deiner FactoryInfo mappen:
 -- fi.inputs[name]  = Input{ itemClass={name=..}, amountStation, amountContainer, maxAmountStation, maxAmountContainer }
 -- fi.outputs[name] = Output{ ... }
-function FabricDashboard:setFromFabricInfo(fi)
+function FactoryDashboard:setFromFactoryInfo(fi)
     local function rows_from(map)
         local rows = {}
         if map then
@@ -83,12 +83,12 @@ function FabricDashboard:setFromFabricInfo(fi)
     self.outputs = rows_from(fi and fi.outputs)
 end
 
-function FabricDashboard:setData(inputs, outputs)
+function FactoryDashboard:setData(inputs, outputs)
     self.inputs  = inputs or {}
     self.outputs = outputs or {}
 end
 
-function FabricDashboard:init(gpu, scr, width, height)
+function FactoryDashboard:init(gpu, scr, width, height)
     --[[
     -- GPU
     local gpu
@@ -133,7 +133,7 @@ local function barColor(frac)
 end
 
 -- eine Zeile rendern (zwei Bars: Station / Container)
-function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
+function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     local y = posY + 120 + (ix - 1) * (self.rowH + self.rowH) + self.pad
     local left = colX + self.pad
 
@@ -191,7 +191,7 @@ function FabricDashboard:_drawRow(colX, posY, ix, it, colWidth)
     self.root:drawText(Vector2d.new(pbX - 64, pbC.position.y - 2), "Co", 18, self.muted, true)
 end
 
-function FabricDashboard:paintOuputWarning(position, size)
+function FactoryDashboard:paintOuputWarning(position, size)
     local posY = self.pad
     local posX = self.size.x - 200 - self.pad
     if position ~= nil then
@@ -239,7 +239,7 @@ function FabricDashboard:paintOuputWarning(position, size)
     })]]
 end
 
-function FabricDashboard:paintInputWarning(position, size)
+function FactoryDashboard:paintInputWarning(position, size)
     local posY = self.pad
     local posX = self.size.x - 500 - self.pad
     if position ~= nil then
@@ -283,7 +283,7 @@ function FabricDashboard:paintInputWarning(position, size)
     })]]
 end
 
-function FabricDashboard:paint()
+function FactoryDashboard:paint()
     local t = now_ms()
     if t - self.lastPaint < self.minIntervalMs then return end
     self.lastPaint = t
