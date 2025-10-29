@@ -11,7 +11,7 @@ CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
 
 
-local cli = FarbricDashboardClient.new { fName = fName }
+local cli = FactoryDashboardClient.new { fName = fName }
 cli:run()
 -- MediaSubsystem (liefert Icon-Referenzen)
 --local media = computer.media

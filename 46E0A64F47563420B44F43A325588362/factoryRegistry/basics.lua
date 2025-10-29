@@ -19,9 +19,9 @@ NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY                    = "FactoryRegistry.
 ---@type NetCommand
 NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK                = "FactoryRegistry.registerFactoryAck"
 ---@type NetCommand
-NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE          = "FactoryRegistry.requestFactoryUpdate"
+NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE              = "FactoryRegistry.requestFactoryUpdate"
 ---@type NetCommand
-NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE         = "FactoryRegistry.responseFactoryUpdate"
+NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE             = "FactoryRegistry.responseFactoryUpdate"
 ---@type NetCommand
 NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY               = "FactoryRegistry.resetFactoryRegistry"
 ---@type NetCommand
@@ -30,3 +30,5 @@ NET_CMD_FACTORY_REGISTRY_SHUT_DOWN_DUBLICATE_FACTORYREGISTRY = "FactoryRegistry.
 NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS             = "FactoryRegistry.requestFactoryAddress"
 ---@type NetCommand
 NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS            = "FactoryRegistry.responseFactoryAddress"
+---@type NetCommand
+NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS_NO_FACTORY = "FactoryRegistry.responseFactoryAddressNoFactory"

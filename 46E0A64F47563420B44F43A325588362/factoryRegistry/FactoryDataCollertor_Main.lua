@@ -57,12 +57,13 @@ function FactoryDataCollertor.new(opts)
             self:onGetFactoryUpdate(from, a)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY then
             -- Nothing just catch
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS then
+            -- Nothing just catch
         else
             -- Unerwartete Kommandos sichtbar machen
             log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
         end
-    end)
-
+    end) 
 
     --------------------------------------------------------------------------
     -- Sofortige Registrierung (Broadcast)

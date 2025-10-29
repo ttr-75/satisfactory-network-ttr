@@ -10,8 +10,13 @@ local names = {
 CodeDispatchClient:registerForLoading(names)
 CodeDispatchClient:finished()
 
+---@diagnostic disable-next-line: undefined-global
+assert(fName, "No factory name given as parameter 'fName'")
+---@diagnostic disable-next-line: undefined-global
+assert(scrName, "No screen name given as parameter 'scrName'")
 
-local cli = FarbricDashboardClient.new { fName = fName }
+---@diagnostic disable-next-line: undefined-global
+local cli = FactoryDashboardClient.new { fName = fName, scrName = scrName }
 cli:run()
 -- MediaSubsystem (liefert Icon-Referenzen)
 --local media = computer.media
@@ -19,7 +24,7 @@ cli:run()
 
 
 
---[[
+
 NICK_SCREEN = "MyScreen"
 
 local scr = byNick(NICK_SCREEN)
@@ -39,4 +44,3 @@ log(1, "Billboard Creation")
 
 FactoryBillbard:init(gpu, scr)
 FactoryBillbard:run()
-]]

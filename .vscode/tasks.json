@@ -10,7 +10,7 @@
         "-ExecutionPolicy", "Bypass",
         "-File", "${workspaceFolder}/.vscode/scripts/copy-on-change.ps1",
         "-Source", "${workspaceFolder}/development",
-        "-Dest",   "${workspaceFolder}/out"
+        "-Dest",   "${workspaceFolder}/46E0A64F47563420B44F43A325588362"
       ],
       "isBackground": true,
       "problemMatcher": [],
@@ -24,7 +24,7 @@
       "command": "robocopy",
       "args": [
         "${workspaceFolder}\\development",
-        "${workspaceFolder}\\out",
+        "${workspaceFolder}\\46E0A64F47563420B44F43A325588362",
         "*.*", "/E", "/XO"                       // rekursiv, nur neuere/fehlende Dateien
       ],
       "problemMatcher": []

@@ -19,19 +19,16 @@ Headline.textVerticalOffset = -22
 
 
 FactoryBillbard = {
-    regServer = nil,
     gpu = nil,
     scr = nil,
     currentFactory = nil,
     pollInterval = 1,
 }
 
-function FactoryBillbard:init(gpu, scr)
+function FactoryBillbard:init(scr)
     print("\nInitialising FactoryBillbard\n")
-    self.gpu = gpu
-    self.scr = scr
-    self.regServer = FactoryRegistryServer.new()
-    self.regServer:broadcastRegistryReset()
+  --  self.gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
+   -- self.scr = scr
 end
 
 function FactoryBillbard:run()

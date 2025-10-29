@@ -58,13 +58,18 @@ function FactoryRegistryServer.new(opts)
                 local fi = self.reg:getByName(a)
                 if not fi then
                     log(4, "FactoryRegistryServer.getAddress:There is no factory called " .. a)
+                    self:send(from, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS_NO_FACTORY)
                 else
+                    log(0,
+                        "FactoryRegistryServer.getAddress: Send address of " ..
+                        a .. "'" .. fi.fCoreNetworkCard .. "' to " .. from)
                     self:send(from, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS, fi.fCoreNetworkCard)
                 end
             else
                 log(4, "FactoryRegistryServer.getAddress: The name must been set " .. from)
             end
             -- self:onRegistryReset(from)
+        elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE then
         else
             -- Unerwartete Kommandos sichtbar machen
             log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
