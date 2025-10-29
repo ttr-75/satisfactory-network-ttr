@@ -1,1 +1,47 @@
+# --- OS-Generisch ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Editor ---
+# VS Code: standardmäßig alles aus .vscode ignorieren …
+.vscode/*
+# … außer teamrelevante Dateien (nur behalten, wenn ohne Rechnerpfade!)
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Workspace-Datei mit committen (falls vorhanden)
+!*.code-workspace
+
+
+
+# --- Build/Artefakte/Cache ---
+out/
+build/
+dist/
+tmp/
+temp/
+.cache/
+*.log
+
+# --- Lua ---
+*.luac        # kompiliertes Lua
+# Falls du LOVE2D nutzt:
+*.love
 .luarc.json
+
+# --- Sonstiges/Backup ---
+*.bak
+*.old
+*.tmp
+*.swp
+*~
+
+
+/[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\
+[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\
+[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\
+[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]/
