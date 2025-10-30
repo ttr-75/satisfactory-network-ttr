@@ -166,14 +166,14 @@ end
 ---@param colX integer
 ---@param posY integer
 ---@param ix integer
----@param it FactoryStack
+---@param it any
 ---@param colWidth integer
 function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     local y = posY + 120 + (ix - 1) * (self.rowH + self.rowH) + self.pad
     local left = colX + self.pad
 
     -- Icon
-    local icon = get_icon_for(it.itemClass.name)
+    local icon = get_icon_for(it.name)
     if icon then
         local box     = {}
         box.position  = Vector2d.new(left, y + (self.rowH - self.iconSize) // 2)
@@ -185,7 +185,7 @@ function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
 
     -- Text
     local textX = left + self.iconSize + 10
-    local line = string.format("%s", it.itemClass.name or "?")
+    local line = string.format("%s", it.name or "?")
     self.root:drawText(Vector2d.new(textX, y + (self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
@@ -369,7 +369,6 @@ function FactoryDashboard:paint()
     -- Spaltenbreiten
     local leftW  = mid - 2 * self.pad
     local rightW = (w - mid) - 2 * self.pad
-    pj(self.inputs)
 
     for i, it in ipairs(self.inputs) do
         self:_drawRow(self.pad, posY, i, it, leftW)
