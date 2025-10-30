@@ -1,6 +1,6 @@
 helper       = require("shared.helper")
 local now_ms = helper.now_ms
-local pj     = helper.pj
+
 require("shared.items.items[-LANGUAGE-]")
 require("shared.graphics")
 FactoryInfo = require("factoryRegistry.FactoryInfo")
@@ -104,10 +104,10 @@ function FactoryDashboard:setFromFactoryInfo(fi)
             for name, obj in pairs(map) do
                 local itemName = name or (obj.itemClass and obj.itemClass.name) or "?"
                 rows[#rows + 1] = {
-                    name = itemName,
-                    amountStation    = obj.amountStation or 0,
+                    name               = itemName,
+                    amountStation      = obj.amountStation or 0,
                     amountContainer    = obj.amountContainer or 0,
-                    maxAmountStation = obj.maxAmountStation or 0,
+                    maxAmountStation   = obj.maxAmountStation or 0,
                     maxAmountContainer = obj.maxAmountContainer or 0,
                 }
             end
@@ -115,8 +115,9 @@ function FactoryDashboard:setFromFactoryInfo(fi)
         end
         return rows
     end
-    self.inputs  = rows_from(fi and fi.inputs)
-    self.outputs = rows_from(fi and fi.outputs)
+    self.factoryInfo = fi
+    self.inputs      = rows_from(fi and fi.inputs)
+    self.outputs     = rows_from(fi and fi.outputs)
 end
 
 ---Sets explicit input/output rows (bypassing FactoryInfo mapping).
@@ -186,17 +187,17 @@ function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     -- Text
     local textX = left + self.iconSize + 10
     local line = string.format("%s", it.name or "?")
-    self.root:drawText(Vector2d.new(textX, y + (self.rowH - self.fontSize) // 2),
+    self.root:drawText(Vector2d.new(textX, y - self.fontSize // 2),
         line, self.fontSize, self.fg, false)
 
     local line = string.format("Station: %s/%s",
         tostring(it.amountStation), tostring(it.maxAmountStation))
-    self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH - self.fontSize) // 2),
+    self.root:drawText(Vector2d.new(textX, y + (self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
     local line = string.format("Container: %s/%s",
         tostring(it.amountContainer), tostring(it.maxAmountContainer))
-    self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH + self.rowH - self.fontSize) // 2),
+    self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
     -- Bars rechts: Station + Container
@@ -210,7 +211,7 @@ function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
 
     -- Station-Bar
     local pbS   = Progressbar.new {
-        position = Vector2d.new(pbX, y + (self.rowH + self.rowH - (2 * barH + gap)) // 2),
+        position = Vector2d.new(pbX, y + (self.rowH - (2 * barH + gap)) // 2),
         dimensions = Vector2d.new(barW, barH),
         bg = Color.GREY_0250, fg = barColor(sFrac), value = sFrac
     }
@@ -339,8 +340,26 @@ function FactoryDashboard:paint()
     self.root:drawRect(Vector2d.new(0, 0), self.size, self.bg, nil, nil)
 
     -- Titel
-    local posX, posY = self.pad, self.pad;
+    local pad = self.pad + 50
+
+    local posX, posY = pad, self.pad
     local titleIconSize = Vector2d.new(200, 200);
+
+
+
+
+    local factoryIcon = get_icon_for(self.factoryInfo.fType.name)
+    self.root:drawBox({
+        position  = Vector2d.new(posX, posY),
+        size      = titleIconSize,
+        image     = factoryIcon and factoryIcon:getRef() or "",
+        imageSize = titleIconSize,
+
+    })
+    posX = posX + titleIconSize.x + pad
+
+
+
     self.title = ""
     for i, it in ipairs(self.outputs) do
         local icon = get_icon_for(it.name)
@@ -351,15 +370,17 @@ function FactoryDashboard:paint()
             imageSize = titleIconSize,
 
         })
-        posX = posX + titleIconSize.x + self.pad
+        posX = posX + titleIconSize.x + pad
         self.title = it.name .. " " .. self.title
     end
 
-    self.root:drawText(Vector2d.new(posX, posY + titleIconSize.y - 72 * 2), self.title, 72, self.accent, false)
+    self.root:drawText(Vector2d.new(posX, posY + titleIconSize.y - 100 * 2), self.title, 100, self.accent, false)
 
     posX = self.pad
     posY = posY + titleIconSize.y + self.pad
     -- Spaltenüberschriften
+    posY = posY + self.pad
+
     self.root:drawText(Vector2d.new(posX, posY), "Inputs", self.headerSize, self.fg, false)
     self.root:drawText(Vector2d.new(mid + posX, posY), "Outputs", self.headerSize, self.fg, false)
 

@@ -150,6 +150,7 @@ end
 --- Merge eines eintreffenden FactoryInfo-Snapshots in diese Instanz.
 ---@param factory FactoryInfo
 function FactoryInfo:update(factory)
+    self.fType = factory.fType or self.fType    
     -- Outputs zuerst, dann Inputs (Reihenfolge beliebig, semantisch getrennt)
     for _, outStack in pairs(factory.outputs) do
         ---@cast outStack Output

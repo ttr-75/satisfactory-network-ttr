@@ -3,6 +3,7 @@
 local helper = require("shared.helper")
 local string_contains = helper.string_contains
 local now_ms = helper.now_ms
+local pj = helper.pj
 
 require("factoryRegistry.basics")
 Helper_inv = require("shared.helper_inventory")
@@ -148,18 +149,19 @@ end
 --- Statt der alten: function FactoryDataCollertor:performUpdate() ... end
 function FactoryDataCollertor:performUpdate()
     local manufacturer = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
-    if not manufacturer then
+    if #manufacturer == 0 then
         local miner = FI.minerByFactoryName(self.myFactoryInfo.fName)
-        if not miner then
+        if #miner == 0 then
             log(3,
                 "FactoryDataCollertor: No Manufacturer or Miner found for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "'")
             return
         end
-        self:performMinerUpdate(miner)
+        self:performMinerUpdate(miner[1])
     else
-        self:performManufactureUpdate(manufacturer)
+        self:performManufactureUpdate(manufacturer[1])
     end
+  --  pj(self.myFactoryInfo)
 end
 
 ---comment
@@ -173,41 +175,61 @@ function FactoryDataCollertor:performMinerUpdate(miner)
 
     self.myFactoryInfo.fType = MyItem.MINER_MK1
 
-    if self.myFactoryInfo.outputs == nil then
-        local minedItem = Helper_inv.readMinedItem(miner, 30)
-        if minedItem and minedItem then
-            local itemName = (minedItem and minedItem.type and minedItem.type.name) or "Unknown"
-            local item = MyItemList:get_by_Name(itemName)
-            if item then
-                -- Output-Objekt
-                local probeOutput = FI.Output:new {
-                    itemClass          = item,
-                    amountStation      = 0,
-                    amountContainer    = 0,
-                    maxAmountStation   = 0,
-                    maxAmountContainer = 0
-                }
-
-
-                -- Container summieren
-                local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
-                local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
-
-                -- Trainstations summieren
-                local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
-                local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
-
-                -- Finales Output-Objekt
-                local output       = FI.Output:new {
-                    itemClass          = item,
-                    amountStation      = sCount,
-                    amountContainer    = cCount,
-                    maxAmountStation   = sMax,
-                    maxAmountContainer = cMax
-                }
-                self.myFactoryInfo:updateOutput(output)
-            end
+    local itemName = nil
+    for name, output in pairs(self.myFactoryInfo.outputs) do
+        itemName = output.itemClass and output.itemClass.name
+    end
+    if itemName == nil then
+        log(0,
+            "FactoryDataCollertor: Trying to determine mined item for Factory '" ..
+            tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories")
+        local minedItem = Helper_inv.readMinedItemStack(miner, 30)
+        if minedItem  then
+            pj(minedItem)
+            pj(minedItem.item)
+            log(0,
+                "FactoryDataCollertor: Determined mined item for Factory '" ..
+                tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories: " ..
+                tostring((minedItem and minedItem.item and minedItem.item.type.name) or "Unknown"))
+            itemName = (minedItem and minedItem.item and minedItem.item.type and minedItem.item.type.name) or "Unknown"
         end
+    end
+
+    if itemName == nil then
+        log(2, "FactoryDataCollertor: Could not determine mined item for Factory '" ..
+            tostring(self.myFactoryInfo.fName) .. "'")
+        return
+    end
+
+    local item = MyItemList:get_by_Name(itemName)
+    if item then
+        -- Output-Objekt
+        local probeOutput = FI.Output:new {
+            itemClass          = item,
+            amountStation      = 0,
+            amountContainer    = 0,
+            maxAmountStation   = 0,
+            maxAmountContainer = 0
+        }
+
+
+        -- Container summieren
+        local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
+        local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+
+        -- Trainstations summieren
+        local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
+        local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+
+        -- Finales Output-Objekt
+        local output       = FI.Output:new {
+            itemClass          = item,
+            amountStation      = sCount,
+            amountContainer    = cCount,
+            maxAmountStation   = sMax,
+            maxAmountContainer = cMax
+        }
+        self.myFactoryInfo:updateOutput(output)
     end
 end
 

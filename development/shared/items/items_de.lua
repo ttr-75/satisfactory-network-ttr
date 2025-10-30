@@ -71,7 +71,7 @@ end
 ---@return MyItem|nil
 function MyItemList:get_by_Name(name)
     if self.k2v[name] == nil then
-        log(3, "Icon: '" .. name .. "' not implemented yes.")
+        log(3, "Item: '" .. name .. "' not implemented yes.")
     end
     return self.k2v[name]
 end
@@ -80,7 +80,7 @@ end
 ---@return MyItem|nil
 function MyItemList:get_by_Id(id)
     if self.v2k[id] == nil then
-        log(3, "IconId: '" .. id .. "' not implemented yes.")
+        log(3, "ItemId: '" .. id .. "' not implemented yes.")
     end
     return self.v2k[id]
 end
@@ -116,6 +116,8 @@ MyItemList = MyItemList.new()
 
 -- Parts
 ---@type MyItem
+MyItem.SCHWEFEL = MyItem.new({ name = "Schwefel", id = 203 })
+---@type MyItem
 MyItem.PLATINE = MyItem.new({ name = "Platine", id = 243 })
 ---@type MyItem
 MyItem.TURBODRAHT = MyItem.new({ name = "Turbodraht", id = 274 })
@@ -127,6 +129,7 @@ MyItem.MODULARER_RAHMEN = MyItem.new({ name = "Modularer Rahmen", id = 233 })
 MyItem.MEHRZWECKGERUEST = MyItem.new({ name = "Mehrzweckgerüst", id = 244 })
 
 
+MyItemList:addItem(MyItem.SCHWEFEL)
 MyItemList:addItem(MyItem.PLATINE)
 MyItemList:addItem(MyItem.TURBODRAHT)
 MyItemList:addItem(MyItem.STAHLTRAEGER)

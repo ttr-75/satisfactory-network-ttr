@@ -1,5 +1,7 @@
 ---@diagnostic disable: lowercase-global
 
+
+local helper = require("shared.helper")
 local Helper_log = require("shared.helper_log")
 local log = Helper_log.log
 
@@ -126,7 +128,7 @@ end
 -- Hilfsfunktion: ersten belegten Stack in einem Inventory finden
 ---comment
 ---@param inv Inventory
----@return { count: integer, item: ItemType}|nil
+---@return { count: integer, item: ItemType-Class}|nil
 local function firstStack(inv)
   if not inv then return nil end
   local size = inv.size or 0
@@ -160,7 +162,7 @@ end
 -- Einmal über alle Inventare schauen und den ersten Stack zurückgeben
 ---comment
 ---@param miner FGBuildableResourceExtractor
----@return { count: integer, item: ItemType }|nil
+---@return { count: integer, item: ItemType-Class }|nil
 local function scanOnce(miner)
   for _, inv in ipairs(collectInventories(miner)) do
     local s = firstStack(inv)
@@ -174,7 +176,7 @@ end
 -- oder nil, falls (bei inaktivem Miner) nichts gefunden wurde / Timeout.
 ---@param miner FGBuildableResourceExtractor
 ---@param activeTimeoutSeconds integer|nil
----@return { count: integer, item: ItemType }|nil  -- item.type oder nil
+---@return { count: integer, item: ItemType-Class }|nil  -- item.type oder nil
 local function readMinedItemStack(miner, activeTimeoutSeconds)
   local active = (miner.standby == false) -- Factory.standby
   if not active then
@@ -188,7 +190,7 @@ local function readMinedItemStack(miner, activeTimeoutSeconds)
   local stack = nil
   for i = 1, deadlineTicks do
     stack = scanOnce(miner)
-    if stack then return stack.item end
+    if stack then return stack end
     helper.sleep_ms(200) -- kurz yielden, dann erneut prüfen
   end
 
