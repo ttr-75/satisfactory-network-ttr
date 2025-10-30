@@ -61,7 +61,7 @@ This setup turns **one FIN computer into a central file server**. All **clients 
 * **Example:** `require("shared/helper.lua")`
 
   1. Client checks the local module cache.
-  2. If missing: it sends `getEEPROM` (port 8; name = `development/shared/helper.lua`).
+  2. If missing: it sends `getEEPROM` (port 8; name = `shared/helper.lua`).
   3. Server reads **`/development/shared/helper.lua`**, optionally performs language replacement, and replies with `setEEPROM` containing the code.
   4. Client loads the module in its own environment with a local `require`, evaluates the return value, and caches it.
 * **Return values:** as usual — table/`exports`/`true`.
@@ -125,7 +125,8 @@ fName        = "IronHub"
 -- stationMin = 2
 ```
 
----
+![FactoryRegister Workflow](https://github.com/ttr-75/satisfactory-network-ttr/blob/main/medi/FactoryRegistryWorkflow.png?raw=true "FactoryRegister Workflow")
+
 
 ## `config.lua` (server)
 
