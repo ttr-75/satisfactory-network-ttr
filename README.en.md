@@ -43,9 +43,9 @@ The client fetches `name` from the network and runs modules using a local in‑m
 
 ---
 
-## Factory Monitoring - The three starters (optional and work in progress)
+## The three starters (optional and work in progress)
 
-The starters live in `factoryRegistry/starter/…` and are **selected via `local name = "factoryRegistry/starter/<file>.lua"`**.
+The starters live in `development/factoryRegistry/starter/…` and are **selected via `local name = ".../starter/<file>.lua"`**.
 
 1. **`factoryRegistry.lua`** – Central registry of all factories  
    Launches the registry server. Other machines can query a factory’s NIC address there. **No extra variables required.**
@@ -115,6 +115,6 @@ fName        = "IronHub"
 - [ ] Copy **contents of `development/`** → **server disk** (`/srv/...`).  (`/srv/` is the root of your Mounted HardDrive)
 - [ ] **`/srv/config.lua`** exists & language set.
 - [ ] **Server EEPROM** = `Server.lua`. Running.
-- [ ] **Client EEPROM** = `bootLoader.lua`, set **`local name = "[YOUR_PATH]/[YOUR_STARTER].lua"`** + needed vars (e.g. `fName`, `scrName`, `stationMin`).
+- [ ] **Client EEPROM** = `bootLoader.lua`, set **`local name = ".../starter/<file>.lua"`** + needed vars (`fName`, `scrName`, `stationMin`).
 
 You’re done — clients now boot their code from the central server and `require(...)` works without local files.
