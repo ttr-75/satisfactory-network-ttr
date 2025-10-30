@@ -237,11 +237,10 @@ end
 -- Erwartete globale Konstante (nur Typ-Hinweis; keine Zuweisung hier):
 ---@type NetPort
 NET_PORT_DEFAULT = NET_PORT_DEFAULT
-
 ---@diagnostic disable: lowercase-global
 
 -------------------------------------------------------------------------------
---- CodeDispatchClient – mit in-Memory `require`, 
+--- CodeDispatchClient – mit in-Memory `require`,
 -------------------------------------------------------------------------------
 
 ---@class CodeDispatchClient : NetworkAdapter
@@ -338,6 +337,53 @@ function CodeDispatchClient:insertAt(a, i, v)
     return i
 end
 
+--- Wandelt beliebige require-Schreibweise in eine kanonische Form um:
+---  "shared.helper"        -> "shared/helper.lua"
+---  "shared/helper"        -> "shared/helper.lua"
+---  "shared/helper.lua"    -> "shared/helper.lua"
+---@param v string
+---@return string
+local function _canon(name)
+    local s = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if s == "" then return s end
+
+    -- Windows-Backslashes tolerieren
+    s = s:gsub("\\", "/")
+
+    -- Falls bereits Slash-Pfade genutzt werden:
+    if s:find("/", 1, true) then
+        if not s:match("%.lua$") then
+            s = s .. ".lua"
+        end
+        return s
+    end
+
+    -- Dot-Notation ohne Slash
+    if s:match("%.lua$") then
+        -- ".lua" wegschneiden, NUR davor Punkte -> Slashes
+        local base = s:sub(1, #s - 4) -- alles vor ".lua"
+        base = base:gsub("%.", "/")   -- Punkte zu Slashes
+        return base .. ".lua"
+    else
+        -- Keine Endung -> Punkte zu Slashes, dann ".lua" anhängen
+        return (s:gsub("%.", "/")) .. ".lua"
+    end
+end
+
+-- Maskiert alle Lua-Pattern-Sonderzeichen in einem Literal
+local function escape_lua_pattern(s)
+    return (s:gsub("(%W)", "%%%1")) -- alles, was nicht %w ist, mit % escapen
+end
+
+local function replace_language_chunk(content, language)
+    local literal = "[-LANGUAGE-]"
+    language = "_" .. language .. ""
+    local pattern = escape_lua_pattern(literal)
+
+    -- Falls language '%' enthalten könnte, für gsub-Replacement escapen:
+    language = language:gsub("%%", "%%%%")
+    return (content:gsub(pattern, language))
+end
 
 -- ========= Öffentliche API ===================================================
 
@@ -357,31 +403,30 @@ end
 ---@param name string
 ---@param content string|nil
 function CodeDispatchClient:parseModule(name, content)
+    local key = _canon(name)
     if not content then
-        log(3, "CodeDispatchClient:Could not load " .. tostring(name) .. ": Not found.")
+        log(3, "CodeDispatchClient:Could not load " .. tostring(key) .. ": Not found.")
         return
     end
 
-    
-
     -- WICHTIG: String speichern, nicht (nur) Funktion – wir brauchen eine eigene Env für require.
-    self.codes[name]            = tostring(content or "")
-    self.requestCompleted[name] = true
-    log(1, "CDC: stored chunk for " .. tostring(name))
+    self.codes[key]            = tostring(content or "")
+    self.requestCompleted[key] = true
+    log(1, "CDC: stored chunk for " .. tostring(key))
 end
 
 --- Fordert ein einzelnes Modul an (wenn noch nicht empfangen).
 ---@param name string
 function CodeDispatchClient:loadModule(name)
-    if self.requestCompleted[name] then
-        log(2, ('CDC: already loaded "%s"'):format(name))
+    local key = _canon(name)
+    if self.requestCompleted[key] then
+        log(2, ('CDC: already loaded "%s"'):format(key))
         return
     end
-    self:broadcast(NET_CMD_CODE_DISPATCH_GET_EEPROM, name)
-    log(0, ('CDC: broadcast GET_EEPROM "%s" on port %s'):format(name, self.port))
-    self.requestCompleted[name] = false
+    self:broadcast(NET_CMD_CODE_DISPATCH_GET_EEPROM, key)
+    log(0, ('CDC: broadcast GET_EEPROM "%s" on port %s'):format(key, self.port))
+    self.requestCompleted[key] = false
 end
-
 
 --- Lädt registrierte Module nacheinander und wartet auf deren Empfang (wie gehabt).
 ---@return boolean|nil false wenn sofort alles ausgeführt wurde
@@ -418,18 +463,19 @@ end
 --- Interner Registrierer (wie zuvor).
 ---@param name string
 function CodeDispatchClient:_register(name)
-    if self.requestCompleted[name] == nil then
-        if not self:existsInRegistry(name) then
-            log(0, "CDC: register " .. tostring(name))
-            self:insertAt(self.loadingRegistry, 1, name)
-            self:insertAt(self.codeOrder, 1, name)
+    local key = _canon(name)
+    if self.requestCompleted[key] == nil then
+        if not self:existsInRegistry(key) then
+            log(0, "CDC: register " .. tostring(key))
+            self:insertAt(self.loadingRegistry, 1, key)
+            self:insertAt(self.codeOrder, 1, key)
         else
-            log(0, "CDC: re-register " .. tostring(name))
-            while self:removeFrom(self.loadingRegistry, name) do end
-            self:insertAt(self.loadingRegistry, 1, name)
+            log(0, "CDC: re-register " .. tostring(key))
+            while self:removeFrom(self.loadingRegistry, key) do end
+            self:insertAt(self.loadingRegistry, 1, key)
         end
-        while self:removeFrom(self.codeOrder, name) do end
-        self:insertAt(self.codeOrder, 1, name)
+        while self:removeFrom(self.codeOrder, key) do end
+        self:insertAt(self.codeOrder, 1, key)
     end
 end
 
@@ -454,33 +500,39 @@ end
 ---@param name string
 ---@return any module
 function CodeDispatchClient:_executeModule(name)
-    local chunk = self.codes[name]
+    local key = _canon(name)
+    local chunk = self.codes[key]
     if not chunk then
-        error("CDC: no code for module " .. tostring(name))
+        error("CDC: no code for module " .. tostring(key))
     end
 
-    if self.loading[name] then
-        error("CDC: cyclic require: " .. tostring(name))
+    if self.loading[key] then
+        error("CDC: cyclic require: " .. tostring(key))
     end
-    self.loading[name] = true
+    self.loading[key] = true
 
     local env = setmetatable({
         require = function(dep) return self:_require(dep) end,
         exports = {}, -- Fallback, falls Modul nichts returned
     }, { __index = _G, __newindex = _G })
 
-    local fn, perr = load(chunk, name, "t", env)
+    -- TODO Staabiler machen: Language-Chunks ersetzen
+    if TTR_FIN_Config and TTR_FIN_Config.language then
+        chunk = replace_language_chunk(chunk, TTR_FIN_Config.language)
+    end
+
+    local fn, perr = load(chunk, key, "t", env)
     if not fn then
-        self.loading[name] = nil
-        error("CDC: load env error for " .. tostring(name) .. ": " .. tostring(perr))
+        self.loading[key] = nil
+        error("CDC: load env error for " .. tostring(key) .. ": " .. tostring(perr))
     end
 
     local ok, ret = pcall(fn)
-    self.loading[name] = nil
-    if not ok then error("CDC: runtime error in " .. tostring(name) .. ": " .. tostring(ret)) end
+    self.loading[key] = nil
+    if not ok then error("CDC: runtime error in " .. tostring(key) .. ": " .. tostring(ret)) end
 
     local mod = (ret ~= nil) and ret or (next(env.exports) and env.exports) or true
-    self.modules[name] = mod
+    self.modules[key] = mod
     return mod
 end
 
@@ -488,23 +540,24 @@ end
 ---@param name string
 ---@return any module
 function CodeDispatchClient:_require(name)
-    if self.modules[name] ~= nil then
-        return self.modules[name]
+    local key = _canon(name)
+    if self.modules[key] ~= nil then
+        return self.modules[key]
     end
 
     -- Code bereits vorhanden?
-    if not self.codes[name] then
+    if not self.codes[key] then
         -- Nachfordern & warten – das erlaubt require() *innerhalb* von Modulen
-        self:loadModule(name)
-        while self.requestCompleted[name] == false do
+        self:loadModule(key)
+        while self.requestCompleted[key] == false do
             future.run()
         end
-        if not self.codes[name] then
-            error("require('" .. tostring(name) .. "'): no code after fetch")
+        if not self.codes[key] then
+            error("require('" .. tostring(key) .. "'): no code after fetch")
         end
     end
 
-    return self:_executeModule(name)
+    return self:_executeModule(key)
 end
 
 --------------------------------------------------------------------------------

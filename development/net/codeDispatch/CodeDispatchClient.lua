@@ -1,3 +1,5 @@
+local NetworkAdapter = require("net.NetworkAdapter")
+
 ---@diagnostic disable: lowercase-global
 
 -------------------------------------------------------------------------------
@@ -102,10 +104,9 @@ end
 ---  "shared.helper"        -> "shared/helper.lua"
 ---  "shared/helper"        -> "shared/helper.lua"
 ---  "shared/helper.lua"    -> "shared/helper.lua"
----@param v string
+---@param name string
 ---@return string
 local function _canon(name)
-    local s = tostring(name or "")
     local s = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if s == "" then return s end
 
@@ -130,6 +131,21 @@ local function _canon(name)
         -- Keine Endung -> Punkte zu Slashes, dann ".lua" anhängen
         return (s:gsub("%.", "/")) .. ".lua"
     end
+end
+
+-- Maskiert alle Lua-Pattern-Sonderzeichen in einem Literal
+local function escape_lua_pattern(s)
+    return (s:gsub("(%W)", "%%%1")) -- alles, was nicht %w ist, mit % escapen
+end
+
+local function replace_language_chunk(content, language)
+    local literal = "[-LANGUAGE-]"
+    language = "_" .. language .. ""
+    local pattern = escape_lua_pattern(literal)
+
+    -- Falls language '%' enthalten könnte, für gsub-Replacement escapen:
+    language = language:gsub("%%", "%%%%")
+    return (content:gsub(pattern, language))
 end
 
 -- ========= Öffentliche API ===================================================
@@ -262,6 +278,11 @@ function CodeDispatchClient:_executeModule(name)
         require = function(dep) return self:_require(dep) end,
         exports = {}, -- Fallback, falls Modul nichts returned
     }, { __index = _G, __newindex = _G })
+
+    -- TODO Staabiler machen: Language-Chunks ersetzen
+    if TTR_FIN_Config and TTR_FIN_Config.language then
+        chunk = replace_language_chunk(chunk, TTR_FIN_Config.language)
+    end
 
     local fn, perr = load(chunk, key, "t", env)
     if not fn then

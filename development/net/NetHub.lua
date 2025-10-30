@@ -58,20 +58,16 @@ function NetHub:init(nic)
 
     local f = event.filter { event = "NetworkMessage" }
     self.listenerId = event.registerListener(f, _wrap("NetHub.Dispatch",
-        ---@param _ev string
-        ---@param _nic any
         ---@param fromId string
         ---@param port NetPort
         ---@param cmd NetCommand
         ---@param a any
         ---@param b any
-        ---@param c any
-        ---@param d any
-        function(_, _, fromId, port, cmd, a, b, c, d)
+        function(_, _, fromId, port, cmd, a, b)
             local svc = self.services[port]
             if not svc then return end
             -- delegate to per-port wrapped handler (already safe-wrapped in :register)
-            return svc._wrapped(fromId, port, cmd, a, b, c, d)
+            return svc._wrapped(fromId, port, cmd, a, b)
         end))
 
     log(0, "NetHub: ready")

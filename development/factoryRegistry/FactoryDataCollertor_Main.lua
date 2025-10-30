@@ -1,5 +1,9 @@
 ---@diagnostic disable: lowercase-global
 
+local helper = require("shared.helper")
+local string_contains = helper.string_contains
+local now_ms = helper.now_ms
+
 require("factoryRegistry.basics")
 Helper_inv = require("shared.helper_inventory")
 local FI = require("factoryRegistry.FactoryInfo")

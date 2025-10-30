@@ -1,6 +1,7 @@
 ---@diagnostic disable: lowercase-global
 
-
+local NetworkAdapter = require("net.NetworkAdapter")
+local FileIO = require("file.FileIO")
 
 
 -------------------------------------------------------------------------------

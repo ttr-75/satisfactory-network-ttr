@@ -1,7 +1,15 @@
 ---@diagnostic disable: lowercase-global
 
 
-require("shared.helper")
+local helper = require("shared.helper")
+local de_umlaute = helper.de_umlaute
+
+local Log = require("shared.helper_log")
+local log = Log.log
+
+local helper_inventory = require("shared.helper_inventory")
+local byAllNick = helper_inventory.byAllNick
+
 require("shared.items.items[-LANGUAGE-]")
 
 
@@ -250,11 +258,11 @@ end
 
 -- Modul-Export ----------------------------------------------------------------
 return {
-  FactoryStack = FactoryStack,
-  Input        = Input,
-  Output       = Output,
-  FactoryInfo  = FactoryInfo,
-  containerByFactoryStack = containerByFactoryStack,
-  trainstationByFactoryStack = trainstationByFactoryStack,
-  trainsignalByFactoryStack  = trainsignalByFactoryStack,
+    FactoryStack               = FactoryStack,
+    Input                      = Input,
+    Output                     = Output,
+    FactoryInfo                = FactoryInfo,
+    containerByFactoryStack    = containerByFactoryStack,
+    trainstationByFactoryStack = trainstationByFactoryStack,
+    trainsignalByFactoryStack  = trainsignalByFactoryStack,
 }

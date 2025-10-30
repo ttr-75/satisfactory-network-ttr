@@ -103,6 +103,15 @@ local function de_umlaute(s)
   --return s
 end
 
+--- Fall-insensitive Teilstring-Suche ohne Patterns.
+-- @param s string|nil
+-- @param sub string|nil
+-- @return boolean true, wenn gefunden
+local function string_icontains(s, sub)
+  if s == nil or sub == nil then return false end
+  return string.find(string.lower(s), string.lower(sub), 1, true) ~= nil
+end
+
 --- Fall-sensitive Teilstring-Suche ohne Patterns.
 -- @param s string|nil Volltext
 -- @param sub string|nil gesuchter Teilstring
@@ -120,14 +129,7 @@ local function string_contains(s, sub, caseSensitiv)
   end
 end
 
---- Fall-insensitive Teilstring-Suche ohne Patterns.
--- @param s string|nil
--- @param sub string|nil
--- @return boolean true, wenn gefunden
-local function string_icontains(s, sub)
-  if s == nil or sub == nil then return false end
-  return string.find(string.lower(s), string.lower(sub), 1, true) ~= nil
-end
+
 
 ----------------------------------------------------------------
 -- Komponenten (FicsItNetworks)

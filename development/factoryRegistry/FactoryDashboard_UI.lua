@@ -1,4 +1,5 @@
-require("shared.helper")
+helper = require("shared.helper")
+local now_ms = helper.now_ms
 require("shared.items.items[-LANGUAGE-]")
 require("shared.graphics")
 FactoryInfo = require("factoryRegistry.FactoryInfo")
@@ -131,7 +132,7 @@ end
 function FactoryDashboard:init(gpu, scr)
     self.gpu            = gpu
     self.scr            = scr
-    
+
     local width, height = scr:getSize()
     width               = width * 300
     height              = height * 300
@@ -164,36 +165,36 @@ end
 ---@param colX integer
 ---@param posY integer
 ---@param ix integer
----@param it MyItem
+---@param it FactoryStack
 ---@param colWidth integer
 function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     local y = posY + 120 + (ix - 1) * (self.rowH + self.rowH) + self.pad
     local left = colX + self.pad
 
     -- Icon
-    local icon = get_icon_for(it.name)
+    local icon = get_icon_for(it.itemClass.name)
     if icon then
         local box     = {}
         box.position  = Vector2d.new(left, y + (self.rowH - self.iconSize) // 2)
         box.size      = Vector2d.new(self.iconSize, self.iconSize)
         box.image     = icon:getRef()
-        box.imageSize = Vector2d.new(icon.width or 512, icon.height or 512)
+        box.imageSize = Vector2d.new(512, 512)
         self.root:drawBox(box)
     end
 
     -- Text
     local textX = left + self.iconSize + 10
-    local line = string.format("%s", it.name or "?")
+    local line = string.format("%s", it.itemClass.name or "?")
     self.root:drawText(Vector2d.new(textX, y + (self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
     local line = string.format("Station: %s/%s",
-        tostring(it.s), tostring(it.sMax))
+        tostring(it.amountStation), tostring(it.maxAmountStation))
     self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
     local line = string.format("Container: %s/%s",
-        tostring(it.c), tostring(it.cMax))
+        tostring(it.amountContainer), tostring(it.maxAmountContainer))
     self.root:drawText(Vector2d.new(textX, y + (self.rowH + self.rowH + self.rowH - self.fontSize) // 2),
         line, self.fontSize, self.fg, false)
 
@@ -202,8 +203,9 @@ function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     local barH  = 50
     local gap   = 6
     local pbX   = colX + colWidth - barW - self.pad
-    local sFrac = (it.sMax and it.sMax > 0) and (it.s / it.sMax) or 0
-    local cFrac = (it.cMax and it.cMax > 0) and (it.c / it.cMax) or 0
+    local sFrac = (it.maxAmountStation and it.maxAmountStation > 0) and (it.amountStation / it.maxAmountStation) or 0
+    local cFrac = (it.maxAmountContainer and it.maxAmountContainer > 0) and (it.amountContainer / it.maxAmountContainer) or
+    0
 
     -- Station-Bar
     local pbS   = Progressbar.new {
@@ -264,6 +266,7 @@ function FactoryDashboard:paintOuputWarning(position, size)
     --   log(3, "load_png_via_media failed: " .. tostring(err))
     --end
 
+---@diagnostic disable-next-line: param-type-mismatch
     self.root:drawLocalRect(position, size, color, icon:getRef())
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({
@@ -311,6 +314,7 @@ function FactoryDashboard:paintInputWarning(position, size)
 
 
 
+---@diagnostic disable-next-line: param-type-mismatch
     self.root:drawLocalRect(position, size, color, icon:getRef())
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({

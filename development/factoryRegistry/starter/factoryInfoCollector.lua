@@ -1,12 +1,13 @@
 
 require("config")
+local helper = require("shared.helper")
 FactoryDataCollertor = require("factoryRegistry.FactoryDataCollertor_Main")
 
 
 
 
 
-sleep_s(1)
+helper.sleep_s(1)
 
 
 ---@diagnostic disable-next-line: undefined-global

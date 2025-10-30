@@ -1,4 +1,13 @@
 ---@diagnostic disable: lowercase-global
+local Logger = require("shared.helper_log")
+log = Logger.log
+
+local helper = require("shared.helper")
+local sleep_s = helper.sleep_s
+local now_ms = helper.now_ms
+local byNick = helper.byNick
+
+
 require("factoryRegistry.basics")
 local NetworkAdapter = require("net.NetworkAdapter")
 local FI = require("factoryRegistry.FactoryInfo")
@@ -59,7 +68,7 @@ function FactoryDashboardClient.new(opts)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY then
             self:onRegistryReset(from)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE then
-            self:onUpdateFactory(from, a, b)
+            self:onUpdateFactory(from, a)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS then
             -- Ignore: Server should not send this to Client
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE then
@@ -73,9 +82,10 @@ function FactoryDashboardClient.new(opts)
     end)
 
 
-    ---@diagnostic disable-next-line: undefined-field
+    ---@diagnostic disable-next-line: undefined-field, assign-type-mismatch
     self.gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
     if opts.scrName then
+        ---@diagnostic disable-next-line: assign-type-mismatch
         self.scr = byNick(opts.scrName)
     end
 

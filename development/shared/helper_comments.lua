@@ -2,6 +2,8 @@
 -- helper_comments.lua – Kleine Helferlein
 ----------------------------------------------------------------
 
+local FileIO = require("file.FileIO")
+
 
  function drop_line_comments_stripws(text)
     local out = {}

@@ -1,5 +1,8 @@
 ---@diagnostic disable: lowercase-global
 
+local helper = require("shared.helper")
+local de_umlaute = helper.de_umlaute
+
 --------------------------------------------------------------------------------
 -- Types / Klassen
 --------------------------------------------------------------------------------
@@ -32,7 +35,7 @@ function MyItem:getRef()
     return "icon:" .. self.id
 end
 
----@return string  -- codierter Name (z.B. ohne Umlaute für Keys)
+---@return string|nil  -- codierter Name (z.B. ohne Umlaute für Keys)
 function MyItem:getCodeName()
     return de_umlaute(self.name)
 end
@@ -58,8 +61,10 @@ function MyItemList:addItem(item)
     if oldId ~= nil then self.v2k[oldId] = nil end
     local oldName = self.v2k[id]
     if oldName ~= nil then self.k2v[oldName] = nil end
-    self.k2v[name] = item
-    self.v2k[id] = item
+    if name ~= nil and id ~= nil then
+        self.k2v[name] = item
+        self.v2k[id] = item
+    end
 end
 
 ---@param name string
@@ -83,18 +88,17 @@ end
 ---@param name string
 function MyItemList:delete_by_Name(name)
     local item = self.k2v[name]
-    local id = item.id
-    if item ~= nil then
-        self.k2v[name] = nil; self.v2k[id] = nil
+
+    if item ~= nil and item.id then
+        self.k2v[name] = nil; self.v2k[item.id] = nil
     end
 end
 
 ---@param id integer
 function MyItemList:delete_by_Id(id)
     local item = self.v2k[id]
-    local name = item.name
-    if item ~= nil then
-        self.v2k[id] = nil; self.k2v[name] = nil
+    if item ~= nil and item.name ~= nil then
+        self.v2k[id] = nil; self.k2v[item.name] = nil
     end
 end
 
