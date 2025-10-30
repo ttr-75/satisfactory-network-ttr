@@ -62,7 +62,7 @@ This setup turns **one FIN computer into a central file server**. All **clients 
 
   1. Client checks the local module cache.
   2. If missing: it sends `getEEPROM` (port 8; name = `shared/helper.lua`).
-  3. Server reads **`/development/shared/helper.lua`**, optionally performs language replacement, and replies with `setEEPROM` containing the code.
+  3. Server reads **`/shared/helper.lua`**, optionally performs language replacement, and replies with `setEEPROM` containing the code.
   4. Client loads the module in its own environment with a local `require`, evaluates the return value, and caches it.
 * **Return values:** as usual — table/`exports`/`true`.
 * **Cycle protection:** recursive dependencies are detected and reported cleanly.
@@ -108,19 +108,19 @@ scrName = "YOUR_SCREEN_NAME"
 
 **Client EEPROM example – Dashboard:**
 ```lua
-local name = "development/factoryRegistry/starter/factoryDashboard.lua"
+local name = "factoryRegistry/starter/factoryDashboard.lua"
 fName   = "IronHub"
 scrName = "Hall_A_Screen_01"
 ```
 
 **Client EEPROM example – Registry:**
 ```lua
-local name = "development/factoryRegistry/starter/factoryRegistry.lua"
+local name = "factoryRegistry/starter/factoryRegistry.lua"
 ```
 
 **Client EEPROM example – InfoCollector:**
 ```lua
-local name   = "development/factoryRegistry/starter/factoryInfoCollector.lua"
+local name   = "factoryRegistry/starter/factoryInfoCollector.lua"
 fName        = "IronHub"
 -- stationMin = 2
 ```
