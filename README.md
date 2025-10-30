@@ -104,7 +104,7 @@ fName   = "YOUR_FACTORY_NAME"
 scrName = "YOUR_SCREEN_NAME"
 ```
 
-![Architekturübersicht](./media/FactoryScreen.png Factory Monitor")
+![Factory Monitor](https://github.com/ttr-75/satisfactory-network-ttr/blob/main/media/FactoryScreen.png?raw=true "Factory Monitor")
 
 **Client EEPROM example – Dashboard:**
 ```lua
