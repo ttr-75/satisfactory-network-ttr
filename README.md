@@ -125,7 +125,7 @@ fName        = "IronHub"
 -- stationMin = 2
 ```
 
-![FactoryRegister Workflow](https://github.com/ttr-75/satisfactory-network-ttr/blob/main/medi/FactoryRegistryWorkflow.png?raw=true "FactoryRegister Workflow")
+![FactoryRegister Workflow](https://github.com/ttr-75/satisfactory-network-ttr/blob/main/media/FactoryRegistryWorkflow.png?raw=true "FactoryRegister Workflow")
 
 
 ## `config.lua` (server)
