@@ -8,6 +8,9 @@ require("factoryRegistry.basics")
 Helper_inv = require("shared.helper_inventory")
 local FI = require("factoryRegistry.FactoryInfo")
 local NetworkAdapter = require("net.NetworkAdapter")
+
+local JSON = require("shared.serializer")
+
 --------------------------------------------------------------------------------
 
 

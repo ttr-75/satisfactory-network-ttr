@@ -90,7 +90,7 @@ function FINRotator.new(p, y, r) return setmetatable({ pitch = p or 0, yaw = y o
 ---@class ActorComponent: FINObjectProxy end
 
 ---@class Inventory: FINObjectProxy
----@field size integer
+
 local Inventory = {}
 ---@param index integer
 ---@return { item: { type: { name: string, max: integer } }, count: integer }

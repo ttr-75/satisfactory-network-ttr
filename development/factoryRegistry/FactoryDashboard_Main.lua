@@ -13,6 +13,8 @@ local NetworkAdapter = require("net.NetworkAdapter")
 local FI = require("factoryRegistry.FactoryInfo")
 local FactoryDashboard = require("factoryRegistry.FactoryDashboard_UI")
 
+local JSON = require("shared.serializer")
+
 --------------------------------------------------------------------------------
 -- Client
 --------------------------------------------------------------------------------

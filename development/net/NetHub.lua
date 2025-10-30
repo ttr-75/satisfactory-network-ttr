@@ -1,6 +1,10 @@
 ---@diagnostic disable: lowercase-global
 
-require("shared.helper")
+local Helper_log = require("shared.helper_log")
+local log = Helper_log.log
+
+local helper_safe_listern = require("shared.helper_safe_listener")
+local safe_listener = helper_safe_listern.safe_listener
 
 -------------------------------------------------------
 --- NetHub

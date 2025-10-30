@@ -1,5 +1,6 @@
-helper = require("shared.helper")
+helper       = require("shared.helper")
 local now_ms = helper.now_ms
+local pj     = helper.pj
 require("shared.items.items[-LANGUAGE-]")
 require("shared.graphics")
 FactoryInfo = require("factoryRegistry.FactoryInfo")
@@ -50,8 +51,8 @@ end
 ---@field fg Color
 ---@field muted Color
 ---@field accent Color
----@field inputs { name:string, s:number, c:number, sMax:number, cMax:number }[]
----@field outputs { name:string, s:number, c:number, sMax:number, cMax:number }[]
+---@field inputs { name:string, amountStation:number, amountContainer:number, maxAmountStation:number, maxAmountContainer:number }[]
+---@field outputs { name:string, amountStation:number, amountContainer:number, maxAmountStation:number, maxAmountContainer:number }[]
 ---@field gpu GPUProxy
 ---@field scr ScreenProxy
 ---@field size Vector2d
@@ -96,7 +97,7 @@ end
 ---@param fi FactoryInfo
 function FactoryDashboard:setFromFactoryInfo(fi)
     ---@param map table<string, any>|nil
-    ---@return { name:string, s:number, c:number, sMax:number, cMax:number }[]
+    ---@return { name:string, amountStation:number, amountContainer:number, maxAmountStation:number, maxAmountContainer:number }[]
     local function rows_from(map)
         local rows = {}
         if map then
@@ -104,10 +105,10 @@ function FactoryDashboard:setFromFactoryInfo(fi)
                 local itemName = name or (obj.itemClass and obj.itemClass.name) or "?"
                 rows[#rows + 1] = {
                     name = itemName,
-                    s    = obj.amountStation or 0,
-                    c    = obj.amountContainer or 0,
-                    sMax = obj.maxAmountStation or 0,
-                    cMax = obj.maxAmountContainer or 0,
+                    amountStation    = obj.amountStation or 0,
+                    amountContainer    = obj.amountContainer or 0,
+                    maxAmountStation = obj.maxAmountStation or 0,
+                    maxAmountContainer = obj.maxAmountContainer or 0,
                 }
             end
             table.sort(rows, function(a, b) return tostring(a.name) < tostring(b.name) end)
@@ -205,7 +206,7 @@ function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     local pbX   = colX + colWidth - barW - self.pad
     local sFrac = (it.maxAmountStation and it.maxAmountStation > 0) and (it.amountStation / it.maxAmountStation) or 0
     local cFrac = (it.maxAmountContainer and it.maxAmountContainer > 0) and (it.amountContainer / it.maxAmountContainer) or
-    0
+        0
 
     -- Station-Bar
     local pbS   = Progressbar.new {
@@ -244,8 +245,8 @@ function FactoryDashboard:paintOuputWarning(position, size)
     local icon = MyItem.CHECK_MARK
     local color = Color.GREEN
     for i, it in pairs(self.outputs) do
-        local sFrac = it.s / it.sMax
-        local cFrac = it.c / it.cMax
+        local sFrac = it.amountStation / it.maxAmountStation
+        local cFrac = it.amountContainer / it.maxAmountContainer
         if sFrac < 0.5 then
             icon = MyItem.WARNING
             color = Color.YELLOW
@@ -266,7 +267,7 @@ function FactoryDashboard:paintOuputWarning(position, size)
     --   log(3, "load_png_via_media failed: " .. tostring(err))
     --end
 
----@diagnostic disable-next-line: param-type-mismatch
+    ---@diagnostic disable-next-line: param-type-mismatch
     self.root:drawLocalRect(position, size, color, icon:getRef())
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({
@@ -296,8 +297,8 @@ function FactoryDashboard:paintInputWarning(position, size)
     local color = Color.GREEN
     local icon = MyItem.CHECK_MARK
     for i, it in pairs(self.inputs) do
-        local sFrac = it.s / it.sMax
-        local cFrac = it.c / it.cMax
+        local sFrac = it.amountStation / it.maxAmountStation
+        local cFrac = it.amountContainer / it.maxAmountContainer
         if cFrac < 0.5 then
             icon = MyItem.WARNING
             color = Color.YELLOW
@@ -314,7 +315,7 @@ function FactoryDashboard:paintInputWarning(position, size)
 
 
 
----@diagnostic disable-next-line: param-type-mismatch
+    ---@diagnostic disable-next-line: param-type-mismatch
     self.root:drawLocalRect(position, size, color, icon:getRef())
     --[[local icon = get_icon_for(it.name)
     self.root:drawBox({
@@ -368,6 +369,7 @@ function FactoryDashboard:paint()
     -- Spaltenbreiten
     local leftW  = mid - 2 * self.pad
     local rightW = (w - mid) - 2 * self.pad
+    pj(self.inputs)
 
     for i, it in ipairs(self.inputs) do
         self:_drawRow(self.pad, posY, i, it, leftW)

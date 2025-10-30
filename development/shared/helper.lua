@@ -20,7 +20,7 @@
 
 local Helper_log = require("shared.helper_log")
 local log = Helper_log.log
-require("shared.serializer")
+local JSON = require("shared.serializer")
 
 
 

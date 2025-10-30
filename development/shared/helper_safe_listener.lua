@@ -25,7 +25,7 @@ local function _traceback(tag)
 end
 
 -- safe_listener(tag, fn): verpackt fn in xpcall, sodass Fehler nicht „leise“ bleiben.
-function safe_listener(tag, fn)
+local function safe_listener(tag, fn)
   assert(type(fn) == "function", "safe_listener needs a function")
   return function(...)
     local ok, res = xpcall(fn, _traceback(tag), ...)
@@ -34,8 +34,13 @@ function safe_listener(tag, fn)
 end
 
 -- hübsches Argument-Logging
-function fmt_args(...)
+local function fmt_args(...)
   local t = table.pack(...)
   for i = 1, t.n do t[i] = tostring(t[i]) end
   return table.concat(t, ", ")
 end
+
+return {
+  safe_listener = safe_listener,
+  fmt_args = fmt_args,
+}

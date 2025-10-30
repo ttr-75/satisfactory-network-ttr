@@ -8,7 +8,7 @@
 --   local s = json_encode(obj, { indent = 4 })
 --   local t = json_decode(s)
 
-JSON = {}
+local JSON = {}
 JSON.__index = JSON
 
 function JSON.new(opts)
@@ -81,7 +81,7 @@ function JSON:encode(value, opts)
     elseif tv == "string" then
       return '"' .. esc_str(v) .. '"'
     elseif tv ~= "table" then
-      return '"' .. tv .. '"'                       -- fallback
+      return '"' .. tv .. '"' -- fallback
     end
 
     if seen[v] then return '"' .. esc_str(CYCLE) .. '"' end
@@ -308,9 +308,12 @@ end
 
 -- Default-Instanz + Helfer
 JSON.default = JSON.new()
-function json_encode(value, opts) return JSON.default:encode(value, opts) end
+local function json_encode(value, opts) return JSON.default:encode(value, opts) end
 
-function json_decode(str) return JSON.default:decode(str) end
+local function json_decode(str) return JSON.default:decode(str) end
+
+
+return JSON
 
 --[[     USAGE
 

@@ -3,12 +3,12 @@
 
 local helper = require("shared.helper")
 local de_umlaute = helper.de_umlaute
+local byAllNick = helper.byAllNick
 
 local Log = require("shared.helper_log")
 local log = Log.log
 
-local helper_inventory = require("shared.helper_inventory")
-local byAllNick = helper_inventory.byAllNick
+
 
 require("shared.items.items[-LANGUAGE-]")
 
