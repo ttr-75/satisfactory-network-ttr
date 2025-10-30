@@ -171,7 +171,44 @@ function FactoryDataCollertor:performMinerUpdate(miner)
         return
     end
 
+    self.myFactoryInfo.fType = MyItem.MINER_MK1
 
+    if self.myFactoryInfo.outputs == nil then
+        local minedItem = Helper_inv.readMinedItem(miner, 30)
+        if minedItem and minedItem then
+            local itemName = (minedItem and minedItem.type and minedItem.type.name) or "Unknown"
+            local item = MyItemList:get_by_Name(itemName)
+            if item then
+                -- Output-Objekt
+                local probeOutput = FI.Output:new {
+                    itemClass          = item,
+                    amountStation      = 0,
+                    amountContainer    = 0,
+                    maxAmountStation   = 0,
+                    maxAmountContainer = 0
+                }
+
+
+                -- Container summieren
+                local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
+                local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+
+                -- Trainstations summieren
+                local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
+                local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+
+                -- Finales Output-Objekt
+                local output       = FI.Output:new {
+                    itemClass          = item,
+                    amountStation      = sCount,
+                    amountContainer    = cCount,
+                    maxAmountStation   = sMax,
+                    maxAmountContainer = cMax
+                }
+                self.myFactoryInfo:updateOutput(output)
+            end
+        end
+    end
 end
 
 ---comment
@@ -182,9 +219,6 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
         log(3, "FactoryDataCollertor: No Manufacturer provided for Factory '" ..
             tostring(self.myFactoryInfo.fName) .. "'")
         return
-        
-        self.myFactoryInfo.fType = MyItem.ASSEMBLER
-
     end
 
     -- 2) Typ bestimmen (nur, wenn verfügbar)

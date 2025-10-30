@@ -121,9 +121,84 @@ local function sumTrainstations(stations, itemMax)
   return count, maxSlots * (itemMax or 0)
 end
 
+
+-- Miners
+-- Hilfsfunktion: ersten belegten Stack in einem Inventory finden
+---comment
+---@param inv Inventory
+---@return { count: integer, item: ItemType}|nil
+local function firstStack(inv)
+  if not inv then return nil end
+  local size = inv.size or 0
+  for slot = 0, size - 1 do
+    local stack = inv:getStack(slot)
+    if stack and stack.count and stack.count > 0 and stack.item then
+      return stack
+    end
+  end
+  return nil
+end
+
+-- Alle relevanten Inventare des Miners einsammeln:
+---comment
+---@param miner FGBuildableResourceExtractor
+---@return table
+local function collectInventories(miner)
+  local list = {}
+  -- 1) Direkte Inventare des Actors (z.B. Output-/Buffer)
+  for _, inv in ipairs(miner:getInventories() or {}) do
+    table.insert(list, inv)
+  end
+  -- 2) Inventare der Factory Connections (Output-Puffer der Ports)
+  for _, conn in ipairs(miner:getFactoryConnectors() or {}) do
+    local inv = conn:getInventory()
+    if inv then table.insert(list, inv) end
+  end
+  return list
+end
+
+-- Einmal über alle Inventare schauen und den ersten Stack zurückgeben
+---comment
+---@param miner FGBuildableResourceExtractor
+---@return { count: integer, item: ItemType }|nil
+local function scanOnce(miner)
+  for _, inv in ipairs(collectInventories(miner)) do
+    local s = firstStack(inv)
+    if s then return s end
+  end
+  return nil
+end
+
+-- Hauptfunktion:
+-- Gibt bei Erfolg eine Table (Stack) zurück (inkl. s.item, s.count, …)
+-- oder nil, falls (bei inaktivem Miner) nichts gefunden wurde / Timeout.
+---@param miner FGBuildableResourceExtractor
+---@param activeTimeoutSeconds integer|nil
+---@return { count: integer, item: ItemType }|nil  -- item.type oder nil
+local function readMinedItemStack(miner, activeTimeoutSeconds)
+  local active = (miner.standby == false) -- Factory.standby
+  if not active then
+    -- Inaktiv: einmal probieren, sonst skip (nil)
+    return scanOnce(miner)
+  end
+
+  -- Aktiv: wiederholen bis etwas im Inventar landet
+  local timeout = tonumber(activeTimeoutSeconds) or 30
+  local deadlineTicks = math.floor(timeout / 0.2)
+  local stack = nil
+  for i = 1, deadlineTicks do
+    stack = scanOnce(miner)
+    if stack then return stack.item end
+    helper.sleep_ms(200) -- kurz yielden, dann erneut prüfen
+  end
+
+  return nil -- Sicherheit: falls nach Timeout immer noch nichts da ist
+end
+
 return {
   getMaxSlotsForContainer = getMaxSlotsForContainer,
   readInventory           = readInventory,
   sumContainers           = sumContainers,
   sumTrainstations        = sumTrainstations,
+  readMinedItemStack      = readMinedItemStack
 }

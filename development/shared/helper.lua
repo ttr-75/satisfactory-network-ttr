@@ -135,30 +135,53 @@ end
 -- Komponenten (FicsItNetworks)
 ----------------------------------------------------------------
 
---- Holt eine Komponente per Nickname und gibt deren Proxy zurück.
--- @param nick string Nickname der Komponente (findComponent)
--- @return table Proxy-Objekt
--- @raise assert, wenn Komponente nicht gefunden wird
-local function byNick(nick)
-  local t = component.findComponent(nick)[1]
-  assert(t, "Komponente '" .. tostring(nick) .. "' nicht gefunden")
-  return component.proxy(t)
+--- FIN byNick Utilities (assert-frei)
+
+local function _safe_find_ids(query_or_class)
+  -- akzeptiert String (Nick-Query) ODER Klasseninstanz aus `classes.*`
+  local ok, ids = pcall(function() return component.findComponent(query_or_class) end)
+  if not ok or ids == nil then return {} end
+  -- Doku: findComponent kann auch direkt string[] liefern; wir normieren auf Array
+  if type(ids) ~= "table" then return {} end
+  return ids
 end
 
---- Holt alle Komponenten-Proxys zu einem Nickname (Array).
--- @param nick string Nickname (findComponent kann mehrere Referenzen liefern)
--- @return table[] Array von Proxys (mindestens 1 Eintrag)
--- @raise assert, wenn keine Komponente gefunden oder Proxy fehlgeschlagen
-local function byAllNick(nick)
-  local refs = component.findComponent(nick)
-  assert(refs and #refs > 0, "Komponente '" .. tostring(nick) .. "' nicht gefunden")
-  local arr = {}
-  for i, ref in ipairs(refs) do
-    local prox = component.proxy(ref)
-    assert(prox, "Proxy für '" .. tostring(nick) .. "' nicht gefunden (Index " .. i .. ")")
-    arr[#arr + 1] = prox
+local function _safe_proxy_one(id)
+  if type(id) ~= "string" then return nil end
+  local ok, comp = pcall(function() return component.proxy(id) end)
+  if not ok then return nil end
+  return comp
+end
+
+-- Erster Treffer per Nick-Query (z.B. "miner iron north")
+local   function byNick(query)
+  if type(query) ~= "string" or query == "" then return nil end
+  local ids = _safe_find_ids(query) -- nick-basierte Suche
+  return _safe_proxy_one(ids[1])    -- ersten Treffer “soft” proxyn
+end
+
+-- Alle Treffer per Nick-Query
+local function byAllNick(query)
+  if type(query) ~= "string" or query == "" then return {} end
+  local ids = _safe_find_ids(query)
+  local out = {}
+  for i = 1, #ids do
+    local comp = _safe_proxy_one(ids[i])
+    if comp then out[#out + 1] = comp end
   end
-  return arr
+  return out
+end
+
+-- Variante: Suche nach Klasse (z.B. classes.FGBuildableMinerMK1)
+local function byClass(classInstance)
+  if not classInstance then return {} end
+  local ids = _safe_find_ids(classInstance) -- Klassensuche (rekursiv über Subtypen)
+  local out = {}
+  for i = 1, #ids do
+    local comp = _safe_proxy_one(ids[i])
+    if comp then out[#out + 1] = comp end
+  end
+  return out
 end
 
 ----------------------------------------------------------------
@@ -193,6 +216,7 @@ return {
   string_icontains = string_icontains,
   byNick = byNick,
   byAllNick = byAllNick,
+  byClass = byClass,
   pretty_json = pretty_json,
   pj = pj,
 }
