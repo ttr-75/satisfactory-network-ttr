@@ -1,6 +1,7 @@
 ---@diagnostic disable: lowercase-global
 
 require("factoryRegistry/basics.lua")
+Helper_inv = require("shared/helper_inventory.lua")
 local FI = require("factoryRegistry/FactoryInfo.lua")
 local NetworkAdapter = require("net/NetworkAdapter.lua")
 --------------------------------------------------------------------------------
@@ -137,198 +138,109 @@ function FactoryDataCollertor:onGetFactoryUpdate(fromId, fName)
     end
 end
 
--- statt: function performUpdate() ... end
+--- Statt der alten: function FactoryDataCollertor:performUpdate() ... end
 function FactoryDataCollertor:performUpdate()
+    -- 1) Manufacturer holen (früh & robust raus, wenn keiner da)
     local comp = component.findComponent(classes.Manufacturer)
-    if #comp > 0 then
-        local manufacturer = component.proxy(comp[1])
-        ---@cast manufacturer Manufacturer
-        if not manufacturer then return end
+    if not comp or #comp == 0 then return end
 
-        local recipe = manufacturer:getRecipe()
+    local manufacturer = component.proxy(comp[1])
+    ---@cast manufacturer Manufacturer
+    if not manufacturer then return end
 
-        if string_contains(manufacturer:getType().name, MyItem.ASSEMBLER.name, false) then
-            self.myFactoryInfo.fType = MyItem.ASSEMBLER
-        else
-            log(2, "Net-FactoryRegistryClient::Unknown Manufacturer Type \"" .. manufacturer:getType().name .. "\"")
-        end
+    -- 2) Typ bestimmen (nur, wenn verfügbar)
+    local mTypeName = (manufacturer:getType() and manufacturer:getType().name) or ""
+    if string_contains(mTypeName, MyItem.ASSEMBLER.name, false) then
+        self.myFactoryInfo.fType = MyItem.ASSEMBLER
+    else
+        log(2, ('Net-FactoryRegistryClient::Unknown Manufacturer Type "%s"'):format(mTypeName))
+    end
 
+    -- 3) Rezept ziehen (wenn keins: Ende)
+    local recipe = manufacturer:getRecipe()
+    if recipe == nil then return end
 
-        if recipe ~= nil then
-            local products = recipe:getProducts()
-            for _, product in pairs(products) do
-                local p = product
-                local item = MyItemList:get_by_Name(p.type.name)
-                if item == nil then
-                    break
-                end
-                item.max = p.type.max
-                local output = FI.Output:new {
+    ---------------------------------------------------------------------------
+    -- 4) PRODUCTS (Outputs)
+    ---------------------------------------------------------------------------
+    local products = recipe:getProducts() or {}
+    for _, product in pairs(products) do
+        local ptype = product and product.type
+        local itemName = ptype and ptype.name
+        local maxStack = ptype and ptype.max or 0
+
+        if itemName then
+            local item = MyItemList:get_by_Name(itemName)
+            if item then
+                item.max           = maxStack
+
+                -- Vor-Objekt nur zur Zielbestimmung (Container/Stations-Finder nutzt itemClass)
+                local probeOutput  = FI.Output:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
-                    maxAmountStation   = 3000,
-                    maxAmountContainer = 3000
+                    maxAmountStation   = 0,
+                    maxAmountContainer = 0
                 }
 
-                -- Container
-                local containers = FI.containerByFactoryStack(self.myFactoryInfo.fName, output)
+                -- Container summieren
+                local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
+                local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
 
-                local maxSlotsC = 0
-                local totalsC = {}
-                local typesC = {}
+                -- Trainstations summieren
+                local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
+                local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
 
-
-                for _, container in pairs(containers) do
-                    maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
-                    totalsC, typesC = readInventory(container, totalsC, typesC)
-                end
-
-                local counterC = 0
-                local maxStackC = item.max
-                for key, cnt in pairs(totalsC) do
-                    local t = typesC[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    -- maxStackC = (t and t.max) or 0
-                    counterC = counterC + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountContainer = maxSlotsC * maxStackC
-
-                --Station
-                local trainstations = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, output)
-
-
-                local maxSlotsS = 0
-                local totalsS = {}
-                local typesS = {}
-
-
-                for _, trainstation in pairs(trainstations) do
-                    local platforms = trainstation:getAllConnectedPlatforms()
-
-                    for _, platform in pairs(platforms) do
-                        totalsS, typesS = readInventory(platform, totalsS, typesS)
-                        maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
-                    end
-                end
-
-                local counterS = 0
-                local maxStackS = item.max
-                for key, cnt in pairs(totalsS) do
-                    local t = typesS[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    --maxStackS = (t and t.max) or 0
-                    counterS = counterS + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountTainstation = maxSlotsS * maxStackS
-
-                output = FI.Output:new {
+                -- Finales Output-Objekt
+                local output       = FI.Output:new {
                     itemClass          = item,
-                    amountStation      = counterS,
-                    amountContainer    = counterC,
-                    maxAmountStation   = _maxAmountTainstation,
-                    maxAmountContainer = _maxAmountContainer
+                    amountStation      = sCount,
+                    amountContainer    = cCount,
+                    maxAmountStation   = sMax,
+                    maxAmountContainer = cMax
                 }
-
-                self.myFactoryInfo:updateOutput(output) -- <– korrektes Feld
+                self.myFactoryInfo:updateOutput(output)
             end
-            for _, ingredient in pairs(recipe:getIngredients()) do
-                local item = MyItemList:get_by_Name(ingredient.type.name)
-                if item == nil then
-                    break
-                end
+            -- wenn item nil ist, einfach diesen Eintrag überspringen (kein break!)
+        end
+    end
 
+    ---------------------------------------------------------------------------
+    -- 5) INGREDIENTS (Inputs)
+    ---------------------------------------------------------------------------
+    local ingredients = recipe:getIngredients() or {}
+    for _, ing in pairs(ingredients) do
+        local itype = ing and ing.type
+        local itemName = itype and itype.name
+        local maxStack = itype and itype.max or 0
 
-                item.max = ingredient.type.max
-                local input = FI.Input:new {
+        if itemName then
+            local item = MyItemList:get_by_Name(itemName)
+            if item then
+                item.max           = maxStack
+
+                local probeInput   = FI.Input:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
-                    maxAmountStation   = 3000,
-                    maxAmountContainer = 3000
+                    maxAmountStation   = 0,
+                    maxAmountContainer = 0
                 }
 
+                local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeInput) or {}
+                local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
 
-                -- Container
-                local containers = FI.containerByFactoryStack(self.myFactoryInfo.fName, input)
+                local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeInput) or {}
+                local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
 
-                local maxSlotsC = 0
-                local totalsC = {}
-                local typesC = {}
-
-
-                for _, container in pairs(containers) do
-                    maxSlotsC = maxSlotsC + getMaxSlotsForContainer(container)
-                    totalsC, typesC = readInventory(container, totalsC, typesC)
-                end
-
-                local counterC = 0
-                local maxStackC = item.max
-                for key, cnt in pairs(totalsC) do
-                    local t = typesC[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    --maxStackC = (t and t.max) or 0
-                    counterC = counterC + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountContainer = maxSlotsC * maxStackC
-
-
-
-
-                --Station
-                local trainstations = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, input)
-
-
-                local maxSlotsS = 0
-                local totalsS = {}
-                local typesS = {}
-
-
-                for _, trainstation in pairs(trainstations) do
-                    local platforms = trainstation:getAllConnectedPlatforms()
-
-                    for _, platform in pairs(platforms) do
-                        totalsS, typesS = readInventory(platform, totalsS, typesS)
-                        maxSlotsS = maxSlotsS + getMaxSlotsForContainer(platform)
-                    end
-                    --print(container.nick)
-                end
-
-                local counterS = 0
-                local maxStackS = item.max
-                for key, cnt in pairs(totalsS) do
-                    local t = typesS[key]
-                    --local name = (t and t.name) or ("Type#" .. tostring(key))
-                    -- maxStackS = (t and t.max) or 0
-                    counterS = counterS + cnt
-
-                    local tht = (t and t.name) or ("Type#" .. tostring(key))
-                    --log(3, de_umlaute(MyItemList:get_by_Name(tht).name) .. t.description .. cnt)
-                end
-
-                local _maxAmountTainstation = maxSlotsS * maxStackS
-
-                input = FI.Input:new {
+                local input        = FI.Input:new {
                     itemClass          = item,
-                    amountStation      = counterS,
-                    amountContainer    = counterC,
-                    maxAmountStation   = _maxAmountTainstation,
-                    maxAmountContainer = _maxAmountContainer
+                    amountStation      = sCount,
+                    amountContainer    = cCount,
+                    maxAmountStation   = sMax,
+                    maxAmountContainer = cMax
                 }
-
-                self.myFactoryInfo:updateInput(input) -- <– korrektes Feld
+                self.myFactoryInfo:updateInput(input)
             end
         end
     end
