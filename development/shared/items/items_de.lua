@@ -136,6 +136,7 @@ MyItemList:addItem(MyItem.MEHRZWECKGERUEST)
 -- Buildings
 ---@type MyItem
 MyItem.ASSEMBLER = MyItem.new({ name = "Assembler", id = 59 })
+MyItem.MINER = MyItem.new({ name = "Miner", id = 59 })
 
 MyItemList:addItem(MyItem.ASSEMBLER)
 

@@ -58,7 +58,8 @@ This setup turns **one FIN computer into a central file server**. All **clients 
 
 ## Transparent Module Loading (`require`)
 
-* **Example:** `require("shared/helper.lua")`
+* **Example:** `require("shared/helper.lua")` 
+            or `require("shared.helper")`
 
   1. Client checks the local module cache.
   2. If missing: it sends `getEEPROM` (port 8; name = `shared/helper.lua`).

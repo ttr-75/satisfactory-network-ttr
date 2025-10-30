@@ -1,5 +1,5 @@
 local helper = require("shared.helper")
-
+local pj = helper.pj
 
 
 
@@ -71,8 +71,13 @@ miner = component.proxy(component.findComponent("Miner Schwefel")[1])
 --local miner = component.proxy("YOUR-MINER-UUID")
 local stack = readMinedItem(miner, 45) -- 45s Timeout im aktiven Fall
 if stack then
-    local name = (stack.item and (stack.item.displayName or stack.item.name)) or "Unknown"
+    local name = (stack.item and (stack.item.type and stack.item.type.name or stack.item.type.name  )) or "Unknown"
     print(("Miner fördert: %s (x%d)"):format(name, stack.count or 0))
 else
     print("Kein Item gefunden (Miner inaktiv oder Timeout erreicht).")
 end
+
+
+fac = component.proxy(component.findComponent("Factory Mehrzweckgeruest")[1])
+
+pj(fac)

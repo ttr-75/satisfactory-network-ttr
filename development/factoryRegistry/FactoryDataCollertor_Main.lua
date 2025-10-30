@@ -147,13 +147,45 @@ end
 
 --- Statt der alten: function FactoryDataCollertor:performUpdate() ... end
 function FactoryDataCollertor:performUpdate()
-    -- 1) Manufacturer holen (früh & robust raus, wenn keiner da)
-    local comp = component.findComponent(classes.Manufacturer)
-    if not comp or #comp == 0 then return end
+    local manufacturer = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
+    if not manufacturer then
+        local miner = FI.minerByFactoryName(self.myFactoryInfo.fName)
+        if not miner then
+            log(3,
+                "FactoryDataCollertor: No Manufacturer or Miner found for Factory '" ..
+                tostring(self.myFactoryInfo.fName) .. "'")
+            return
+        end
+        self:performMinerUpdate(miner)
+    else
+        self:performManufactureUpdate(manufacturer)
+    end
+end
 
-    local manufacturer = component.proxy(comp[1])
-    ---@cast manufacturer Manufacturer
-    if not manufacturer then return end
+---comment
+---@param miner FGBuildableResourceExtractor
+function FactoryDataCollertor:performMinerUpdate(miner)
+    if not miner then
+        log(3, "FactoryDataCollertor: No Miner provided for Factory '" ..
+            tostring(self.myFactoryInfo.fName) .. "'")
+        return
+    end
+
+
+end
+
+---comment
+---@param manufacturer Manufacturer
+function FactoryDataCollertor:performManufactureUpdate(manufacturer)
+    -- 1) Manufacturer holen (früh & robust raus, wenn keiner da)
+    if not manufacturer then
+        log(3, "FactoryDataCollertor: No Manufacturer provided for Factory '" ..
+            tostring(self.myFactoryInfo.fName) .. "'")
+        return
+        
+        self.myFactoryInfo.fType = MyItem.ASSEMBLER
+
+    end
 
     -- 2) Typ bestimmen (nur, wenn verfügbar)
     local mTypeName = (manufacturer:getType() and manufacturer:getType().name) or ""

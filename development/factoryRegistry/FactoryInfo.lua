@@ -213,8 +213,23 @@ end
 --------------------------------------------------------------------------------
 
 ---@param factoryName string
+---@return Manufacturer  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
+local function manufacturerByFactoryName(factoryName)
+    local nick = "Manufacturer " .. de_umlaute(factoryName)
+    return byAllNick(nick)
+end
+
+
+---@param factoryName string
+---@return FGBuildableResourceExtractor  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
+local function minerByFactoryName(factoryName)
+    local nick = "Miner " .. de_umlaute(factoryName)
+    return byAllNick(nick)
+end
+
+---@param factoryName string
 ---@param itemStack FactoryStack
----@return any  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
+---@return FGBuildableStorage  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
 local function containerByFactoryStack(factoryName, itemStack)
     local nick = "Container "
 
@@ -265,4 +280,6 @@ return {
     containerByFactoryStack    = containerByFactoryStack,
     trainstationByFactoryStack = trainstationByFactoryStack,
     trainsignalByFactoryStack  = trainsignalByFactoryStack,
+    manufacturerByFactoryName  = manufacturerByFactoryName,
+    minerByFactoryName         = minerByFactoryName
 }
