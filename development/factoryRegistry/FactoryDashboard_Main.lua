@@ -2,6 +2,7 @@
 require("factoryRegistry/basics.lua")
 local NetworkAdapter = require("net/NetworkAdapter.lua")
 local FI = require("factoryRegistry/FactoryInfo.lua")
+local FactoryDashboard = require("factoryRegistry/FactoryDashboard_UI.lua")
 
 --------------------------------------------------------------------------------
 -- Client
@@ -11,8 +12,10 @@ local FI = require("factoryRegistry/FactoryInfo.lua")
 ---@field myFactoryInfo FactoryInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
----@field scr any|nil
+---@field scr ScreenProxy|nil
 ---@field gpu GPUProxy|nil
+---@field last integer
+---@field dash FactoryDashboard
 local FactoryDashboardClient = setmetatable({}, { __index = NetworkAdapter })
 FactoryDashboardClient.__index = FactoryDashboardClient
 
@@ -24,8 +27,10 @@ function FactoryDashboardClient.new(opts)
     local self         = NetworkAdapter.new(FactoryDashboardClient, opts)
     self.name          = NET_NAME_FACTORY_REGISTRY_CLIENT
     self.port          = NET_PORT_FACTORY_REGISTRY
-
+    self.gpu           = nil
+    self.scr           = nil
     self.ver           = 1
+    self.dash          = FactoryDashboard.new {}
     ---@type FactoryInfo|nil
     self.myFactoryInfo = opts and opts.factoryInfo or nil
     ---@type integer
@@ -68,6 +73,7 @@ function FactoryDashboardClient.new(opts)
     end)
 
 
+    ---@diagnostic disable-next-line: undefined-field
     self.gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
     if opts.scrName then
         self.scr = byNick(opts.scrName)
@@ -80,6 +86,9 @@ function FactoryDashboardClient.new(opts)
         log(4, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
         computer.stop()
     end
+
+    local dash = FactoryDashboard.new {}
+    self.dash:init(self.gpu, self.scr)
 
     return self
 end
@@ -155,6 +164,8 @@ function FactoryDashboardClient:onUpdateFactory(fromId, factoryInfoS)
     --local id = o.fCoreNetworkCard
     ---@cast o FactoryInfo
     self.myFactoryInfo:update(o)
+    self.dash:setFromFactoryInfo(self.myFactoryInfo)
+    self.dash:paint()
 end
 
 --- Fragt zyklisch (1/s) alle bekannten Fabriken nach Updates.
@@ -170,6 +181,10 @@ function FactoryDashboardClient:callForUpdate()
             self:send(fromId, NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE, name)
         else
         end
+
+
+        -- ggf. myFactoryInfo:update(...) → dann erneut mappen:
+        -- dash:setFromFactoryInfo(myFactoryInfo)
     end
 end
 

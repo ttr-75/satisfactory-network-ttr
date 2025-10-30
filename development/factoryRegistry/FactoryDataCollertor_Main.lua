@@ -239,7 +239,6 @@ function FactoryDataCollertor:performUpdate()
                 }
 
                 self.myFactoryInfo:updateOutput(output) -- <– korrektes Feld
-                --pj(self.myFactoryInfo)
             end
             for _, ingredient in pairs(recipe:getIngredients()) do
                 local item = MyItemList:get_by_Name(ingredient.type.name)

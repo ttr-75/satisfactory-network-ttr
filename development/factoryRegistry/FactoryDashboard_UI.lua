@@ -1,7 +1,7 @@
 require("shared/helper.lua")
 require("shared/items/items[-LANGUAGE-].lua")
 require("shared/graphics.lua")
-require("factoryRegistry/FactoryInfo.lua")
+FactoryInfo = require("factoryRegistry/FactoryInfo.lua")
 --require("factoryBillboard.lua")
 
 
@@ -9,13 +9,22 @@ require("factoryRegistry/FactoryInfo.lua")
 ----------------------------------------------------------------
 -- FactoryDashboard – passt direkt zu deiner FactoryInfo-Struktur
 ----------------------------------------------------------------
+
+
+---Monotonic-ish milliseconds (prefers game API, falls back to os.clock).
+---@return integer ms
 local function now_ms()
     return (computer and computer.millis and computer.millis())
         or math.floor(os.clock() * 1000)
 end
 
--- FIN-Icon Cache
+---FIN icon cache by item name.
+---@type table<string, MyItem|nil>
 local _icon_cache = {}
+
+---Gets (and caches) the icon/item descriptor for a given item name.
+---@param itemName string|nil
+---@return MyItem|nil icon
 local function get_icon_for(itemName)
     if not itemName then return nil end
     if _icon_cache[itemName] ~= nil then return _icon_cache[itemName] end
@@ -27,9 +36,32 @@ local function get_icon_for(itemName)
     return _icon_cache[itemName]
 end
 
-FactoryDashboard = {}
+---@class FactoryDashboard
+---@field title string
+---@field pad integer
+---@field rowH integer
+---@field iconSize integer
+---@field fontSize integer
+---@field headerSize integer
+---@field minIntervalMs integer
+---@field lastPaint integer
+---@field bg Color
+---@field fg Color
+---@field muted Color
+---@field accent Color
+---@field inputs { name:string, s:number, c:number, sMax:number, cMax:number }[]
+---@field outputs { name:string, s:number, c:number, sMax:number, cMax:number }[]
+---@field gpu GPUProxy
+---@field scr ScreenProxy
+---@field size Vector2d
+---@field root ScreenElement
+local FactoryDashboard = {}
 FactoryDashboard.__index = FactoryDashboard
 
+
+---Creates a new dashboard instance.
+---@param opts table|nil -- { title? = string }
+---@return FactoryDashboard
 function FactoryDashboard.new(opts)
     local self         = setmetatable({}, FactoryDashboard)
     self.title         = (opts and opts.title) or "Fabrik-Übersicht"
@@ -57,10 +89,13 @@ function FactoryDashboard.new(opts)
     return self
 end
 
--- Aus deiner FactoryInfo mappen:
--- fi.inputs[name]  = Input{ itemClass={name=..}, amountStation, amountContainer, maxAmountStation, maxAmountContainer }
--- fi.outputs[name] = Output{ ... }
+---Fills inputs/outputs from a FactoryInfo-like table.
+---fi.inputs[name] = Input{ itemClass={name=..}, amountStation, amountContainer, maxAmountStation, maxAmountContainer }
+---fi.outputs[name] = Output{ ... }
+---@param fi FactoryInfo
 function FactoryDashboard:setFromFactoryInfo(fi)
+    ---@param map table<string, any>|nil
+    ---@return { name:string, s:number, c:number, sMax:number, cMax:number }[]
     local function rows_from(map)
         local rows = {}
         if map then
@@ -82,43 +117,37 @@ function FactoryDashboard:setFromFactoryInfo(fi)
     self.outputs = rows_from(fi and fi.outputs)
 end
 
+---Sets explicit input/output rows (bypassing FactoryInfo mapping).
+---@param inputs Input[]|nil
+---@param outputs Output[]|nil
 function FactoryDashboard:setData(inputs, outputs)
     self.inputs  = inputs or {}
     self.outputs = outputs or {}
 end
 
-function FactoryDashboard:init(gpu, scr, width, height)
-    --[[
-    -- GPU
-    local gpu
-    if type(gpuNickOrRef) == "string" then
-        local t = component.findComponent(gpuNickOrRef)[1]
-        assert(t, "GPU '" .. gpuNickOrRef .. "' nicht gefunden")
-        gpu = component.proxy(t)
-    else
-        gpu = gpuNickOrRef
-    end
-    -- Screen
-    local scr
-    if type(screenNickOrRef) == "string" then
-        local t = component.findComponent(screenNickOrRef)[1]
-        assert(t, "Screen '" .. screenNickOrRef .. "' nicht gefunden")
-        scr = component.proxy(t)
-    else
-        scr = screenNickOrRef
-    end
-    ]]
+---Initializes rendering targets and root screen element.
+---@param gpu GPUProxy
+---@param scr ScreenProxy
+function FactoryDashboard:init(gpu, scr)
+    self.gpu            = gpu
+    self.scr            = scr
+    
+    local width, height = scr:getSize()
+    width               = width * 300
+    height              = height * 300
 
     gpu:bindScreen(scr)
-    self.gpu  = gpu
-    self.scr  = scr
+
     self.size = Vector2d.new(width or 1920, height or 1080)
+
 
     self.root = ScreenElement:new()
     self.root:init(gpu, Vector2d.new(0, 0), self.size)
 end
 
--- kleine Farblogik für Füllstand
+---Optional color logic for a progress bar depending on fraction (currently disabled).
+---@param frac number
+---@return Color|nil
 local function barColor(frac)
     if true then return nil end
     if frac ~= frac then frac = 0 end
@@ -131,7 +160,12 @@ local function barColor(frac)
     end
 end
 
--- eine Zeile rendern (zwei Bars: Station / Container)
+---Draws one data row with icon, labels and two bars (station/container).
+---@param colX integer
+---@param posY integer
+---@param ix integer
+---@param it MyItem
+---@param colWidth integer
 function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     local y = posY + 120 + (ix - 1) * (self.rowH + self.rowH) + self.pad
     local left = colX + self.pad
@@ -190,6 +224,9 @@ function FactoryDashboard:_drawRow(colX, posY, ix, it, colWidth)
     self.root:drawText(Vector2d.new(pbX - 64, pbC.position.y - 2), "Co", 18, self.muted, true)
 end
 
+---Paints an output warning icon (aggregated from outputs).
+---@param position Vector2d|nil
+---@param size Vector2d|nil
 function FactoryDashboard:paintOuputWarning(position, size)
     local posY = self.pad
     local posX = self.size.x - 200 - self.pad
@@ -238,6 +275,9 @@ function FactoryDashboard:paintOuputWarning(position, size)
     })]]
 end
 
+---Paints an input warning icon (aggregated from inputs).
+---@param position Vector2d|nil
+---@param size Vector2d|nil
 function FactoryDashboard:paintInputWarning(position, size)
     local posY = self.pad
     local posX = self.size.x - 500 - self.pad
@@ -339,3 +379,5 @@ function FactoryDashboard:paint()
 
     self.gpu:flush()
 end
+
+return FactoryDashboard

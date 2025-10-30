@@ -5,32 +5,17 @@ FactoryDashboardClient = require("factoryRegistry/FactoryDashboard_Main.lua")
 
 
 
-local cli = FactoryDashboardClient.new { fName = fName }
+-- Validate required inputs
+---@diagnostic disable-next-line: undefined-global
+if fName == nil or tostring(fName) == "" then
+    error("factoryDashboard.lua: fName is required and must not be nil/empty")
+    computer.stop()
+end
+---@diagnostic disable-next-line: undefined-global
+if scrName == nil or tostring(scrName) == "" then
+    error("factoryDashboard.lua: scrName is required and must not be nil/empty")
+    computer.stop()
+end
+---@diagnostic disable-next-line: undefined-global
+local cli = FactoryDashboardClient.new { fName = fName, scrName = scrName }
 cli:run()
--- MediaSubsystem (liefert Icon-Referenzen)
---local media = computer.media
---assert(media, "MediaSubsystem nicht gefunden")
-
-
-
---[[
-NICK_SCREEN = "MyScreen"
-
-local scr = byNick(NICK_SCREEN)
-assert(scr, "Screen nicht gefunden")
-
-
--- GPU/Screen/Container
-local gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
-assert(gpu, "No GPU T2 found. Cannot continue.")
---event.listen(gpu)
-
---gpu:bindScreen(scr)
-
-log(1, "Billboard Creation")
-
-
-
-FactoryBillbard:init(gpu, scr)
-FactoryBillbard:run()
-]]

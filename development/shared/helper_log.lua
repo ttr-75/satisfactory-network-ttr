@@ -1,5 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
+require("config.lua")
 
 ----------------------------------------------------------------
 -- helper.lua – Kleine Helferlein für Logging

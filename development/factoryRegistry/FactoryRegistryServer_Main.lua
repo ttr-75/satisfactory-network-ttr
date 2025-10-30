@@ -53,7 +53,6 @@ function FactoryRegistryServer.new(opts)
             log(0, "Request for Address of " .. (a or "unknown"))
             if a then
                 local fi = self.reg:getByName(a)
-                pj(self.reg)
                 if not fi then
                     log(4, "FactoryRegistryServer.getAddress:There is no factory called " .. a)
                     self:send(from, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_ADDRESS_NO_FACTORY)
