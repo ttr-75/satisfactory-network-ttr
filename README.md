@@ -10,36 +10,74 @@ This setup turns **one FIN computer into a central file server**. All **clients 
 - Put **`config.lua`** in the **root of the server disk** (e.g. `/srv/config.lua`).
 
 ---
+## Prerequisites
 
-## Set up the server
-
-1. Boot the server computer with a **NetworkCard** and a disk.
-2. Flash the **server’s EEPROM** with **`Server.lua`** (1:1). On boot it will:
-   - mount `/srv` and load `config.lua`,
-   - replace `[-LANGUAGE-].lua` in requested files according to `TTR_FIN_Config.language`,
-   - start **CodeDispatchServer** on port `8` to serve code.
-3. Let it run — it sends a single `resetAll` and then waits for requests.
+* FIN computer with a **Network Card** on both **server** and **client**.
+* Server computer with a **hard drive**; mount point: `/srv`.
 
 ---
 
-## Set up a client
+## Installation & Setup
 
-1. Boot the client with a **NetworkCard**.
-2. Flash the **client’s EEPROM** with **`bootLoader.lua`**.  
-   In that file **set the start script** (on the server) and optionally **provide parameters**:
+### 1) Set up the server
 
+1. Flash the server PC’s **EEPROM** with **`development/net/codeDispatch/EEPROM/Server.lua`** (copy the contents 1:1).
+2. Prepare and use the **hard drive** (root path `/`).
+3. **Copy code:** Copy the content of the **entire** `development/` folder from your project to the **root** of the server disk → it will end up at **`srv/`**.
+4. **Configuration:** Optionally create `/config.lua`, e.g.:
+   ```lua
+   TTR_FIN_Config = {
+     LOG_LEVEL = 0,    -- 0=Info .. 4=Fatal
+     language  = "de", -- controls placeholder [-LANGUAGE-].lua → _de.lua
+   }
+   ```
+5. Boot the server. On startup:
+   * `/config.lua` is loaded (if present).
+   * The server opens port **8**, responds to `getEEPROM`, and may send a **reset broadcast**.
+
+### 2) Set up the clients
+
+1. Flash the client PC’s **EEPROM** with **`development/net/codeDispatch/EEPROM/bootLoader.lua`**.
+2. In that file, set the **start file** (path is relative to the **hard drive root** on the server). Typical examples from your structure:
+   ```lua
+   -- bootLoader.lua
+   local name = "[YOUR_PATH]/[YOUR_STARTER].lua"
+   -- or
+   -- local name = "factoryRegistry/starter/factoryRegistry.lua"
+   -- local name = "factoryRegistry/starter/factoryDashboard.lua"
+   -- local name = "factoryRegistry/starter/factoryInfoCollector.lua"
+
+   -- Optional: extra inputs/variables for your start script
+   yourInput = { profile = "prod", station = "Hub-01" }
+   ```
+3. Start the client. The bootloader initializes networking and the client loader, requests `name` from the server, and executes it. Subsequent `require()` calls in your modules will be fetched automatically as needed.
+
+> **Note:** Client path values must match the server’s filenames under `/srv`.
+
+---
+
+## Transparent Module Loading (`require`)
+
+* **Example:** `require("shared/helper.lua")`
+
+  1. Client checks the local module cache.
+  2. If missing: it sends `getEEPROM` (port 8; name = `development/shared/helper.lua`).
+  3. Server reads **`/development/shared/helper.lua`**, optionally performs language replacement, and replies with `setEEPROM` containing the code.
+  4. Client loads the module in its own environment with a local `require`, evaluates the return value, and caches it.
+* **Return values:** as usual — table/`exports`/`true`.
+* **Cycle protection:** recursive dependencies are detected and reported cleanly.
+
+---
+
+## Logging
+
+* Global variable `LOG_LEVEL` (or `TTR_FIN_Config.LOG_LEVEL`) controls verbosity (0..4).
+* Inject log-helper 
 ```lua
--- bootLoader.lua (excerpt)
--- start script on the server:
-local name = "[YOUR_PATH]/[YOUR_STARTER].lua"
-
--- optional variables expected by the starter:
-fName   = "YOUR_FACTORY_NAME"
-scrName = "YOUR_SCREEN_NAME"  -- dashboard only
--- stationMin = 2              -- optional for InfoCollector
+local Helper_log = require("shared/helper_log.lua")
+local log = Helper_log.log
 ```
-
-The client fetches `name` from the network and runs modules using a local in‑memory `require`; dependencies are loaded on demand.
+* Logs are written via `log(level, ...)`.
 
 ---
 

@@ -11,6 +11,21 @@ This setup turns **one FIN computer into a central file server**. All **clients 
 
 ---
 
+## Architecture (High-Level)
+
+```
+[ Clients ] --(FIN Port 8)--> [ Server ] --(FileIO)--> [/srv/<your files>]
+       ^                            |
+       |                            +-- replaces "[-LANGUAGE-].lua" → "_<lang>.lua"
+       +-- require() ↔ network → per-client cache
+```
+
+- **Client** sends `GET_EEPROM` with the module name, then waits.
+- **Server** reads the file from `/srv/<name>`, performs the language replacement, and replies with `setEEPROM` containing the source code.
+- **Client** loads the code in its own `require`-enabled environment and caches return values as usual.
+
+---
+
 ## Set up the server
 
 1. Boot the server computer with a **NetworkCard** and a disk.
