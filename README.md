@@ -127,13 +127,6 @@ fName        = "IronHub"
 
 ---
 
-## How loading works (transparent `require`)
-
-- The client sends `getEEPROM <file>` on port `8`. The server reads from `/srv/...`, optionally replaces `[-LANGUAGE-].lua` according to `config.lua`, and returns the source.
-- The client executes the code **in its own environment with a local `require`**. Modules are **cached**; cyclic requires are handled.
-
----
-
 ## `config.lua` (server)
 
 - Stored at **`/srv/config.lua`**.
