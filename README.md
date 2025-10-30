@@ -104,6 +104,8 @@ fName   = "YOUR_FACTORY_NAME"
 scrName = "YOUR_SCREEN_NAME"
 ```
 
+![Architekturübersicht](./media/FactoryScreen.png Factory Monitor")
+
 **Client EEPROM example – Dashboard:**
 ```lua
 local name = "development/factoryRegistry/starter/factoryDashboard.lua"
