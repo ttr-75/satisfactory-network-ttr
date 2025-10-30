@@ -35,6 +35,7 @@ function CodeDispatchClient.new(opts)
     -- Neu für require:
     self.modules          = {}
     self.loading          = {}
+    self.startLog         = false
 
     self._onReset         = nil
 
@@ -213,11 +214,13 @@ end
 --- Führt alle gespeicherten Module in definierter Reihenfolge aus
 --- (jetzt via _require, damit Rückgabewerte/Namespaces landen).
 function CodeDispatchClient:callAllLoadedFiles()
+
     for i = 1, #self.codeOrder do
         local name = self.codeOrder[i]
         log(1, "CDC: run " .. tostring(name))
         local ok, err = pcall(function() self:_require(name) end)
         if not ok then log(4, err) end
+
     end
     self.codeOrder = {}
     self.codes     = {}
@@ -296,6 +299,14 @@ function CodeDispatchClient:_executeModule(name)
 
     local mod = (ret ~= nil) and ret or (next(env.exports) and env.exports) or true
     self.modules[key] = mod
+
+    
+        if TTR_FIN_Config and self.startLog ~= true then
+            log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
+            log(0, "Laguage set to " .. TTR_FIN_Config.language)
+            self.startLog = true 
+        end
+
     return mod
 end
 

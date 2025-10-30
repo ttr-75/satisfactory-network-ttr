@@ -13,6 +13,7 @@ local name = nil
 
 yourInput = nil
 
+
 ----------------------------------------------------------------
 -- helper.lua – Kleine Helferlein für Logging
 -- Optimiert & ausführlich kommentiert
@@ -234,9 +235,7 @@ function NetworkAdapter:broadcast(cmd, ...)
     self.net:broadcast(self.port, cmd, ...)
 end
 
--- Erwartete globale Konstante (nur Typ-Hinweis; keine Zuweisung hier):
----@type NetPort
-NET_PORT_DEFAULT = NET_PORT_DEFAULT
+
 ---@diagnostic disable: lowercase-global
 
 -------------------------------------------------------------------------------
@@ -272,6 +271,7 @@ function CodeDispatchClient.new(opts)
     -- Neu für require:
     self.modules          = {}
     self.loading          = {}
+    self.startLog         = false
 
     self._onReset         = nil
 
@@ -341,7 +341,7 @@ end
 ---  "shared.helper"        -> "shared/helper.lua"
 ---  "shared/helper"        -> "shared/helper.lua"
 ---  "shared/helper.lua"    -> "shared/helper.lua"
----@param v string
+---@param name string
 ---@return string
 local function _canon(name)
     local s = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
@@ -450,11 +450,13 @@ end
 --- Führt alle gespeicherten Module in definierter Reihenfolge aus
 --- (jetzt via _require, damit Rückgabewerte/Namespaces landen).
 function CodeDispatchClient:callAllLoadedFiles()
+
     for i = 1, #self.codeOrder do
         local name = self.codeOrder[i]
         log(1, "CDC: run " .. tostring(name))
         local ok, err = pcall(function() self:_require(name) end)
         if not ok then log(4, err) end
+
     end
     self.codeOrder = {}
     self.codes     = {}
@@ -533,6 +535,14 @@ function CodeDispatchClient:_executeModule(name)
 
     local mod = (ret ~= nil) and ret or (next(env.exports) and env.exports) or true
     self.modules[key] = mod
+
+    
+        if TTR_FIN_Config and self.startLog ~= true then
+            log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
+            log(0, "Laguage set to " .. TTR_FIN_Config.language)
+            self.startLog = true 
+        end
+
     return mod
 end
 
@@ -559,7 +569,6 @@ function CodeDispatchClient:_require(name)
 
     return self:_executeModule(key)
 end
-
 --------------------------------------------------------------------------------
 --- Starter-Skript
 --- ---------------------------------------------------------------------------
@@ -569,7 +578,3 @@ NetHub:init(nic)
 
 CodeDispatchClient = CodeDispatchClient.new()
 CodeDispatchClient:startClient(name or "test/test.lua")
-
-
-log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
-log(0, "Laguage set to " .. TTR_FIN_Config.language)
