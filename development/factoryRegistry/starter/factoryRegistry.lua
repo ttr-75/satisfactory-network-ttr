@@ -1,5 +1,5 @@
-require("config.lua")
-FactoryRegistryServer = require("factoryRegistry/FactoryRegistryServer_Main.lua")
+require("config")
+FactoryRegistryServer = require("factoryRegistry.FactoryRegistryServer_Main")
 
 
 
