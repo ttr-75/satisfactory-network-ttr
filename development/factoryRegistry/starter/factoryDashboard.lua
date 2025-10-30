@@ -1,3 +1,4 @@
+require("config.lua")
 FactoryDashboardClient = require("factoryRegistry/FactoryDashboard_Main.lua")
 
 

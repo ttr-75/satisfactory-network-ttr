@@ -1,4 +1,4 @@
-TTR_FIN_Config = {}
+local TTR_FIN_Config = {}
 
 TTR_FIN_Config.language = "de"
 TTR_FIN_Config.LOG_LEVEL = 0
