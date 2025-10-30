@@ -1,5 +1,5 @@
-require("config.lua")
-FactoryDashboardClient = require("factoryRegistry/FactoryDashboard_Main.lua")
+require("config")
+FactoryDashboardClient = require("factoryRegistry.FactoryDashboard_Main")
 
 
 --}

@@ -18,9 +18,9 @@
   API bleibt unverändert.
 ]]
 
-local Helper_log = require("shared/helper_log.lua")
+local Helper_log = require("shared.helper_log")
 local log = Helper_log.log
-require("shared/serializer.lua")
+require("shared.serializer")
 
 
 

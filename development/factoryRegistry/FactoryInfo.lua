@@ -1,8 +1,8 @@
 ---@diagnostic disable: lowercase-global
 
 
-require("shared/helper.lua")
-require("shared/items/items[-LANGUAGE-].lua")
+require("shared.helper")
+require("shared.items.items[-LANGUAGE-]")
 
 
 --------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
-require("shared/helper.lua")
-require("shared/items/items[-LANGUAGE-].lua")
-require("shared/graphics.lua")
-FactoryInfo = require("factoryRegistry/FactoryInfo.lua")
+require("shared.helper")
+require("shared.items.items[-LANGUAGE-]")
+require("shared.graphics")
+FactoryInfo = require("factoryRegistry.FactoryInfo")
 --require("factoryBillboard.lua")
 
 

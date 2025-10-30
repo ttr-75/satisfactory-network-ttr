@@ -1,6 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-local Helper_log = require("shared/helper_log.lua")
+local Helper_log = require("shared.helper_log")
 local log = Helper_log.log
 ----------------------------------------------------------------
 -- FileIO (FicsIt Network kompatibel)

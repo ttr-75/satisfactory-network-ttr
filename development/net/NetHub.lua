@@ -1,6 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-require("shared/helper.lua")
+require("shared.helper")
 
 -------------------------------------------------------
 --- NetHub

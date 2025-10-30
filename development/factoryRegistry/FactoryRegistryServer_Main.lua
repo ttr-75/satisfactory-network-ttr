@@ -1,9 +1,9 @@
 ---@diagnostic disable: lowercase-global
 
-require("factoryRegistry/basics.lua")
-local FI = require("factoryRegistry/FactoryInfo.lua")
-local FactoryRegistry = require("factoryRegistry/FactoryRegistry.lua")
-local NetworkAdapter = require("net/NetworkAdapter.lua")
+require("factoryRegistry.basics")
+local FI = require("factoryRegistry.FactoryInfo")
+local FactoryRegistry = require("factoryRegistry.FactoryRegistry")
+local NetworkAdapter = require("net.NetworkAdapter")
 
 
 --------------------------------------------------------------------------------

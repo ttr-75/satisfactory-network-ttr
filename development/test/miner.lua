@@ -60,7 +60,7 @@ local function readMinedItem(miner, activeTimeoutSeconds)
     for i = 1, deadlineTicks do
         local stack = scanOnce(miner)
         if stack then return stack end
-        --helper. -- kurz yielden, dann erneut prüfen
+        helper.sleep_ms(200) -- kurz yielden, dann erneut prüfen
     end
     return nil      -- Sicherheit: falls nach Timeout immer noch nichts da ist
 end

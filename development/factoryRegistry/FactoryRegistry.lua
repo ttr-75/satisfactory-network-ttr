@@ -1,6 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-local FI = require("factoryRegistry/FactoryInfo.lua")
+local FI = require("factoryRegistry.FactoryInfo")
 
 --------------------------------------------------------------------------------
 -- FactoryRegistry

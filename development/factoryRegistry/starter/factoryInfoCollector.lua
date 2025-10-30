@@ -1,6 +1,6 @@
 
-require("config.lua")
-FactoryDataCollertor = require("factoryRegistry/FactoryDataCollertor_Main.lua")
+require("config")
+FactoryDataCollertor = require("factoryRegistry.FactoryDataCollertor_Main")
 
 
 
