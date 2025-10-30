@@ -1,6 +1,7 @@
 ---@diagnostic disable: lowercase-global
 
-require("shared/helper_log.lua")
+local Helper_log = require("shared/helper_log.lua")
+local log = Helper_log.log
 ----------------------------------------------------------------
 -- FileIO (FicsIt Network kompatibel)
 -- - Auto-Mount von /dev/* auf self.root (Default: "/srv")
