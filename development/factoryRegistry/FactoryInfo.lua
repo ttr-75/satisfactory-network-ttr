@@ -221,7 +221,7 @@ end
 ---@return boolean, string|nil, string|nil  -- ok, nickOrNil, err
 local function _make_nick(prefix, factoryName, itemStack)
     -- romanize darf fehlen; dann Fallback = identity
-    local _de = type(romanize) == "function" and romanize or function(x) return x end
+    local _romanize = type(romanize) == "function" and romanize or function(x) return x end
 
     if not is_str(prefix) or prefix == "" then
         return false, nil, "nick: prefix must be non-empty string"
@@ -236,7 +236,7 @@ local function _make_nick(prefix, factoryName, itemStack)
         if not is_str(factoryName) or factoryName == "" then
             return false, nil, "nick: factoryName must be non-empty string"
         end
-        return true, (prefix .. " " .. _de(factoryName)), nil
+        return true, (prefix .. " " .. _romanize(factoryName)), nil
     end
 
     -- itemStack-Variante
@@ -252,14 +252,14 @@ local function _make_nick(prefix, factoryName, itemStack)
         return false, nil, "nick: itemStack.itemClass.name missing"
     end
 
-    local itemName = _de(itemStack.itemClass.name)
+    local itemName = _romanize(itemStack.itemClass.name)
     if itemStack:isOutput() then
         return true, (prefix .. " " .. itemName), nil
     else
         if not is_str(factoryName) or factoryName == "" then
             return false, nil, "nick: factoryName required for non-output stacks"
         end
-        return true, (prefix .. " " .. itemName .. "2" .. _de(factoryName)), nil
+        return true, (prefix .. " " .. itemName .. "2" .. _romanize(factoryName)), nil
     end
 end
 
