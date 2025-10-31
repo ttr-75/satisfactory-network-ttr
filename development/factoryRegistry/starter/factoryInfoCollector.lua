@@ -1,5 +1,11 @@
 require("config")
-local helper = require("shared.helper")
+
+
+local sleep_s        = require("shared.helper").sleep_s
+local Log            = require("shared.helper_log")
+local log            = Log.log
+local tb             = Log.traceback
+
 FactoryDataCollertor = require("factoryRegistry.FactoryDataCollertor_Main")
 
 
@@ -8,7 +14,7 @@ FactoryDataCollertor = require("factoryRegistry.FactoryDataCollertor_Main")
 assert(fName, "factoryInfoCollector.lua - fName must been set.")
 
 
-helper.sleep_s(1)
+sleep_s(1)
 
 local cli = nil
 ---@diagnostic disable-next-line: undefined-global
@@ -20,18 +26,30 @@ else
     cli = FactoryDataCollertor.new { fName = fName, stationMin = stationMin }
 end
 
+
+-- optional: Name/Tag für sauberere Logs
+local LOOP_TAG = "FactoryInfoCollectorStarter"
+
 future.addTask(async(function()
-    xpcall(function()
-        while true do
-            event.pull(TTR_FIN_Config.EVENT_LOOP_TIMEOUT or 0.2)
+    log(0, "[loop] start:", LOOP_TAG)
+
+
+    while true do
+        -- Schutz pro Tick: Fehler killen nicht den gesamten Task
+        local ok = xpcall(function()
+            event.pull(TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 0.2)
             cli:checkTrainsignals()
+        end, tb(LOOP_TAG)) -- nutzt deinen traceback-Logger
+
+        -- Falls eine Iteration scheitert, wurde der Stacktrace bereits geloggt.
+        -- Hier kannst du optional Backoff/Telemetry setzen:
+        if not ok then
+            -- Kleiner Cooldown verhindert „Fehler-Spam“ bei harten Dauerfehlern
+            event.pull(0.1)
+            -- oder: log(2, "[loop] tick failed — continuing:", LOOP_TAG)
         end
-    end, function(err)
-        computer.log(1, "[loop] error: ", err, "\n", debug.traceback())
-    end)
+    end
 end))
-
-
 
 
 future.loop()
