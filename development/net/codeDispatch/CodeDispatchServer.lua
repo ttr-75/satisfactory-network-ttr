@@ -25,7 +25,7 @@ function CodeDispatchServer.new(opts)
     self.port  = NET_PORT_CODE_DISPATCH
     self.ver   = 1
 
-    self.fsio  = FileIO.new { root = "/srv" }
+    self.fsio  = opts and opts.fsio or FileIO.new { root = "/srv" }
 
     -- Listener registrieren (reiner Dispatch)
     self:registerWith(function(from, port, cmd, programName, code)
@@ -57,8 +57,8 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
             log(3, "Failed to read " .. programName, err)
             return
         end
-        --content = replace_language_chunk(content, TTR_FIN_Config.language)
-        --content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
+       -- content = replace_language_chunk(content, TTR_FIN_Config.language)
+       -- content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
         return content
     end)
     if ok == false then

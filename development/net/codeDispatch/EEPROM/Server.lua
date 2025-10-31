@@ -320,24 +320,6 @@ xpcall(contentFn, _traceback("ServerStart"), "Failed to excecute config.lua")
 --- CodeDispatchServer
 -------------------------------------------------------------------------------
 
--- Maskiert alle Lua-Pattern-Sonderzeichen in einem Literal
-local function escape_lua_pattern(s)
-    return (s:gsub("(%W)", "%%%1")) -- alles, was nicht %w ist, mit % escapen
-end
-
--- Ersetzt EXAKT die Zeichenkette "[-LANGUAGE-].lua" durch z.B. "de.lua"
-local function replace_language_chunk(str, replacement)
-    local literal = "[-LANGUAGE-].lua"
-    replacement = "_" .. replacement .. ".lua"
-    local pattern = escape_lua_pattern(literal)
-
-    -- Falls replacement '%' enthalten könnte, für gsub-Replacement escapen:
-    replacement = replacement:gsub("%%", "%%%%")
-
-    return (str:gsub(pattern, replacement))
-end
-
----@diagnostic disable: lowercase-global
 
 
 -- Standardport (aus deiner Originaldatei)
@@ -432,8 +414,8 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
             log(3, "Failed to read " .. programName, err)
             return
         end
-        content = replace_language_chunk(content, TTR_FIN_Config.language)
-        content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
+       -- content = replace_language_chunk(content, TTR_FIN_Config.language)
+       -- content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
         return content
     end)
     if ok == false then
