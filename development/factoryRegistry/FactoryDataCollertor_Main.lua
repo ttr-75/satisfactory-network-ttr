@@ -242,7 +242,6 @@ function FactoryDataCollertor:performMinerUpdate(miner)
         }
        
         self.myFactoryInfo:updateOutput(output)
-         pj(self.myFactoryInfo)
     end
 end
 

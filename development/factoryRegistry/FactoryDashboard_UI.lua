@@ -3,7 +3,7 @@ local now_ms     = helper.now_ms
 
 local MyItemList = require("shared.items.items[-LANGUAGE-]")
 local MyItem     = require("shared.items.items_basics").MyItem
-local C = require("shared.items.items_basics").MyItemConst
+local C          = require("shared.items.items_basics").MyItemConst
 
 require("shared.graphics")
 FactoryInfo = require("factoryRegistry.FactoryInfo")
@@ -384,8 +384,12 @@ function FactoryDashboard:paint()
     -- Spaltenüberschriften
     posY = posY + self.pad
 
-    self.root:drawText(Vector2d.new(posX, posY), "Inputs", self.headerSize, self.fg, false)
-    self.root:drawText(Vector2d.new(mid + posX, posY), "Outputs", self.headerSize, self.fg, false)
+    if self.inputs and next(self.inputs) ~= nil then
+        self.root:drawText(Vector2d.new(posX, posY), "Inputs", self.headerSize, self.fg, false)
+    end
+    if self.outputs and next(self.outputs) ~= nil then
+        self.root:drawText(Vector2d.new(mid + posX, posY), "Outputs", self.headerSize, self.fg, false)
+    end
 
     -- vertikaler Trenner
     self.root:drawRect(Vector2d.new(mid - 1, posY), Vector2d.new(2, h - 80), Color.GREY_0125, nil, nil)
