@@ -1,5 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
+local log = require("shared/helper_log").log
 local FI = require("factoryRegistry.FactoryInfo")
 
 --------------------------------------------------------------------------------
@@ -28,7 +29,11 @@ function FactoryRegistry:add(factory)
         log(3, "FactoryRegistry:add: minimum check failed")
         return
     end
-    local id   = factory.fCoreNetworkCard
+    local id = factory.fCoreNetworkCard
+    if not id then
+        log(3, "FactoryRegistry:add: no fCoreNetworkCard in factory")
+        return
+    end
     local name = factory.fName
     if self.factorys[id] ~= nil then
         -- bereits vorhanden → merge/update
