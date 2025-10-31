@@ -1,7 +1,10 @@
-helper       = require("shared.helper")
-local now_ms = helper.now_ms
+helper           = require("shared.helper")
+local now_ms     = helper.now_ms
 
-require("shared.items.items[-LANGUAGE-]")
+local MyItemList = require("shared.items.items[-LANGUAGE-]")
+local MyItem     = require("shared.items.items_basics").MyItem
+local C = require("shared.items.items_basics").MyItemConst
+
 require("shared.graphics")
 FactoryInfo = require("factoryRegistry.FactoryInfo")
 --require("factoryBillboard.lua")
@@ -243,21 +246,21 @@ function FactoryDashboard:paintOuputWarning(position, size)
         size = Vector2d.new(200, 200)
     end
 
-    local icon = MyItem.CHECK_MARK
+    local icon = C.CHECK_MARK
     local color = Color.GREEN
     for i, it in pairs(self.outputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
         if sFrac < 0.5 then
-            icon = MyItem.WARNING
+            icon = C.WARNING
             color = Color.YELLOW
             if cFrac < 0.2 then
-                icon = MyItem.POWER
+                icon = C.POWER
                 color = Color.RED
             end
         end
         if sFrac < 0.1 then
-            icon = MyItem.POWER
+            icon = C.POWER
             color = Color.RED
         end
     end
@@ -296,20 +299,20 @@ function FactoryDashboard:paintInputWarning(position, size)
     end
 
     local color = Color.GREEN
-    local icon = MyItem.CHECK_MARK
+    local icon = C.CHECK_MARK
     for i, it in pairs(self.inputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
         if cFrac < 0.5 then
-            icon = MyItem.WARNING
+            icon = C.WARNING
             color = Color.YELLOW
             if sFrac < 0.2 then
-                icon = MyItem.POWER
+                icon = C.POWER
                 color = Color.RED
             end
         end
         if cFrac < 0.1 then
-            icon = MyItem.POWER
+            icon = C.POWER
             color = Color.RED
         end
     end

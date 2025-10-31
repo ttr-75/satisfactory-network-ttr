@@ -5,12 +5,13 @@ local helper = require("shared.helper")
 local de_umlaute = helper.de_umlaute
 local byAllNick = helper.byAllNick
 
-local Log = require("shared.helper_log")
-local log = Log.log
+local log = require("shared.helper_log").log
 
 
 
-require("shared.items.items[-LANGUAGE-]")
+
+local MyItemList = require("shared.items.items[-LANGUAGE-]")
+local MyItem     = require("shared.items.items_basics").MyItem
 
 
 --------------------------------------------------------------------------------

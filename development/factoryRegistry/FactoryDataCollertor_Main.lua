@@ -12,6 +12,12 @@ local NetworkAdapter = require("net.NetworkAdapter")
 
 local JSON = require("shared.serializer")
 
+
+local MyItemList = require("shared.items.items[-LANGUAGE-]")
+local MyItem     = require("shared.items.items_basics").MyItem
+
+local C          = require("shared.items.items_basics").MyItemConst
+
 --------------------------------------------------------------------------------
 
 
@@ -161,7 +167,7 @@ function FactoryDataCollertor:performUpdate()
     else
         self:performManufactureUpdate(manufacturer[1])
     end
-  --  pj(self.myFactoryInfo)
+    --  pj(self.myFactoryInfo)
 end
 
 ---comment
@@ -173,7 +179,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
         return
     end
 
-    self.myFactoryInfo.fType = MyItem.MINER_MK1
+    self.myFactoryInfo.fType = C.MINER_MK1
 
     local itemName = nil
     for name, output in pairs(self.myFactoryInfo.outputs) do
@@ -184,13 +190,13 @@ function FactoryDataCollertor:performMinerUpdate(miner)
             "FactoryDataCollertor: Trying to determine mined item for Factory '" ..
             tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories")
         local minedItem = Helper_inv.readMinedItemStack(miner, 30)
-        if minedItem  then
-            pj(minedItem)
-            pj(minedItem.item)
+        if minedItem then
             log(0,
                 "FactoryDataCollertor: Determined mined item for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories: " ..
+                ---@diagnostic disable-next-line: undefined-field
                 tostring((minedItem and minedItem.item and minedItem.item.type.name) or "Unknown"))
+            ---@diagnostic disable-next-line: undefined-field
             itemName = (minedItem and minedItem.item and minedItem.item.type and minedItem.item.type.name) or "Unknown"
         end
     end
@@ -245,8 +251,8 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
 
     -- 2) Typ bestimmen (nur, wenn verfügbar)
     local mTypeName = (manufacturer:getType() and manufacturer:getType().name) or ""
-    if string_contains(mTypeName, MyItem.ASSEMBLER.name, false) then
-        self.myFactoryInfo.fType = MyItem.ASSEMBLER
+    if string_contains(mTypeName, C.ASSEMBLER.name, false) then
+        self.myFactoryInfo.fType = C.ASSEMBLER
     else
         log(2, ('Net-FactoryRegistryClient::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
