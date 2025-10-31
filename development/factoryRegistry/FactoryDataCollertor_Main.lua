@@ -410,17 +410,32 @@ function FactoryDataCollertor:checkTrainsignals()
         self.last = t
 
         for _, input in pairs(self.myFactoryInfo.inputs) do
-            local signal = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)[1]
-            local block = signal:getObservedBlock()
-            if input.amountStation <= self.stationMin then
-                if block.isPathBlock then
-                    block.isPathBlock = false
-                    log(0, "Switching Signal " .. signal.nick .. " to green")
-                end
+            local ok, signal, err = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)
+            if not ok then
+                log(0,
+                    "FactoryDataCollertor: Error finding Trainsignal for Factory '" ..
+                    tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                return
             else
-                if not block.isPathBlock then
-                    log(0, "Switching Signal " .. signal.nick .. " to red")
-                    block.isPathBlock = true
+                if not signal then
+                    log(0,
+                        "FactoryDataCollertor: No Trainsignal found for Factory '" ..
+                        tostring(self.myFactoryInfo.fName) .. "' and Input Item '" ..
+                        tostring(input.itemClass and input.itemClass.name) .. "'")
+                    return
+                else
+                    local block = signal:getObservedBlock()
+                    if input.amountStation <= self.stationMin then
+                        if block.isPathBlock then
+                            block.isPathBlock = false
+                            log(0, "Switching Signal " .. signal.nick .. " to green")
+                        end
+                    else
+                        if not block.isPathBlock then
+                            log(0, "Switching Signal " .. signal.nick .. " to red")
+                            block.isPathBlock = true
+                        end
+                    end
                 end
             end
         end
