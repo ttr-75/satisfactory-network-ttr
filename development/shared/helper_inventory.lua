@@ -87,7 +87,7 @@ end
 
 --- Summiert Items & Kapazitäten über eine Menge "Container-ähnlicher" Objekte.
 --- Erwartet: getMaxSlotsForContainer(obj), readInventory(obj, totals, types)
----@param objs table
+---@param objs FGBuildableStorage[]|nil
 ---@param itemMax integer
 ---@return integer count, integer maxAmount
 local function sumContainers(objs, itemMax)
@@ -104,7 +104,7 @@ local function sumContainers(objs, itemMax)
 end
 
 --- Summiert Items & Kapazitäten über alle Plattformen aller Trainstations.
----@param stations table
+---@param stations RailroadStation[]|nil
 ---@param itemMax integer
 ---@return integer count, integer maxAmount
 local function sumTrainstations(stations, itemMax)

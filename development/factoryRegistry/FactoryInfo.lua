@@ -4,6 +4,7 @@
 local helper = require("shared.helper")
 local de_umlaute = helper.de_umlaute
 local byAllNick = helper.byAllNick
+local is_str = helper.is_str
 
 local log = require("shared.helper_log").log
 
@@ -151,7 +152,7 @@ end
 --- Merge eines eintreffenden FactoryInfo-Snapshots in diese Instanz.
 ---@param factory FactoryInfo
 function FactoryInfo:update(factory)
-    self.fType = factory.fType or self.fType    
+    self.fType = factory.fType or self.fType
     -- Outputs zuerst, dann Inputs (Reihenfolge beliebig, semantisch getrennt)
     for _, outStack in pairs(factory.outputs) do
         ---@cast outStack Output
@@ -213,63 +214,182 @@ end
 --------------------------------------------------------------------------------
 -- Hilfsfunktionen (Namensbildung → deine Komponenten-Suche)
 --------------------------------------------------------------------------------
+---@param prefix string
+---@param factoryName string|nil
+---@param itemStack any|nil
+---@return boolean, string|nil, string|nil  -- ok, nickOrNil, err
+local function _make_nick(prefix, factoryName, itemStack)
+    -- de_umlaute darf fehlen; dann Fallback = identity
+    local _de = type(de_umlaute) == "function" and de_umlaute or function(x) return x end
+
+    if not is_str(prefix) or prefix == "" then
+        return false, nil, "nick: prefix must be non-empty string"
+    end
+
+    -- 3 Modi:
+    -- A) nur factoryName  -> "<prefix> <factoryName>"
+    -- B) itemStack-Output -> "<prefix> <itemName>"
+    -- C) itemStack-Input  -> "<prefix> <itemName>2<factoryName>"
+
+    if itemStack == nil then
+        if not is_str(factoryName) or factoryName == "" then
+            return false, nil, "nick: factoryName must be non-empty string"
+        end
+        return true, (prefix .. " " .. _de(factoryName)), nil
+    end
+
+    -- itemStack-Variante
+    local ok_isOutput = (type(itemStack) == "table") and (type(itemStack.isOutput) == "function")
+    local ok_itemClass = (type(itemStack) == "table")
+        and (type(itemStack.itemClass) == "table")
+        and is_str(itemStack.itemClass.name)
+
+    if not ok_isOutput then
+        return false, nil, "nick: itemStack.isOutput() missing"
+    end
+    if not ok_itemClass then
+        return false, nil, "nick: itemStack.itemClass.name missing"
+    end
+
+    local itemName = _de(itemStack.itemClass.name)
+    if itemStack:isOutput() then
+        return true, (prefix .. " " .. itemName), nil
+    else
+        if not is_str(factoryName) or factoryName == "" then
+            return false, nil, "nick: factoryName required for non-output stacks"
+        end
+        return true, (prefix .. " " .. itemName .. "2" .. _de(factoryName)), nil
+    end
+end
+
+--- Ruft byAllNick mit Kontext-Fehlermeldungen auf
+---@param ctx string
+---@param nick string
+---@return boolean, table[]|nil, string|nil
+local function _find_all_by_nick(ctx, nick)
+    local ok, comps, err = byAllNick(nick)
+    if not ok then
+        return false, nil, string.format("%s: byAllNick(%q) failed: %s", ctx, nick, _to_str(err))
+    end
+    -- ok=true; comps kann {} sein (kein Treffer) – das ist absichtlich KEIN Fehler
+    return true, comps, nil
+end
+
+--- Optional: „erster Treffer“-Helfer mit sauberem Fehler bei 0 Treffern
+---@param ctx string
+---@param nick string
+---@return boolean, table|nil, string|nil
+local function _find_one_by_nick_or_err(ctx, nick)
+    local ok, comps, err = _find_all_by_nick(ctx, nick)
+    if not ok then return false, nil, err end
+    if #comps == 0 then
+        return false, nil, string.format("%s: no component found for nick %q", ctx, nick)
+    end
+---@diagnostic disable-next-line: need-check-nil
+    return true, comps[1], nil
+end
+
+--------------------------------------------------------------------------------
+-- Wrapper: Manufacturer / Miner / Container / Trainstation / Trainsignal
+-- Rückgabe überall: ok:boolean, result:table[]|table|nil, err:string|nil
+--  - *_All...  : alle Treffer ({} bei 0 Treffern, ok=true)
+--  - *_One...  : genau ein erster Treffer; 0 Treffer => ok=false + err
+--------------------------------------------------------------------------------
 
 ---@param factoryName string
----@return Manufacturer  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
+---@return boolean, Manufacturer[]|nil, string|nil
+local function manufacturersByFactoryName(factoryName)
+    local ok, nick, e = _make_nick("Manufacturer", factoryName, nil)
+    if not ok then return false, nil, "manufacturersByFactoryName: " .. e end
+---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_all_by_nick("manufacturersByFactoryName", nick)
+end
+
+---@param factoryName string
+---@return boolean, Manufacturer|nil, string|nil
 local function manufacturerByFactoryName(factoryName)
-    local nick = "Manufacturer " .. de_umlaute(factoryName)
-    return byAllNick(nick)
+    local ok, nick, e = _make_nick("Manufacturer", factoryName, nil)
+    if not ok then return false, nil, "manufacturerByFactoryName: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_one_by_nick_or_err("manufacturerByFactoryName", nick)
 end
 
+---@param factoryName string
+---@return boolean, FGBuildableResourceExtractor[]|nil, string|nil
+local function minersByFactoryName(factoryName)
+    local ok, nick, e = _make_nick("Miner", factoryName, nil)
+    if not ok then return false, nil, "minersByFactoryName: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_all_by_nick("minersByFactoryName", nick)
+end
 
 ---@param factoryName string
----@return FGBuildableResourceExtractor  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
+---@return boolean, FGBuildableResourceExtractor|nil, string|nil
 local function minerByFactoryName(factoryName)
-    local nick = "Miner " .. de_umlaute(factoryName)
-    return byAllNick(nick)
+    local ok, nick, e = _make_nick("Miner", factoryName, nil)
+    if not ok then return false, nil, "minerByFactoryName: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_one_by_nick_or_err("minerByFactoryName", nick)
 end
 
 ---@param factoryName string
----@param itemStack FactoryStack
----@return FGBuildableStorage  -- Komponentensuche/Proxy (abhängig von deiner byAllNick)
+---@param itemStack any  -- erwartet .isOutput():boolean und .itemClass.name:string
+---@return boolean, FGBuildableStorage[]|nil, string|nil
+local function containersByFactoryStack(factoryName, itemStack)
+    local ok, nick, e = _make_nick("Container", factoryName, itemStack)
+    if not ok then return false, nil, "containersByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_all_by_nick("containersByFactoryStack", nick)
+end
+
+---@param factoryName string
+---@param itemStack any
+---@return boolean, FGBuildableStorage|nil, string|nil
 local function containerByFactoryStack(factoryName, itemStack)
-    local nick = "Container "
-
-    if itemStack:isOutput() then
-        nick = nick .. de_umlaute(itemStack.itemClass.name)
-    else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(factoryName)
-    end
-
-    return byAllNick(nick)
+    local ok, nick, e = _make_nick("Container", factoryName, itemStack)
+    if not ok then return false, nil, "containerByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_one_by_nick_or_err("containerByFactoryStack", nick)
 end
 
 ---@param factoryName string
----@param itemStack FactoryStack
----@return any
+---@param itemStack any
+---@return boolean, RailroadStation[]|nil, string|nil
+local function trainstationsByFactoryStack(factoryName, itemStack)
+    local ok, nick, e = _make_nick("Trainstation", factoryName, itemStack)
+    if not ok then return false, nil, "trainstationsByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_all_by_nick("trainstationsByFactoryStack", nick)
+end
+
+---@param factoryName string
+---@param itemStack any
+---@return boolean, RailroadStation|nil, string|nil
 local function trainstationByFactoryStack(factoryName, itemStack)
-    local nick = "Trainstation "
-
-    if itemStack:isOutput() then
-        nick = nick .. de_umlaute(itemStack.itemClass.name)
-    else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(factoryName)
-    end
-    return byAllNick(nick)
+    local ok, nick, e = _make_nick("Trainstation", factoryName, itemStack)
+    if not ok then return false, nil, "trainstationByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_one_by_nick_or_err("trainstationByFactoryStack", nick)
 end
 
 ---@param factoryName string
----@param itemStack FactoryStack
----@return Build_RailroadBlockSignal_C
-local function trainsignalByFactoryStack(factoryName, itemStack)
-    local nick = "Trainsignal "
+---@param itemStack any
+---@return boolean, RailroadSignal[]|nil, string|nil
+local function trainsignalsByFactoryStack(factoryName, itemStack)
+    local ok, nick, e = _make_nick("Trainsignal", factoryName, itemStack)
+    if not ok then return false, nil, "trainsignalsByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_all_by_nick("trainsignalsByFactoryStack", nick)
+end
 
-    if itemStack:isOutput() then
-        nick = nick .. de_umlaute(itemStack.itemClass.name)
-    else
-        nick = nick .. de_umlaute(itemStack.itemClass.name) .. "2" .. de_umlaute(factoryName)
-    end
-    return byAllNick(nick)
+---@param factoryName string
+---@param itemStack any
+---@return boolean, RailroadSignal|nil, string|nil
+local function trainsignalByFactoryStack(factoryName, itemStack)
+    local ok, nick, e = _make_nick("Trainsignal", factoryName, itemStack)
+    if not ok then return false, nil, "trainsignalByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_one_by_nick_or_err("trainsignalByFactoryStack", nick)
 end
 
 
@@ -280,8 +400,13 @@ return {
     Output                     = Output,
     FactoryInfo                = FactoryInfo,
     containerByFactoryStack    = containerByFactoryStack,
+    containersByFactoryStack   = containersByFactoryStack,
     trainstationByFactoryStack = trainstationByFactoryStack,
+    trainstationsByFactoryStack= trainstationsByFactoryStack,
     trainsignalByFactoryStack  = trainsignalByFactoryStack,
+    trainsignalsByFactoryStack = trainsignalsByFactoryStack,
     manufacturerByFactoryName  = manufacturerByFactoryName,
-    minerByFactoryName         = minerByFactoryName
+    manufacturersByFactoryName = manufacturersByFactoryName,
+    minerByFactoryName         = minerByFactoryName,
+    minersByFactoryName        = minersByFactoryName,
 }

@@ -87,8 +87,14 @@ function FactoryDashboardClient.new(opts)
     ---@diagnostic disable-next-line: undefined-field, assign-type-mismatch
     self.gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
     if opts.scrName then
+        local ok, value, err = byNick("miner iron north")
+        if not ok then error(err) end
+        if not value then
+            log(4, "FactoryDashboardClient.new: Screen '" .. tostring(opts.scrName) .. "' not found")
+        else
         ---@diagnostic disable-next-line: assign-type-mismatch
-        self.scr = byNick(opts.scrName)
+            self.scr = byNick(opts.scrName)
+        end
     end
 
     if opts.fName then

@@ -24,6 +24,18 @@ local JSON = require("shared.serializer")
 
 
 
+---@param where string  -- Kontext (für Fehlertexte)
+---@param fn fun():any  -- Aufruf, der fehlschlagen kann
+---@return boolean, any|nil, string|nil
+local function pcall_norm(where, fn)
+  local ok, res = pcall(fn)
+  if not ok then
+    -- res enthält hier die Fehlermeldung vom pcall
+    return false, nil, string.format("%s: %s", where, tostring(res))
+  end
+  return true, res, nil
+end
+
 
 ----------------------------------------------------------------
 -- Zeit & Sleep
@@ -81,6 +93,12 @@ end
 -- Strings
 ----------------------------------------------------------------
 
+
+
+---@param v any
+---@return boolean
+local function is_str(v) return type(v) == "string" end
+
 --- Prüft defensiv, ob `s` länger als `x` ist.
 -- @param s any Erwartet string, sonst false
 -- @param x any Erwartet number, sonst false
@@ -99,7 +117,7 @@ local function de_umlaute(s)
   if s == nil then return nil end
   assert(type(s) == "string", "String erwartet")
   -- Ersetzt jedes Zeichen, das NICHT Buchstabe (%a), Ziffer (%d) oder Leerzeichen ist.
-  return (s:gsub("ä", "ae"):gsub("ü", "ue"):gsub("ö", "oe"):gsub("Ä", "Ae"):gsub("Ü", "Ue"):gsub("Ö", "Oe"):gsub("ß", "ss"):gsub(" ", ""))
+  return (s:gsub("ä", "ae"):gsub("ü", "ue"):gsub("ö", "oe"):gsub("Ä", "Ae"):gsub("Ü", "Ue"):gsub("Ö", "Oe"):gsub("ß", "ss"))
   --return s
 end
 
@@ -130,58 +148,132 @@ local function string_contains(s, sub, caseSensitiv)
 end
 
 
+--------------------------------------------------------------------------------
+-- Safe FicsitNetwork Helpers (Nick / Class lookup)
+-- Rückgabesignatur überall: ok:boolean, result:any|nil, err:string|nil
+--------------------------------------------------------------------------------
+---@generic T
+---@param t T[]|nil
+---@return boolean, T[]|nil, string|nil  -- ok, arrayOrNil, err
+local function _normalize_ids(t)
+  if t == nil then return true, {}, nil end -- "keine Treffer" ist ok
+  if type(t) ~= "table" then return false, nil, "ids: not a table" end
+  return true, t, nil
+end
+--------------------------------------------------------------------------------
+-- component.findComponent: akzeptiert String-Query ODER Klasseninstanz
+--------------------------------------------------------------------------------
 
-----------------------------------------------------------------
--- Komponenten (FicsItNetworks)
-----------------------------------------------------------------
-
---- FIN byNick Utilities (assert-frei)
-
+---@param query_or_class string|any  -- Nick-Query oder classes.* Instanz
+---@return boolean, string[]|nil, string|nil
 local function _safe_find_ids(query_or_class)
-  -- akzeptiert String (Nick-Query) ODER Klasseninstanz aus `classes.*`
-  local ok, ids = pcall(function() return component.findComponent(query_or_class) end)
-  if not ok or ids == nil then return {} end
-  -- Doku: findComponent kann auch direkt string[] liefern; wir normieren auf Array
-  if type(ids) ~= "table" then return {} end
-  return ids
+  local ok, ids, err = pcall_norm("findComponent", function()
+    return component.findComponent(query_or_class) -- kann nil oder table liefern
+  end)
+  if not ok then return false, nil, err end
+  return _normalize_ids(ids)
 end
 
+--------------------------------------------------------------------------------
+-- component.proxy: genau EIN id -> component oder nil (wenn nicht existent)
+--------------------------------------------------------------------------------
+
+---@param id string
+---@return boolean, table|nil, string|nil
 local function _safe_proxy_one(id)
-  if type(id) ~= "string" then return nil end
-  local ok, comp = pcall(function() return component.proxy(id) end)
-  if not ok then return nil end
-  return comp
+  if not is_str(id) or id == "" then
+    return false, nil, "proxy: invalid id (string expected)"
+  end
+  local ok, comp, err = pcall_norm("proxy(" .. id .. ")", function()
+    return component.proxy(id)
+  end)
+  if not ok then return false, nil, err end
+  if comp == nil then
+    -- id existiert nicht (mehr) -> das ist KEIN harter Fehler; caller kann entscheiden
+    return true, nil, nil
+  end
+  return true, comp, nil
 end
 
--- Erster Treffer per Nick-Query (z.B. "miner iron north")
-local   function byNick(query)
-  if type(query) ~= "string" or query == "" then return nil end
-  local ids = _safe_find_ids(query) -- nick-basierte Suche
-  return _safe_proxy_one(ids[1])    -- ersten Treffer “soft” proxyn
+--------------------------------------------------------------------------------
+-- byNick: erster Treffer per Nick-Query (z. B. "miner iron north")
+-- ok=true + comp=nil  -> kein Treffer (nicht fatal)
+-- ok=false            -> echter Fehler (Parameter/Schnittstelle)
+--------------------------------------------------------------------------------
+
+---@param query string
+---@return boolean, table|nil, string|nil  -- ok, componentOrNil, err
+local function byNick(query)
+  if not is_str(query) or query == "" then
+    return false, nil, "byNick: query must be non-empty string"
+  end
+
+  local okIds, ids, errIds = _safe_find_ids(query)
+  if not okIds then return false, nil, errIds end
+  if #ids == 0 then return true, nil, nil end -- kein Treffer
+
+  ---@diagnostic disable-next-line: need-check-nil
+  local okP, comp, errP = _safe_proxy_one(ids[1])
+  if not okP then return false, nil, errP end
+  -- comp kann legit nil sein, wenn der Komponent gerade weg ist
+  return true, comp, nil
 end
 
--- Alle Treffer per Nick-Query
+--------------------------------------------------------------------------------
+-- byAllNick: alle Treffer per Nick-Query
+-- ok=true + {}       -> keine Treffer (nicht fatal)
+-- ok=false           -> Fehler
+--------------------------------------------------------------------------------
+
+---@param query string
+---@return boolean, table[]|nil, string|nil  -- ok, componentsOrNil, err
 local function byAllNick(query)
-  if type(query) ~= "string" or query == "" then return {} end
-  local ids = _safe_find_ids(query)
+  if not is_str(query) or query == "" then
+    return false, nil, "byAllNick: query must be non-empty string"
+  end
+
+  local okIds, ids, errIds = _safe_find_ids(query)
+  if not okIds then return false, nil, errIds end
+
   local out = {}
   for i = 1, #ids do
-    local comp = _safe_proxy_one(ids[i])
+    ---@diagnostic disable-next-line: need-check-nil
+    local okP, comp, errP = _safe_proxy_one(ids[i])
+    if not okP then
+      -- harter Fehler -> gesamten Call als Fehler behandeln (konsistente Semantik)
+      return false, nil, errP
+    end
     if comp then out[#out + 1] = comp end
   end
-  return out
+  return true, out, nil
 end
 
--- Variante: Suche nach Klasse (z.B. classes.FGBuildableMinerMK1)
+--------------------------------------------------------------------------------
+-- byClass: alle Treffer für eine Klasseninstanz (z. B. classes.FGBuildableMinerMK1)
+-- ok=true + {}       -> keine Treffer
+-- ok=false           -> Fehler
+--------------------------------------------------------------------------------
+
+---@param classInstance any
+---@return boolean, table[]|nil, string|nil
 local function byClass(classInstance)
-  if not classInstance then return {} end
-  local ids = _safe_find_ids(classInstance) -- Klassensuche (rekursiv über Subtypen)
+  if classInstance == nil then
+    return false, nil, "byClass: classInstance must not be nil"
+  end
+
+  local okIds, ids, errIds = _safe_find_ids(classInstance)
+  if not okIds then return false, nil, errIds end
+
   local out = {}
   for i = 1, #ids do
-    local comp = _safe_proxy_one(ids[i])
+    ---@diagnostic disable-next-line: need-check-nil
+    local okP, comp, errP = _safe_proxy_one(ids[i])
+    if not okP then
+      return false, nil, errP
+    end
     if comp then out[#out + 1] = comp end
   end
-  return out
+  return true, out, nil
 end
 
 ----------------------------------------------------------------
@@ -205,6 +297,7 @@ local function pj(value)
 end
 
 
+
 return {
   now_ms = now_ms,
   sleep_ms = sleep_ms,
@@ -219,4 +312,6 @@ return {
   byClass = byClass,
   pretty_json = pretty_json,
   pj = pj,
+  pcall_norm = pcall_norm,
+  is_str = is_str,
 }

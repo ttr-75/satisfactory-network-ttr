@@ -154,24 +154,27 @@ end
 
 --- Statt der alten: function FactoryDataCollertor:performUpdate() ... end
 function FactoryDataCollertor:performUpdate()
-    local manufacturer = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
-    if #manufacturer == 0 then
-        local miner = FI.minerByFactoryName(self.myFactoryInfo.fName)
-        if #miner == 0 then
+    local ok, manufacturer, err = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
+    if not ok then
+        log(3,
+            "FactoryDataCollertor: Error finding Manufacturer for Factory '" ..
+            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+        local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
+        if not ok2 then
             log(3,
                 "FactoryDataCollertor: No Manufacturer or Miner found for Factory '" ..
-                tostring(self.myFactoryInfo.fName) .. "'")
+                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
             return
         end
-        self:performMinerUpdate(miner[1])
+        self:performMinerUpdate(miner)
     else
-        self:performManufactureUpdate(manufacturer[1])
+        self:performManufactureUpdate(manufacturer)
     end
     --  pj(self.myFactoryInfo)
 end
 
 ---comment
----@param miner FGBuildableResourceExtractor
+---@param miner FGBuildableResourceExtractor |nil
 function FactoryDataCollertor:performMinerUpdate(miner)
     if not miner then
         log(3, "FactoryDataCollertor: No Miner provided for Factory '" ..
@@ -199,6 +202,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
                 tostring((minedItem and minedItem.item and minedItem.item.type.name) or "Unknown"))
             ---@diagnostic disable-next-line: undefined-field
             itemName = (minedItem and minedItem.item and minedItem.item.type and minedItem.item.type.name) or "Unknown"
+            ---@diagnostic disable-next-line: undefined-field
             maxStack = (minedItem and minedItem.item and minedItem.item.type and minedItem.item.type.max) or 0
         end
     end
@@ -213,7 +217,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
     if item then
         if maxStack > 0 then
             item.max = maxStack
-        end     
+        end
         -- Output-Objekt
         local probeOutput = FI.Output:new {
             itemClass          = item,
@@ -225,28 +229,42 @@ function FactoryDataCollertor:performMinerUpdate(miner)
 
 
         -- Container summieren
-        local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
-        local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+        local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+        local cCount, cMax = 0, 0
+        if not ok then
+            log(3,
+                "FactoryDataCollertor: Error finding Containers for Factory '" ..
+                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+        else
+            cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+        end
 
         -- Trainstations summieren
-        local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
-        local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+        local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+        local sCount, sMax = 0, 0
+        if not ok2 then
+            log(3,
+                "FactoryDataCollertor: Error finding Trainstations for Factory '" ..
+                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+        else
+            sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+        end
 
         -- Finales Output-Objekt
-        local output       = FI.Output:new {
+        local output = FI.Output:new {
             itemClass          = item,
             amountStation      = sCount,
             amountContainer    = cCount,
             maxAmountStation   = sMax,
             maxAmountContainer = cMax
         }
-       
+
         self.myFactoryInfo:updateOutput(output)
     end
 end
 
 ---comment
----@param manufacturer Manufacturer
+---@param manufacturer Manufacturer|nil
 function FactoryDataCollertor:performManufactureUpdate(manufacturer)
     -- 1) Manufacturer holen (früh & robust raus, wenn keiner da)
     if not manufacturer then
@@ -279,10 +297,10 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
         if itemName then
             local item = MyItemList:get_by_Name(itemName)
             if item then
-                item.max           = maxStack
+                item.max                  = maxStack
 
                 -- Vor-Objekt nur zur Zielbestimmung (Container/Stations-Finder nutzt itemClass)
-                local probeOutput  = FI.Output:new {
+                local probeOutput         = FI.Output:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
@@ -291,15 +309,29 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                 }
 
                 -- Container summieren
-                local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
-                local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                local cCount, cMax        = 0, 0
+                if not ok then
+                    log(3,
+                        "FactoryDataCollertor: Error finding Containers for Factory '" ..
+                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                else
+                    cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                end
 
                 -- Trainstations summieren
-                local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeOutput) or {}
-                local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+                local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                local sCount, sMax = 0, 0
+                if not ok2 then
+                    log(3,
+                        "FactoryDataCollertor: Error finding Trainstations for Factory '" ..
+                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+                else
+                    sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+                end
 
                 -- Finales Output-Objekt
-                local output       = FI.Output:new {
+                local output = FI.Output:new {
                     itemClass          = item,
                     amountStation      = sCount,
                     amountContainer    = cCount,
@@ -324,9 +356,9 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
         if itemName then
             local item = MyItemList:get_by_Name(itemName)
             if item then
-                item.max           = maxStack
+                item.max                  = maxStack
 
-                local probeInput   = FI.Input:new {
+                local probeInput          = FI.Input:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
@@ -334,13 +366,29 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                     maxAmountContainer = 0
                 }
 
-                local containers   = FI.containerByFactoryStack(self.myFactoryInfo.fName, probeInput) or {}
-                local cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                -- Container summieren
+                local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                local cCount, cMax        = 0, 0
+                if not ok then
+                    log(3,
+                        "FactoryDataCollertor: Error finding Containers for Factory '" ..
+                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                else
+                    cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                end
 
-                local stations     = FI.trainstationByFactoryStack(self.myFactoryInfo.fName, probeInput) or {}
-                local sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
-
-                local input        = FI.Input:new {
+                -- Trainstations summieren
+                local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                local sCount, sMax = 0, 0
+                if not ok2 then
+                    log(3,
+                        "FactoryDataCollertor: Error finding Trainstations for Factory '" ..
+                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+                else
+                    sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+                end
+                
+                local input = FI.Input:new {
                     itemClass          = item,
                     amountStation      = sCount,
                     amountContainer    = cCount,

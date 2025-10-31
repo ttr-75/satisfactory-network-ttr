@@ -363,7 +363,7 @@ function FactoryDashboard:paint()
 
 
 
-    self.title = ""
+    self.title = self.factoryInfo.fName or self.title
     for i, it in ipairs(self.outputs) do
         local icon = get_icon_for(it.name)
         self.root:drawBox({
@@ -374,7 +374,7 @@ function FactoryDashboard:paint()
 
         })
         posX = posX + titleIconSize.x + pad
-        self.title = it.name .. " " .. self.title
+       -- self.title = it.name .. " " .. self.title
     end
 
     self.root:drawText(Vector2d.new(posX, posY + titleIconSize.y - 100 * 2), self.title, 100, self.accent, false)
@@ -383,12 +383,14 @@ function FactoryDashboard:paint()
     posY = posY + titleIconSize.y + self.pad
     -- Spaltenüberschriften
     posY = posY + self.pad
-
+    local sizeW = Vector2d.new(50, 50)
     if self.inputs and next(self.inputs) ~= nil then
         self.root:drawText(Vector2d.new(posX, posY), "Inputs", self.headerSize, self.fg, false)
+        self:paintInputWarning(Vector2d.new(posX + 200, posY), sizeW)
     end
     if self.outputs and next(self.outputs) ~= nil then
         self.root:drawText(Vector2d.new(mid + posX, posY), "Outputs", self.headerSize, self.fg, false)
+        self:paintOuputWarning(Vector2d.new(mid + posX + 200, posY), sizeW)
     end
 
     -- vertikaler Trenner
@@ -405,9 +407,7 @@ function FactoryDashboard:paint()
         self:_drawRow(mid + self.pad, posY, i, it, rightW)
     end
 
-    local sizeW = Vector2d.new(50, 50)
-    self:paintInputWarning(Vector2d.new(posX + 200, posY), sizeW)
-    self:paintOuputWarning(Vector2d.new(mid + posX + 200, posY), sizeW)
+
 
 
     self.gpu:flush()
