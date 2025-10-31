@@ -20,7 +20,7 @@ local cli = FactoryDashboardClient.new { fName = fName, scrName = scrName }
 future.addTask(async(function()
     xpcall(function()
         while true do
-            event.pull(TTR_FIN_Config.EVENT_LOOP_TIMEOUT or 0.2)
+            event.pull(TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 0.2)
             cli:callForUpdate()
         end
     end, function(err)
