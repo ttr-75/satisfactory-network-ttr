@@ -27,20 +27,21 @@ local C          = require("shared.items.items_basics").MyItemConst
 --------------------------------------------------------------------------------
 -- Client
 --------------------------------------------------------------------------------
+local LOG_TAG = "FactoryDataCollector"
 
----@class FactoryDataCollertor : NetworkAdapter
+---@class FactoryDataCollector : NetworkAdapter
 ---@field myFactoryInfo FactoryInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
-local FactoryDataCollertor = setmetatable({}, { __index = NetworkAdapter })
-FactoryDataCollertor.__index = FactoryDataCollertor
+local FactoryDataCollector = setmetatable({}, { __index = NetworkAdapter })
+FactoryDataCollector.__index = FactoryDataCollector
 
 ---@param opts table|nil
----@return FactoryDataCollertor
-function FactoryDataCollertor.new(opts)
-    assert(NetworkAdapter, "FactoryDataCollertor.new: NetworkAdapter not loaded")
+---@return FactoryDataCollector
+function FactoryDataCollector.new(opts)
+    assert(NetworkAdapter, LOG_TAG .. ".new: NetworkAdapter not loaded")
     opts               = opts or {}
-    local self         = NetworkAdapter.new(FactoryDataCollertor, opts)
+    local self         = NetworkAdapter.new(FactoryDataCollector, opts)
     self.name          = NET_NAME_FACTORY_REGISTRY_CLIENT
     self.port          = NET_PORT_FACTORY_REGISTRY
     self.ver           = 1
@@ -50,10 +51,10 @@ function FactoryDataCollertor.new(opts)
     self.stationMin    = opts and opts.stationMin or 0
 
     -- NIC MUSS existieren (sonst kann nichts gesendet/gehört werden)
-    assert(self.net, "FactoryDataCollertor.new: no NIC available (self.net == nil)")
+    assert(self.net, LOG_TAG .. ".new: no NIC available (self.net == nil)")
 
     -- Initial-Log
-    log(1, ("FactoryDataCollertor.new: port=%s name=%s ver=%s nic=%s")
+    log(1, LOG_TAG, (".new: port=%s name=%s ver=%s nic=%s")
         :format(tostring(self.port), tostring(self.name), tostring(self.ver), tostring(self.net.id or self.net)))
 
     --------------------------------------------------------------------------
@@ -61,7 +62,7 @@ function FactoryDataCollertor.new(opts)
     --------------------------------------------------------------------------
     self:registerWith(function(from, port, cmd, a, b)
         -- Eingehendes Paket protokollieren (Low-Noise → Level 1)
-        log(0, ("FactoryDataCollertor.rx: from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
+        log(0, LOG_TAG, (" from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
 
         if port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK then
             self:onRegisterAck(from)
@@ -75,7 +76,7 @@ function FactoryDataCollertor.new(opts)
             -- Nothing just catch
         else
             -- Unerwartete Kommandos sichtbar machen
-            log(2, "FactoryDataCollertor.rx: unknown cmd: " .. tostring(cmd))
+            log(2, LOG_TAG ": unknown cmd: " .. tostring(cmd))
         end
     end)
 
@@ -86,26 +87,26 @@ function FactoryDataCollertor.new(opts)
     if self.myFactoryInfo then
         -- Sanity-Check: sieht es aus wie eine FactoryInfo?
         assert(type(self.myFactoryInfo.setCoreNetworkCard) == "function",
-            "FactoryDataCollertor.new: myFactoryInfo does not look like a FactoryInfo (missing setCoreNetworkCard)")
+            "FactoryDataCollector.new: myFactoryInfo does not look like a FactoryInfo (missing setCoreNetworkCard)")
 
         local factoryName = tostring(self.myFactoryInfo.fName or "")
         if factoryName == "" then
-            log(3, "FactoryDataCollertor.register: cannot broadcast – myFactoryInfo.fName is empty")
+            log(3, "FactoryDataCollector.register: cannot broadcast – myFactoryInfo.fName is empty")
         else
-            log(1, ("FactoryDataCollertor.register: broadcasting '%s' name='%s' on port %d")
+            log(1, ("FactoryDataCollector.register: broadcasting '%s' name='%s' on port %d")
                 :format(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName, self.port))
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName)
         end
     else
-        log(1, "FactoryDataCollertor.register: FactoryInfo not set try name")
+        log(1, "FactoryDataCollector.register: FactoryInfo not set try name")
 
         if opts.fName then
-            log(1, ("FactoryDataCollertor.register: found name='%s'"):format(opts.fName))
+            log(1, ("FactoryDataCollector.register: found name='%s'"):format(opts.fName))
             self.myFactoryInfo = FI.FactoryInfo:new { fName = opts.fName }
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, opts.fName)
         else
             -- Kein harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
-            log(2, "FactoryDataCollertor.register: myFactoryInfo not provided; will skip initial broadcast")
+            log(2, "FactoryDataCollector.register: myFactoryInfo not provided; will skip initial broadcast")
         end
     end
 
@@ -118,7 +119,7 @@ end
 
 --- ACK nach Registrierung
 ---@param fromId string
-function FactoryDataCollertor:onRegisterAck(fromId)
+function FactoryDataCollector:onRegisterAck(fromId)
     -- KEEP: deine bisherige Logik, wenn ACK eingeht (z.B. Flags setzen, Logs)
     log(1, "Client: Registration ACK from " .. tostring(fromId) .. " Build FactoryInfo now.")
     self.myFactoryInfo:setCoreNetworkCard(self.net.id)
@@ -128,7 +129,7 @@ end
 
 --- Server hat Registry zurückgesetzt
 ---@param fromId string
-function FactoryDataCollertor:onRegistryReset(fromId)
+function FactoryDataCollector:onRegistryReset(fromId)
     -- KEEP: deine bisherige Logik beim Registry-Reset (früher: computer.reset())
     log(2, 'Client: Registry reset requested by "' .. tostring(fromId) .. '"')
     self.registered = false
@@ -138,8 +139,8 @@ end
 --- Server fordert ein Update an
 ---@param fromId string
 ---@param fName string
-function FactoryDataCollertor:onGetFactoryUpdate(fromId, fName)
-    log(0, "Net-FactoryDataCollertor:: Received update request  from  \"" .. fromId .. "\"")
+function FactoryDataCollector:onGetFactoryUpdate(fromId, fName)
+    log(0, "Net-FactoryDataCollector:: Received update request  from  \"" .. fromId .. "\"")
 
     self:performUpdate()
 
@@ -147,22 +148,22 @@ function FactoryDataCollertor:onGetFactoryUpdate(fromId, fName)
         local J = JSON.new { indent = 2, sort_keys = true }
         local serialized = J:encode(self.myFactoryInfo)
         self:send(fromId, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE, serialized)
-        log(0, "Net-FactoryDataCollertor::update send to  \"" .. fromId .. "\"")
+        log(0, "Net-FactoryDataCollector::update send to  \"" .. fromId .. "\"")
     else
         log(4,
-            "Net-FactoryDataCollertor::requested update name does not match requested=\"" ..
+            "Net-FactoryDataCollector::requested update name does not match requested=\"" ..
             fName .. "\" localFactopry=\"" .. (self.myFactoryInfo and self.myFactoryInfo.fName or "unknown") .. "\"")
     end
 end
 
---- Statt der alten: function FactoryDataCollertor:performUpdate() ... end
-function FactoryDataCollertor:performUpdate()
+--- Statt der alten: function FactoryDataCollector:performUpdate() ... end
+function FactoryDataCollector:performUpdate()
     local ok, manufacturer, err = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
     if not ok then
         local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
         if not ok2 then
             log(3,
-                "FactoryDataCollertor: No Manufacturer  or Miner found for Factory '" ..
+                "FactoryDataCollector: No Manufacturer  or Miner found for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2))
 
             computer.stop()
@@ -177,9 +178,9 @@ end
 
 ---comment
 ---@param miner FGBuildableResourceExtractor |nil
-function FactoryDataCollertor:performMinerUpdate(miner)
+function FactoryDataCollector:performMinerUpdate(miner)
     if not miner then
-        log(3, "FactoryDataCollertor: No Miner provided for Factory '" ..
+        log(3, "FactoryDataCollector: No Miner provided for Factory '" ..
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
@@ -193,12 +194,12 @@ function FactoryDataCollertor:performMinerUpdate(miner)
     end
     if itemName == nil then
         log(0,
-            "FactoryDataCollertor: Trying to determine mined item for Factory '" ..
+            "FactoryDataCollector: Trying to determine mined item for Factory '" ..
             tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories")
         local minedItem = Helper_inv.readMinedItemStack(miner, 30)
         if minedItem then
             log(0,
-                "FactoryDataCollertor: Determined mined item for Factory '" ..
+                "FactoryDataCollector: Determined mined item for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories: " ..
                 ---@diagnostic disable-next-line: undefined-field
                 tostring((minedItem and minedItem.item and minedItem.item.type.name) or "Unknown"))
@@ -210,7 +211,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
     end
 
     if itemName == nil then
-        log(2, "FactoryDataCollertor: Could not determine mined item for Factory '" ..
+        log(2, "FactoryDataCollector: Could not determine mined item for Factory '" ..
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
@@ -235,7 +236,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
         local cCount, cMax = 0, 0
         if not ok then
             log(3,
-                "FactoryDataCollertor: Error finding Containers for Factory '" ..
+                "FactoryDataCollector: Error finding Containers for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
         else
             cCount, cMax = Helper_inv.sumContainers(containers, item.max)
@@ -246,7 +247,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
         local sCount, sMax = 0, 0
         if not ok2 then
             log(3,
-                "FactoryDataCollertor: Error finding Trainstations for Factory '" ..
+                "FactoryDataCollector: Error finding Trainstations for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
         else
             sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
@@ -267,10 +268,10 @@ end
 
 ---comment
 ---@param manufacturer Manufacturer|nil
-function FactoryDataCollertor:performManufactureUpdate(manufacturer)
+function FactoryDataCollector:performManufactureUpdate(manufacturer)
     -- 1) Manufacturer holen (früh & robust raus, wenn keiner da)
     if not manufacturer then
-        log(3, "FactoryDataCollertor: No Manufacturer provided for Factory '" ..
+        log(3, "FactoryDataCollector: No Manufacturer provided for Factory '" ..
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
@@ -282,7 +283,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
     elseif string_contains(mTypeName, C.SMELTER.name, false) then
         self.myFactoryInfo.fType = C.SMELTER
     else
-        log(2, ('Net-FactoryDataCollertor::Unknown Manufacturer Type "%s"'):format(mTypeName))
+        log(2, ('Net-FactoryDataCollector::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
 
     -- 3) Rezept ziehen (wenn keins: Ende)
@@ -317,7 +318,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                 local cCount, cMax        = 0, 0
                 if not ok then
                     log(3,
-                        "FactoryDataCollertor: Error finding Containers for Factory '" ..
+                        "FactoryDataCollector: Error finding Containers for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
                 else
                     cCount, cMax = Helper_inv.sumContainers(containers, item.max)
@@ -328,7 +329,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                 local sCount, sMax = 0, 0
                 if not ok2 then
                     log(3,
-                        "FactoryDataCollertor: Error finding Trainstations for Factory '" ..
+                        "FactoryDataCollector: Error finding Trainstations for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
                 else
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
@@ -375,7 +376,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                 local cCount, cMax        = 0, 0
                 if not ok then
                     log(3,
-                        "FactoryDataCollertor: Error finding Containers for Factory '" ..
+                        "FactoryDataCollector: Error finding Containers for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
                 else
                     cCount, cMax = Helper_inv.sumContainers(containers, item.max)
@@ -386,7 +387,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                 local sCount, sMax = 0, 0
                 if not ok2 then
                     log(3,
-                        "FactoryDataCollertor: Error finding Trainstations for Factory '" ..
+                        "FactoryDataCollector: Error finding Trainstations for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
                 else
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
@@ -406,7 +407,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
 end
 
 --- Server hat Registry zurückgesetzt
-function FactoryDataCollertor:checkTrainsignals()
+function FactoryDataCollector:checkTrainsignals()
     local t = now_ms()
     if not self.last then
         self.last = 0
@@ -418,13 +419,13 @@ function FactoryDataCollertor:checkTrainsignals()
             local ok, signal, err = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)
             if not ok then
                 log(0,
-                    "FactoryDataCollertor: Error finding Trainsignal for Factory '" ..
+                    "FactoryDataCollector: Error finding Trainsignal for Factory '" ..
                     tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
                 return
             else
                 if not signal then
                     log(0,
-                        "FactoryDataCollertor: No Trainsignal found for Factory '" ..
+                        "FactoryDataCollector: No Trainsignal found for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "' and Input Item '" ..
                         tostring(input.itemClass and input.itemClass.name) .. "'")
                     return
@@ -447,13 +448,6 @@ function FactoryDataCollertor:checkTrainsignals()
     end
 end
 
---- Server hat Registry zurückgesetzt
---function FactoryDataCollertor:run()
---  while true do
---    sleep_ms(200)
---    self:checkTrainsignals()
---    future.run()
--- end
---end
 
-return FactoryDataCollertor
+
+return FactoryDataCollector

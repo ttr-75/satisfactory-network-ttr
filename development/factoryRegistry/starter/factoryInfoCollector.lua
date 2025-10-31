@@ -6,7 +6,7 @@ local Log            = require("shared.helper_log")
 local log            = Log.log
 local tb             = Log.traceback
 
-FactoryDataCollertor = require("factoryRegistry.FactoryDataCollertor_Main")
+FactoryDataCollector = require("factoryRegistry.FactoryDataCollector_Main")
 
 
 
@@ -20,10 +20,10 @@ local cli = nil
 ---@diagnostic disable-next-line: undefined-global
 if not stationMin then
     ---@diagnostic disable-next-line: undefined-global
-    cli = FactoryDataCollertor.new { fName = fName }
+    cli = FactoryDataCollector.new { fName = fName }
 else
     ---@diagnostic disable-next-line: undefined-global
-    cli = FactoryDataCollertor.new { fName = fName, stationMin = stationMin }
+    cli = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
 end
 
 
