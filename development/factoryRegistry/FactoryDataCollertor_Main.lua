@@ -179,11 +179,12 @@ function FactoryDataCollertor:performMinerUpdate(miner)
         return
     end
 
-    self.myFactoryInfo.fType = C.MINER_MK1
-
+    self.myFactoryInfo.fType = C.MINER_MK_1
+    local maxStack = 0;
     local itemName = nil
     for name, output in pairs(self.myFactoryInfo.outputs) do
         itemName = output.itemClass and output.itemClass.name
+        maxStack = output.itemClass and output.itemClass.max or 0
     end
     if itemName == nil then
         log(0,
@@ -198,6 +199,7 @@ function FactoryDataCollertor:performMinerUpdate(miner)
                 tostring((minedItem and minedItem.item and minedItem.item.type.name) or "Unknown"))
             ---@diagnostic disable-next-line: undefined-field
             itemName = (minedItem and minedItem.item and minedItem.item.type and minedItem.item.type.name) or "Unknown"
+            maxStack = (minedItem and minedItem.item and minedItem.item.type and minedItem.item.type.max) or 0
         end
     end
 
@@ -209,6 +211,9 @@ function FactoryDataCollertor:performMinerUpdate(miner)
 
     local item = MyItemList:get_by_Name(itemName)
     if item then
+        if maxStack > 0 then
+            item.max = maxStack
+        end     
         -- Output-Objekt
         local probeOutput = FI.Output:new {
             itemClass          = item,
@@ -235,7 +240,9 @@ function FactoryDataCollertor:performMinerUpdate(miner)
             maxAmountStation   = sMax,
             maxAmountContainer = cMax
         }
+       
         self.myFactoryInfo:updateOutput(output)
+         pj(self.myFactoryInfo)
     end
 end
 

@@ -193,7 +193,7 @@ MyItemConst.RIFLE                            = MyItem.new({ name = "Rifle", id =
 MyItemConst.CANDY_CANE_BASHER                = MyItem.new({ name = "Candy Cane Basher", id = 190 })
 MyItemConst.SNOWBALL_PILE                    = MyItem.new({ name = "Snowball Pile", id = 191 })
 MyItemConst.FACTORY_CART_TM                  = MyItem.new({ name = "Factory Cart™", id = 192 })
-MyItemConst.IRON_ORE                         = MyItem.new({ name = "Iron Ore", id = 193 })
+MyItemConst.IRON_ORE                         = MyItem.new({ name = "Eisenerz", id = 193 }) -- done
 MyItemConst.IRON_INGOT                       = MyItem.new({ name = "Iron Ingot", id = 194 })
 MyItemConst.IRON_PLATE                       = MyItem.new({ name = "Iron Plate", id = 195 })
 MyItemConst.IRON_ROD                         = MyItem.new({ name = "Iron Rod", id = 196 })

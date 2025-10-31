@@ -246,7 +246,7 @@ function FactoryDashboard:paintOuputWarning(position, size)
         size = Vector2d.new(200, 200)
     end
 
-    local icon = C.CHECK_MARK
+    local icon = C.FICSIT_CHECKMARK
     local color = Color.GREEN
     for i, it in pairs(self.outputs) do
         local sFrac = it.amountStation / it.maxAmountStation
@@ -299,7 +299,7 @@ function FactoryDashboard:paintInputWarning(position, size)
     end
 
     local color = Color.GREEN
-    local icon = C.CHECK_MARK
+    local icon = C.FICSIT_CHECKMARK
     for i, it in pairs(self.inputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
