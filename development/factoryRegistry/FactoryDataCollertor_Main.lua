@@ -3,7 +3,7 @@
 local helper = require("shared.helper")
 local string_contains = helper.string_contains
 local now_ms = helper.now_ms
-local sleep_ms = helper.sleep_ms 
+local sleep_ms = helper.sleep_ms
 local pj = helper.pj
 
 local log = require("shared.helper_log").log
@@ -162,8 +162,8 @@ function FactoryDataCollertor:performUpdate()
         local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
         if not ok2 then
             log(3,
-                "FactoryDataCollertor: No Manufacturer or Miner found for Factory '" ..
-                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+                "FactoryDataCollertor: No Manufacturer  or Miner found for Factory '" ..
+                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2))
 
             computer.stop()
             return
@@ -279,6 +279,8 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
     local mTypeName = (manufacturer:getType() and manufacturer:getType().name) or ""
     if string_contains(mTypeName, C.ASSEMBLER.name, false) then
         self.myFactoryInfo.fType = C.ASSEMBLER
+    elseif string_contains(mTypeName, C.SMELTER.name, false) then
+        self.myFactoryInfo.fType = C.SMELTER
     else
         log(2, ('Net-FactoryDataCollertor::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
@@ -447,11 +449,11 @@ end
 
 --- Server hat Registry zurückgesetzt
 --function FactoryDataCollertor:run()
-  --  while true do
-    --    sleep_ms(200)
-    --    self:checkTrainsignals()
-    --    future.run()
-   -- end
+--  while true do
+--    sleep_ms(200)
+--    self:checkTrainsignals()
+--    future.run()
+-- end
 --end
 
 return FactoryDataCollertor
