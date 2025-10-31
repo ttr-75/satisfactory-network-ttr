@@ -1,9 +1,10 @@
 ---@diagnostic disable: lowercase-global
-local Logger = require("shared.helper_log")
-log = Logger.log
+local log = require("shared.helper_log").log
+
 
 local helper = require("shared.helper")
 local sleep_s = helper.sleep_s
+local sleep_ms = helper.sleep_ms
 local now_ms = helper.now_ms
 local byNick = helper.byNick
 
@@ -160,13 +161,7 @@ function FactoryDashboardClient:setFactoryInfo(factoryName)
     self:broadcast(NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS, factoryName)
 end
 
---- Server hat Registry zurückgesetzt
-function FactoryDashboardClient:run()
-    while true do
-        self:callForUpdate()
-        future.run()
-    end
-end
+
 
 --- Client schickt ein Update seiner FactoryInfo (als JSON).
 ---@param fromId string

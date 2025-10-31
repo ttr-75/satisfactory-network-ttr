@@ -3,7 +3,10 @@
 local helper = require("shared.helper")
 local string_contains = helper.string_contains
 local now_ms = helper.now_ms
+local sleep_ms = helper.sleep_ms 
 local pj = helper.pj
+
+local log = require("shared.helper_log").log
 
 require("factoryRegistry.basics")
 Helper_inv = require("shared.helper_inventory")
@@ -443,11 +446,12 @@ function FactoryDataCollertor:checkTrainsignals()
 end
 
 --- Server hat Registry zurückgesetzt
-function FactoryDataCollertor:run()
-    while true do
-        self:checkTrainsignals()
-        future.run()
-    end
-end
+--function FactoryDataCollertor:run()
+  --  while true do
+    --    sleep_ms(200)
+    --    self:checkTrainsignals()
+    --    future.run()
+   -- end
+--end
 
 return FactoryDataCollertor
