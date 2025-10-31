@@ -35,7 +35,7 @@ FactoryDataCollertor.__index = FactoryDataCollertor
 ---@param opts table|nil
 ---@return FactoryDataCollertor
 function FactoryDataCollertor.new(opts)
-    assert(NetworkAdapter, "FactoryRegistryClient.new: NetworkAdapter not loaded")
+    assert(NetworkAdapter, "FactoryDataCollertor.new: NetworkAdapter not loaded")
     opts               = opts or {}
     local self         = NetworkAdapter.new(FactoryDataCollertor, opts)
     self.name          = NET_NAME_FACTORY_REGISTRY_CLIENT
@@ -47,10 +47,10 @@ function FactoryDataCollertor.new(opts)
     self.stationMin    = opts and opts.stationMin or 0
 
     -- NIC MUSS existieren (sonst kann nichts gesendet/gehört werden)
-    assert(self.net, "FactoryRegistryClient.new: no NIC available (self.net == nil)")
+    assert(self.net, "FactoryDataCollertor.new: no NIC available (self.net == nil)")
 
     -- Initial-Log
-    log(1, ("FRC.new: port=%s name=%s ver=%s nic=%s")
+    log(1, ("FactoryDataCollertor.new: port=%s name=%s ver=%s nic=%s")
         :format(tostring(self.port), tostring(self.name), tostring(self.ver), tostring(self.net.id or self.net)))
 
     --------------------------------------------------------------------------
@@ -58,7 +58,7 @@ function FactoryDataCollertor.new(opts)
     --------------------------------------------------------------------------
     self:registerWith(function(from, port, cmd, a, b)
         -- Eingehendes Paket protokollieren (Low-Noise → Level 1)
-        log(0, ("FRC.rx: from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
+        log(0, ("FactoryDataCollertor.rx: from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
 
         if port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK then
             self:onRegisterAck(from)
@@ -72,7 +72,7 @@ function FactoryDataCollertor.new(opts)
             -- Nothing just catch
         else
             -- Unerwartete Kommandos sichtbar machen
-            log(2, "FRC.rx: unknown cmd: " .. tostring(cmd))
+            log(2, "FactoryDataCollertor.rx: unknown cmd: " .. tostring(cmd))
         end
     end)
 
@@ -83,26 +83,26 @@ function FactoryDataCollertor.new(opts)
     if self.myFactoryInfo then
         -- Sanity-Check: sieht es aus wie eine FactoryInfo?
         assert(type(self.myFactoryInfo.setCoreNetworkCard) == "function",
-            "FactoryRegistryClient.new: myFactoryInfo does not look like a FactoryInfo (missing setCoreNetworkCard)")
+            "FactoryDataCollertor.new: myFactoryInfo does not look like a FactoryInfo (missing setCoreNetworkCard)")
 
         local factoryName = tostring(self.myFactoryInfo.fName or "")
         if factoryName == "" then
-            log(3, "FRC.register: cannot broadcast – myFactoryInfo.fName is empty")
+            log(3, "FactoryDataCollertor.register: cannot broadcast – myFactoryInfo.fName is empty")
         else
-            log(1, ("FRC.register: broadcasting '%s' name='%s' on port %d")
+            log(1, ("FactoryDataCollertor.register: broadcasting '%s' name='%s' on port %d")
                 :format(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName, self.port))
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName)
         end
     else
-        log(1, "FRC.register: FactoryInfo not set try name")
+        log(1, "FactoryDataCollertor.register: FactoryInfo not set try name")
 
         if opts.fName then
-            log(1, ("FRC.register: found name='%s'"):format(opts.fName))
+            log(1, ("FactoryDataCollertor.register: found name='%s'"):format(opts.fName))
             self.myFactoryInfo = FI.FactoryInfo:new { fName = opts.fName }
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, opts.fName)
         else
             -- Kein harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
-            log(2, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
+            log(2, "FactoryDataCollertor.register: myFactoryInfo not provided; will skip initial broadcast")
         end
     end
 
@@ -136,7 +136,7 @@ end
 ---@param fromId string
 ---@param fName string
 function FactoryDataCollertor:onGetFactoryUpdate(fromId, fName)
-    log(0, "Net-FactoryRegistryClient:: Received update request  from  \"" .. fromId .. "\"")
+    log(0, "Net-FactoryDataCollertor:: Received update request  from  \"" .. fromId .. "\"")
 
     self:performUpdate()
 
@@ -144,10 +144,10 @@ function FactoryDataCollertor:onGetFactoryUpdate(fromId, fName)
         local J = JSON.new { indent = 2, sort_keys = true }
         local serialized = J:encode(self.myFactoryInfo)
         self:send(fromId, NET_CMD_FACTORY_REGISTRY_RESPONSE_FACTORY_UPDATE, serialized)
-        log(0, "Net-FactoryRegistryClient::update send to  \"" .. fromId .. "\"")
+        log(0, "Net-FactoryDataCollertor::update send to  \"" .. fromId .. "\"")
     else
         log(4,
-            "Net-FactoryRegistryClient::requested update name does not match requested=\"" ..
+            "Net-FactoryDataCollertor::requested update name does not match requested=\"" ..
             fName .. "\" localFactopry=\"" .. (self.myFactoryInfo and self.myFactoryInfo.fName or "unknown") .. "\"")
     end
 end
@@ -156,14 +156,13 @@ end
 function FactoryDataCollertor:performUpdate()
     local ok, manufacturer, err = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
     if not ok then
-        log(3,
-            "FactoryDataCollertor: Error finding Manufacturer for Factory '" ..
-            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
         local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
         if not ok2 then
             log(3,
                 "FactoryDataCollertor: No Manufacturer or Miner found for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+
+            computer.stop()
             return
         end
         self:performMinerUpdate(miner)
@@ -278,7 +277,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
     if string_contains(mTypeName, C.ASSEMBLER.name, false) then
         self.myFactoryInfo.fType = C.ASSEMBLER
     else
-        log(2, ('Net-FactoryRegistryClient::Unknown Manufacturer Type "%s"'):format(mTypeName))
+        log(2, ('Net-FactoryDataCollertor::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
 
     -- 3) Rezept ziehen (wenn keins: Ende)
@@ -387,7 +386,7 @@ function FactoryDataCollertor:performManufactureUpdate(manufacturer)
                 else
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
                 end
-                
+
                 local input = FI.Input:new {
                     itemClass          = item,
                     amountStation      = sCount,

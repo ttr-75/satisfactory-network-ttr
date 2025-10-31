@@ -17,9 +17,10 @@ Export:
 --]]
 
 -- Abhängigkeiten ----------------------------------------------------------------
-local helper = require("shared.helper")
-local de_umlaute = helper.de_umlaute ---@type fun(s:string):string
-local log = helper.log or function(...) end ---@type fun(level:integer, ...)|fun(...)
+local romanize = require("shared.helper").romanize
+local log = require("shared.helper_log").log
+
+
 
 -- ==============================================================================
 --  Klasse: MyItem
@@ -49,7 +50,7 @@ end
 --- Kodierten Namen (z.B. ohne Umlaute) liefern – praktisch für Keys.
 ---@return string|nil
 function MyItem:getCodeName()
-    return self.name and de_umlaute(self.name) or nil
+    return self.name and romanize(self.name) or nil
 end
 
 -- ==============================================================================
@@ -142,7 +143,5 @@ return {
     MyItem = MyItem,
     MyItemList = MyItemList,
     MyItemConst = MyItemConst, -- <- Konstanten leben hier (werden in Sprachdateien gesetzt)
-    --- Convenience: neue Itemliste erzeugen
-    ---@return MyItemList
-    new_list = function() return MyItemList.new() end
+
 }

@@ -21,6 +21,7 @@
 local Helper_log = require("shared.helper_log")
 local log = Helper_log.log
 local JSON = require("shared.serializer")
+local i18n = require("shared.helper[-LANGUAGE-]")
 
 
 
@@ -94,6 +95,9 @@ end
 ----------------------------------------------------------------
 
 
+---@param v any
+---@return string
+local function to_str(v) return v == nil and "nil" or tostring(v) end
 
 ---@param v any
 ---@return boolean
@@ -107,18 +111,6 @@ local function is_longer_than(s, x)
   if type(s) ~= "string" then return false end
   if type(x) ~= "number" then return false end
   return #s > x
-end
-
---- Kodiert deutsche Umlaute (ä→ae, ö→oe, ü→ue, Ä→Ae, Ö→Oe, Ü→Ue, ß→ss)
--- und entfernt Leerzeichen (praktisch für Keys).
--- @param s string|nil
--- @return string|nil kodierter String (oder nil, wenn s=nil war)
-local function de_umlaute(s)
-  if s == nil then return nil end
-  assert(type(s) == "string", "String erwartet")
-  -- Ersetzt jedes Zeichen, das NICHT Buchstabe (%a), Ziffer (%d) oder Leerzeichen ist.
-  return (s:gsub("ä", "ae"):gsub("ü", "ue"):gsub("ö", "oe"):gsub("Ä", "Ae"):gsub("Ü", "Ue"):gsub("Ö", "Oe"):gsub("ß", "ss"))
-  --return s
 end
 
 --- Fall-insensitive Teilstring-Suche ohne Patterns.
@@ -145,6 +137,11 @@ local function string_contains(s, sub, caseSensitiv)
   else
     return string_icontains(s, sub)
   end
+end
+
+local function romanize(s)
+  if type(s) ~= "string" then return s end
+  return i18n.romanize(s)
 end
 
 
@@ -304,7 +301,7 @@ return {
   sleep_s = sleep_s,
   throttle_ms = throttle_ms,
   is_longer_than = is_longer_than,
-  de_umlaute = de_umlaute,
+  romanize = romanize,
   string_contains = string_contains,
   string_icontains = string_icontains,
   byNick = byNick,
@@ -314,4 +311,5 @@ return {
   pj = pj,
   pcall_norm = pcall_norm,
   is_str = is_str,
+  to_str = to_str,
 }

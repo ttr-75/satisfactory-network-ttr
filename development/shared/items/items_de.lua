@@ -198,7 +198,7 @@ MyItemConst.IRON_INGOT                       = MyItem.new({ name = "Iron Ingot",
 MyItemConst.IRON_PLATE                       = MyItem.new({ name = "Iron Plate", id = 195 })
 MyItemConst.IRON_ROD                         = MyItem.new({ name = "Iron Rod", id = 196 })
 MyItemConst.HUB_PARTS                        = MyItem.new({ name = "HUB Parts", id = 197 })
-MyItemConst.COPPER_ORE                       = MyItem.new({ name = "Copper Ore", id = 198 })
+MyItemConst.COPPER_ORE                       = MyItem.new({ name = "Kupfererz", id = 198 })  -- done
 MyItemConst.BAUXITE                          = MyItem.new({ name = "Bauxite", id = 199 })
 MyItemConst.CATERIUM_ORE                     = MyItem.new({ name = "Caterium Ore", id = 200 })
 MyItemConst.URANIUM                          = MyItem.new({ name = "Uranium", id = 201 })

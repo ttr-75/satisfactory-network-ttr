@@ -2,9 +2,10 @@
 
 
 local helper = require("shared.helper")
-local de_umlaute = helper.de_umlaute
 local byAllNick = helper.byAllNick
 local is_str = helper.is_str
+local to_str = helper.to_str
+local romanize = helper.romanize
 
 local log = require("shared.helper_log").log
 
@@ -219,8 +220,8 @@ end
 ---@param itemStack any|nil
 ---@return boolean, string|nil, string|nil  -- ok, nickOrNil, err
 local function _make_nick(prefix, factoryName, itemStack)
-    -- de_umlaute darf fehlen; dann Fallback = identity
-    local _de = type(de_umlaute) == "function" and de_umlaute or function(x) return x end
+    -- romanize darf fehlen; dann Fallback = identity
+    local _de = type(romanize) == "function" and romanize or function(x) return x end
 
     if not is_str(prefix) or prefix == "" then
         return false, nil, "nick: prefix must be non-empty string"
@@ -269,7 +270,7 @@ end
 local function _find_all_by_nick(ctx, nick)
     local ok, comps, err = byAllNick(nick)
     if not ok then
-        return false, nil, string.format("%s: byAllNick(%q) failed: %s", ctx, nick, _to_str(err))
+        return false, nil, string.format("%s: byAllNick(%q) failed: %s", ctx, nick, to_str(err))
     end
     -- ok=true; comps kann {} sein (kein Treffer) – das ist absichtlich KEIN Fehler
     return true, comps, nil
@@ -285,7 +286,7 @@ local function _find_one_by_nick_or_err(ctx, nick)
     if #comps == 0 then
         return false, nil, string.format("%s: no component found for nick %q", ctx, nick)
     end
----@diagnostic disable-next-line: need-check-nil
+    ---@diagnostic disable-next-line: need-check-nil
     return true, comps[1], nil
 end
 
@@ -301,7 +302,7 @@ end
 local function manufacturersByFactoryName(factoryName)
     local ok, nick, e = _make_nick("Manufacturer", factoryName, nil)
     if not ok then return false, nil, "manufacturersByFactoryName: " .. e end
----@diagnostic disable-next-line:  param-type-mismatch
+    ---@diagnostic disable-next-line:  param-type-mismatch
     return _find_all_by_nick("manufacturersByFactoryName", nick)
 end
 
@@ -395,18 +396,18 @@ end
 
 -- Modul-Export ----------------------------------------------------------------
 return {
-    FactoryStack               = FactoryStack,
-    Input                      = Input,
-    Output                     = Output,
-    FactoryInfo                = FactoryInfo,
-    containerByFactoryStack    = containerByFactoryStack,
-    containersByFactoryStack   = containersByFactoryStack,
-    trainstationByFactoryStack = trainstationByFactoryStack,
-    trainstationsByFactoryStack= trainstationsByFactoryStack,
-    trainsignalByFactoryStack  = trainsignalByFactoryStack,
-    trainsignalsByFactoryStack = trainsignalsByFactoryStack,
-    manufacturerByFactoryName  = manufacturerByFactoryName,
-    manufacturersByFactoryName = manufacturersByFactoryName,
-    minerByFactoryName         = minerByFactoryName,
-    minersByFactoryName        = minersByFactoryName,
+    FactoryStack                = FactoryStack,
+    Input                       = Input,
+    Output                      = Output,
+    FactoryInfo                 = FactoryInfo,
+    containerByFactoryStack     = containerByFactoryStack,
+    containersByFactoryStack    = containersByFactoryStack,
+    trainstationByFactoryStack  = trainstationByFactoryStack,
+    trainstationsByFactoryStack = trainstationsByFactoryStack,
+    trainsignalByFactoryStack   = trainsignalByFactoryStack,
+    trainsignalsByFactoryStack  = trainsignalsByFactoryStack,
+    manufacturerByFactoryName   = manufacturerByFactoryName,
+    manufacturersByFactoryName  = manufacturersByFactoryName,
+    minerByFactoryName          = minerByFactoryName,
+    minersByFactoryName         = minersByFactoryName,
 }
