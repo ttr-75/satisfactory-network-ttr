@@ -1,6 +1,6 @@
 require("config")
 
-local Log              = require("shared/helper_log")
+local Log              = require("shared.helper_log")
 local log              = Log.log
 local tb               = Log.traceback
 

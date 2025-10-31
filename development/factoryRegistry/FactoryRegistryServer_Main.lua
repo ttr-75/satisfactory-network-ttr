@@ -1,6 +1,7 @@
 ---@diagnostic disable: lowercase-global
 
 require("factoryRegistry.basics")
+log = require("shared.helper_log").log
 local FI = require("factoryRegistry.FactoryInfo")
 local FactoryRegistry = require("factoryRegistry.FactoryRegistry")
 local NetworkAdapter = require("net.NetworkAdapter")

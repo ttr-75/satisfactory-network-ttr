@@ -1,5 +1,5 @@
 local NetworkAdapter = require("net.NetworkAdapter")
-
+local log = require("shared.helper_log").log 
 ---@diagnostic disable: lowercase-global
 
 -------------------------------------------------------------------------------

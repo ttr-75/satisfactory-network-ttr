@@ -2,7 +2,7 @@
 
 local NetworkAdapter = require("net.NetworkAdapter")
 local FileIO = require("file.FileIO")
-
+local log = require("shared.helper_log").log
 
 -------------------------------------------------------------------------------
 --- CodeDispatchServer
@@ -57,8 +57,8 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
             log(3, "Failed to read " .. programName, err)
             return
         end
-       -- content = replace_language_chunk(content, TTR_FIN_Config.language)
-       -- content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
+        -- content = replace_language_chunk(content, TTR_FIN_Config.language)
+        -- content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
         return content
     end)
     if ok == false then
@@ -76,4 +76,3 @@ function CodeDispatchServer:run()
         future.run()
     end
 end
-

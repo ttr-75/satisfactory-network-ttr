@@ -1,6 +1,6 @@
 ---@diagnostic disable: lowercase-global
 
-local log = require("shared/helper_log").log
+local log = require("shared.helper_log").log
 local FI = require("factoryRegistry.FactoryInfo")
 
 --------------------------------------------------------------------------------
