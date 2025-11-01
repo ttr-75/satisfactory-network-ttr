@@ -577,4 +577,30 @@ assert(nic, "Keine NIC")
 NetHub:init(nic)
 
 CodeDispatchClient = CodeDispatchClient.new()
-CodeDispatchClient:startClient(name or "test/test.lua")
+
+local START_TARGET = name or "test/test.lua"
+
+local function start_with_retry()
+    local attempt = 0
+    while true do
+        attempt = attempt + 1
+        -- pro Versuch neue Instanz, damit interner Zustand sauber ist
+        CodeDispatchClient = CodeDispatchClient.new()
+
+        local ok, err = xpcall(function()
+            CodeDispatchClient:startClient(START_TARGET)
+        end, debug.traceback)
+
+        if ok then
+            log(0, ("Bootloader: started '%s' successfully after %d attempt(s)"):format(START_TARGET, attempt))
+            return
+        end
+
+        -- Fehler loggen und nach 5s erneut probieren
+        log(3, ("Bootloader: start of '%s' failed (attempt %d): %s"):format(START_TARGET, attempt, tostring(err)))
+        -- einfache Pause (blockiert nicht hart, verarbeitet Events weiter)
+        event.pull(5.0)
+    end
+end
+
+start_with_retry()
