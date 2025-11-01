@@ -282,6 +282,8 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
         self.myFactoryInfo.fType = C.ASSEMBLER
     elseif string_contains(mTypeName, "Smelter", false) then
         self.myFactoryInfo.fType = C.SMELTER
+    elseif string_contains(mTypeName, "Foundry", false) then
+        self.myFactoryInfo.fType = C.FOUNDRY
     elseif string_contains(mTypeName, "Constructor", false) then
         self.myFactoryInfo.fType = C.CONSTRUCTOR
     else
