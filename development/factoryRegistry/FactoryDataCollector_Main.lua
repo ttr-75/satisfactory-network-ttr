@@ -37,33 +37,35 @@ local FactoryDataCollector = setmetatable({}, { __index = NetworkAdapter })
 FactoryDataCollector.__index = FactoryDataCollector
 
 ---@param opts table|nil
----@return FactoryDataCollector
+---@return boolean, FactoryDataCollector|nil, table|nil
 function FactoryDataCollector.new(opts)
     assert(NetworkAdapter, LOG_TAG .. ".new: NetworkAdapter not loaded")
-    opts               = opts or {}
-    local self         = NetworkAdapter.new(FactoryDataCollector, opts)
-    self.name          = NET_NAME_FACTORY_REGISTRY_CLIENT
-    self.port          = NET_PORT_FACTORY_REGISTRY
-    self.ver           = 1
-    ---@type FactoryInfo|nil
-    self.myFactoryInfo = opts and opts.factoryInfo or nil
-    self.registered    = false
-    self.stationMin    = opts and opts.stationMin or 0
+    opts                     = opts or {}
+    local self               = NetworkAdapter.new(FactoryDataCollector, opts)
+    self.name                = NET_NAME_FACTORY_REGISTRY_CLIENT
+    self.port                = NET_PORT_FACTORY_REGISTRY
+    self.ver                 = 1
+    self.myFactoryInfo       = opts.factoryInfo or nil
+    self.registered          = false
+    self.stationMin          = opts.stationMin or 0
+    self._initOpts           = opts -- für spätere Re-Registrierung
+    self._fatal, self._error = nil, nil
 
-    -- NIC MUSS existieren (sonst kann nichts gesendet/gehört werden)
-    assert(self.net, LOG_TAG .. ".new: no NIC available (self.net == nil)")
+    if not self.net then
+        log(4, LOG_TAG .. ".new: no NIC available (self.net == nil)")
+        return false, nil, { code = "NO_NIC", message = "no network card available" }
+    end
 
-    -- Initial-Log
     log(1, LOG_TAG, (".new: port=%s name=%s ver=%s nic=%s")
         :format(tostring(self.port), tostring(self.name), tostring(self.ver), tostring(self.net.id or self.net)))
+
 
     --------------------------------------------------------------------------
     -- Netzwerk-Handler registrieren
     --------------------------------------------------------------------------
+    -- Netzwerk-Handler registrieren (unverändert)
     self:registerWith(function(from, port, cmd, a, b)
-        -- Eingehendes Paket protokollieren (Low-Noise → Level 1)
         log(0, LOG_TAG, (" from=%s cmd=%s"):format(tostring(from), tostring(cmd)))
-
         if port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY_ACK then
             self:onRegisterAck(from)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_RESET_FACTORYREGISTRY then
@@ -75,20 +77,12 @@ function FactoryDataCollector.new(opts)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS then
             -- Nothing just catch
         else
-            -- Unerwartete Kommandos sichtbar machen
-            log(2, LOG_TAG ": unknown cmd: " .. tostring(cmd))
+            log(2, LOG_TAG .. ": unknown cmd: " .. tostring(cmd))
         end
     end)
 
-    --------------------------------------------------------------------------
-    -- Sofortige Registrierung (Broadcast)
-    -- - Kein return false mehr; nur Logs, damit der Aufrufer immer ein Objekt hat
-    --------------------------------------------------------------------------
+    -- Sofortige Registrierung (Broadcast) – niemals fail-hard
     if self.myFactoryInfo then
-        -- Sanity-Check: sieht es aus wie eine FactoryInfo?
-        assert(type(self.myFactoryInfo.setCoreNetworkCard) == "function",
-            "FactoryDataCollector.new: myFactoryInfo does not look like a FactoryInfo (missing setCoreNetworkCard)")
-
         local factoryName = tostring(self.myFactoryInfo.fName or "")
         if factoryName == "" then
             log(3, "FactoryDataCollector.register: cannot broadcast – myFactoryInfo.fName is empty")
@@ -98,19 +92,39 @@ function FactoryDataCollector.new(opts)
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, factoryName)
         end
     else
-        log(1, "FactoryDataCollector.register: FactoryInfo not set try name")
-
-        if opts.fName then
+        log(1, "FactoryDataCollector.register: FactoryInfo not set, try name()")
+        if opts.fName and tostring(opts.fName) ~= "" then
             log(1, ("FactoryDataCollector.register: found name='%s'"):format(opts.fName))
             self.myFactoryInfo = FI.FactoryInfo:new { fName = opts.fName }
             self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, opts.fName)
         else
-            -- Kein harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
-            log(2, "FactoryDataCollector.register: myFactoryInfo not provided; will skip initial broadcast")
+            log(2, "FactoryDataCollector.register: no myFactoryInfo and no fName; skipping initial broadcast")
         end
     end
 
-    return self
+    return true, self, nil
+end
+
+--- Einheitliche Fehler-API -----------------------------------------------
+
+function FactoryDataCollector:fail(msg, code)
+    self._fatal = true
+    self._error = { code = code or "FATAL", message = tostring(msg) }
+    log(4, ("FDC.fail[%s]: %s"):format(self._error.code, self._error.message))
+    return false, self._error
+end
+
+function FactoryDataCollector:isFatal()
+    return self._fatal == true
+end
+
+function FactoryDataCollector:getError()
+    return self._error
+end
+
+--- Best-effort Close: gibt Ports frei (NetHub:unregister wird aus dem Adapter gerufen)
+function FactoryDataCollector:close(reason)
+    pcall(function() NetworkAdapter.close(self, reason or "client-close") end)
 end
 
 --------------------------------------------------------------------------
@@ -130,10 +144,19 @@ end
 --- Server hat Registry zurückgesetzt
 ---@param fromId string
 function FactoryDataCollector:onRegistryReset(fromId)
-    -- KEEP: deine bisherige Logik beim Registry-Reset (früher: computer.reset())
     log(2, 'Client: Registry reset requested by "' .. tostring(fromId) .. '"')
     self.registered = false
-    computer.reset()
+    local name = (self.myFactoryInfo and self.myFactoryInfo.fName)
+        or (self._initOpts and self._initOpts.fName)
+        or ""
+    if name ~= "" then
+        log(1, ("FactoryDataCollector.register(re): broadcasting '%s' name='%s'")
+            :format(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, name))
+        self:broadcast(NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY, name)
+    else
+        -- Wenn wir nicht mal den Namen kennen, fatal markieren → Starter re-init
+        self:fail("registry reset without factory name; cannot re-register", "REG_RESET")
+    end
 end
 
 --- Server fordert ein Update an
@@ -162,18 +185,17 @@ function FactoryDataCollector:performUpdate()
     if not ok then
         local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
         if not ok2 then
-            log(3,
-                "FactoryDataCollector: No Manufacturer  or Miner found for Factory '" ..
-                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2))
-
-            computer.stop()
-            return
+            log(3, "FactoryDataCollector: No Manufacturer or Miner found for Factory '"
+                .. tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2))
+            self:fail("no Manufacturer or Miner found for '" .. tostring(self.myFactoryInfo.fName) .. "'",
+                "NO_FACTORY_OBJECT")
+            return false
         end
         self:performMinerUpdate(miner)
     else
         self:performManufactureUpdate(manufacturer)
     end
-    --  pj(self.myFactoryInfo)
+    return true
 end
 
 ---comment
@@ -408,49 +430,45 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
             end
         end
     end
+   -- pj(self.myFactoryInfo)
 end
 
 --- Server hat Registry zurückgesetzt
 function FactoryDataCollector:checkTrainsignals()
     local t = now_ms()
-    if not self.last then
-        self.last = 0
-    end
-    if t - self.last >= 1000 then
-        self.last = t
+    self.last = self.last or 0
+    if t - self.last < 1000 then return true end
+    self.last = t
 
-        for _, input in pairs(self.myFactoryInfo.inputs) do
-            local ok, signal, err = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)
-            if not ok then
-                log(0,
-                    "FactoryDataCollector: Error finding Trainsignal for Factory '" ..
-                    tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
-                return
-            else
-                if not signal then
-                    log(0,
-                        "FactoryDataCollector: No Trainsignal found for Factory '" ..
-                        tostring(self.myFactoryInfo.fName) .. "' and Input Item '" ..
-                        tostring(input.itemClass and input.itemClass.name) .. "'")
-                    return
-                else
-                    local block = signal:getObservedBlock()
-                    if input.amountStation <= self.stationMin then
-                        if block.isPathBlock then
-                            block.isPathBlock = false
-                            log(0, "Switching Signal " .. signal.nick .. " to green")
-                        end
-                    else
-                        if not block.isPathBlock then
-                            log(0, "Switching Signal " .. signal.nick .. " to red")
-                            block.isPathBlock = true
-                        end
-                    end
-                end
+    for _, input in pairs(self.myFactoryInfo.inputs or {}) do
+        local ok, signal, err = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)
+        if not ok then
+            log(0, "FactoryDataCollector: Error finding Trainsignal for Factory '"
+                .. tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+            return false
+        end
+        if not signal then
+            log(0, "FactoryDataCollector: No Trainsignal found for Factory '"
+                .. tostring(self.myFactoryInfo.fName) .. "' and Input Item '"
+                .. tostring(input.itemClass and input.itemClass.name) .. "'")
+            return false
+        end
+        local block = signal:getObservedBlock()
+        if input.amountStation <= self.stationMin then
+            if block.isPathBlock then
+                block.isPathBlock = false
+                log(0, "Switching Signal " .. signal.nick .. " to green")
+            end
+        else
+            if not block.isPathBlock then
+                log(0, "Switching Signal " .. signal.nick .. " to red")
+                block.isPathBlock = true
             end
         end
     end
-    pj(self.myFactoryInfo)
+    -- Debug: bei Bedarf aktiv lassen
+    -- pj(self.myFactoryInfo)
+    return true
 end
 
 return FactoryDataCollector

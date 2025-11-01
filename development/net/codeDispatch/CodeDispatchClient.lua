@@ -1,5 +1,5 @@
 local NetworkAdapter = require("net.NetworkAdapter")
-local log = require("shared.helper_log").log 
+local log = require("shared.helper_log").log
 ---@diagnostic disable: lowercase-global
 
 -------------------------------------------------------------------------------
@@ -59,6 +59,27 @@ function CodeDispatchClient.new(opts)
 end
 
 -- ========= Utilities =========================================================
+
+--- mark client fatal + store error (uniform shape)
+function CodeDispatchClient:fail(msg, code)
+    self._fatal = true
+    self._error = { code = code or "FATAL", message = tostring(msg) }
+    log(4, ("CDC.fail[%s]: %s"):format(self._error.code, self._error.message))
+    return nil
+end
+
+function CodeDispatchClient:isFatal()
+    return self._fatal == true
+end
+
+function CodeDispatchClient:getError()
+    return self._error
+end
+
+--- best-effort close (uses NetworkAdapter:close -> NetHub:unregister)
+function CodeDispatchClient:close(reason)
+    pcall(function() NetworkAdapter.close(self, reason or "client-close") end)
+end
 
 ---@param name string
 ---@return boolean
@@ -214,13 +235,11 @@ end
 --- Führt alle gespeicherten Module in definierter Reihenfolge aus
 --- (jetzt via _require, damit Rückgabewerte/Namespaces landen).
 function CodeDispatchClient:callAllLoadedFiles()
-
     for i = 1, #self.codeOrder do
         local name = self.codeOrder[i]
         log(1, "CDC: run " .. tostring(name))
         local ok, err = pcall(function() self:_require(name) end)
         if not ok then log(4, err) end
-
     end
     self.codeOrder = {}
     self.codes     = {}
@@ -290,22 +309,25 @@ function CodeDispatchClient:_executeModule(name)
     local fn, perr = load(chunk, key, "t", env)
     if not fn then
         self.loading[key] = nil
-        error("CDC: load env error for " .. tostring(key) .. ": " .. tostring(perr))
+        log(4, "CDC: load env error for " .. tostring(key) .. ": " .. tostring(perr))
+        return self:fail("module load error: " .. tostring(perr), "MODULE_LOAD")
     end
 
-    local ok, ret = pcall(fn)
+    local ok, ret = xpcall(fn, debug.traceback)
     self.loading[key] = nil
-    if not ok then error("CDC: runtime error in " .. tostring(key) .. ": " .. tostring(ret)) end
-
+    if not ok then
+        log(4, "CDC: runtime error in " .. tostring(key) .. ": " .. tostring(ret))
+        return self:fail("module runtime error: " .. tostring(ret), "MODULE_RUNTIME")
+    end
     local mod = (ret ~= nil) and ret or (next(env.exports) and env.exports) or true
     self.modules[key] = mod
 
-    
-        if TTR_FIN_Config and self.startLog ~= true then
-            log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
-            log(0, "Laguage set to " .. TTR_FIN_Config.language)
-            self.startLog = true 
-        end
+
+    if TTR_FIN_Config and self.startLog ~= true then
+        log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
+        log(0, "Laguage set to " .. TTR_FIN_Config.language)
+        self.startLog = true
+    end
 
     return mod
 end

@@ -133,7 +133,9 @@ end
 function NetHub:init(nic)
     if self.listenerId then return end
     self.nic = nic or computer.getPCIDevices(classes.NetworkCard)[1]
-    assert(self.nic, "NetHub: keine NIC gefunden")
+    if not self.nic then
+        return false, { code = "NO_NIC", message = "NetHub: keine NIC gefunden" }
+    end
     event.listen(self.nic)
 
     local f = event.filter { event = "NetworkMessage" }
@@ -169,11 +171,75 @@ function NetHub:register(port, name, ver, handler)
     self.nic:open(port) -- Port EINMAL hier öffnen
 end
 
---- Beendet den Listener und leert die Service-Tabelle.
+--- Hebt die Registrierung eines Ports auf und schließt ihn auf der NIC.
+---@param port NetPort
+---@param name NetName|nil   -- optional zur Plausibilitätsprüfung
+---@param ver  NetVersion|nil -- optional zur Plausibilitätsprüfung
+---@return boolean, table|nil -- true, nil bei Erfolg; andernfalls false/nil, {code=, message=}
+function NetHub:unregister(port, name, ver)
+    if type(port) ~= "number" then
+        return false, { code = "BAD_PORT", message = "NetHub.unregister: port must be number" }
+    end
+    local svc = self.services[port]
+    if not svc then
+        return false, { code = "NOT_FOUND", message = ("no service registered on port %s"):format(tostring(port)) }
+    end
+
+    -- optionale Plausibilitätschecks (nur wenn name/ver übergeben wurden)
+    if name ~= nil and svc.name ~= name then
+        return false, {
+            code = "NAME_MISMATCH",
+            message = ("service name mismatch on port %s (have=%s, want=%s)")
+                :format(port, tostring(svc.name), tostring(name))
+        }
+    end
+    if ver ~= nil and svc.ver ~= ver then
+        return false, {
+            code = "VER_MISMATCH",
+            message = ("service version mismatch on port %s (have=%s, want=%s)")
+                :format(port, tostring(svc.ver), tostring(ver))
+        }
+    end
+
+    -- Port schließen (try-catch, falls NIC fehlt/geschlossen)
+    pcall(function()
+        if self.nic and self.nic.close then
+            self.nic:close(port)
+        end
+    end)
+
+    self.services[port] = nil
+    log(0, ("NetHub: unregistered port %s"):format(tostring(port)))
+
+    -- Wenn keine Services mehr registriert: Listener sauber abbauen
+    if next(self.services) == nil then
+        if self.listenerId and event.removeListener then
+            pcall(function() event.removeListener(self.listenerId) end)
+        end
+        self.listenerId = nil
+        log(0, "NetHub: no services remaining; listener stopped")
+    end
+
+    return true
+end
+
+--- Beendet den Listener und leert die Service-Tabelle, schließt alle Ports.
 function NetHub:close()
-    if self.listenerId and event.removeListener then event.removeListener(self.listenerId) end
+    -- Listener abbauen
+    if self.listenerId and event.removeListener then
+        pcall(function() event.removeListener(self.listenerId) end)
+    end
     self.listenerId = nil
+
+    -- Alle Ports schließen (best-effort)
+    if self.nic and self.nic.close then
+        for port, _ in pairs(self.services) do
+            pcall(function() self.nic:close(port) end)
+        end
+    end
+
     self.services = {}
+    log(0, "NetHub: closed")
 end
 
 -- Standardport (aus deiner Originaldatei)
@@ -204,12 +270,20 @@ NetworkAdapter.__index = NetworkAdapter
 ---@param self T
 ---@param opts NetworkAdapterOpts|nil
 ---@return T
+-- Konstruktor: Instanz kann Methoden vom Child *und* vom NetworkAdapter finden
 function NetworkAdapter:new(opts)
-    local o = setmetatable({}, self)
-    o.port  = (opts and opts.port) or NET_PORT_DEFAULT
-    o.name  = (opts and opts.name) or "NetworkAdapter"
-    o.ver   = (opts and opts.ver) or 1
-    o.net   = (opts and opts.nic) or computer.getPCIDevices(classes.NetworkCard)[1]
+    local class = self
+    local o     = setmetatable({}, {
+        __index = function(_, k)
+            local v = class[k]
+            if v ~= nil then return v end
+            return NetworkAdapter[k]
+        end
+    })
+    o.port      = (opts and opts.port) or NET_PORT_DEFAULT
+    o.name      = (opts and opts.name) or "NetworkAdapter"
+    o.ver       = (opts and opts.ver) or 1
+    o.net       = (opts and opts.nic) or computer.getPCIDevices(classes.NetworkCard)[1]
     return o
 end
 
@@ -235,6 +309,63 @@ function NetworkAdapter:broadcast(cmd, ...)
     self.net:broadcast(self.port, cmd, ...)
 end
 
+--- Einheitliches Fehlerobjekt
+---@param code string @Kurzcode
+---@param message string @Beschreibung
+function NetworkAdapter:error(code, message)
+    return { code = code, message = message }
+end
+
+--- Prüft, ob eine NIC vorhanden ist (statt später zu crashen)
+---@return boolean, table|nil
+function NetworkAdapter:ensureNet()
+    if self.net then return true end
+    return false, self:error("NO_NIC", "No network card (self.net == nil)")
+end
+
+--- “Weiche” Variante von send()
+---@param toId string
+---@param cmd NetCommand
+---@return boolean, table|nil
+function NetworkAdapter:trySend(toId, cmd, ...)
+    local ok, err = self:ensureNet()
+    if not ok then return false, err end
+
+    local args = table.pack(...)
+    local sOK, sErr = pcall(function()
+        self.net:send(self.port and toId, self.port, cmd, table.unpack(args, 1, args.n))
+        --                      ^ optional: sanity-checks kannst du weglassen
+    end)
+    if not sOK then return false, self:error("SEND_FAIL", tostring(sErr)) end
+    return true
+end
+
+--- “Weiche” Variante von broadcast()
+---@param cmd NetCommand
+---@return boolean, table|nil
+function NetworkAdapter:tryBroadcast(cmd, ...)
+    local ok, err = self:ensureNet()
+    if not ok then return false, err end
+
+    local args = table.pack(...)
+    local bOK, bErr = pcall(function()
+        self.net:broadcast(self.port, cmd, table.unpack(args, 1, args.n))
+    end)
+    if not bOK then return false, self:error("BCAST_FAIL", tostring(bErr)) end
+    return true
+end
+
+--- Adapter schliessen (optional)
+function NetworkAdapter:close(reason)
+    self._closed = reason or true
+    if NetHub and NetHub.unregister then
+        pcall(function() NetHub:unregister(self.port, self.name, self.ver) end)
+    end
+end
+
+function NetworkAdapter:isClosed()
+    return self._closed and true or false
+end
 
 ---@diagnostic disable: lowercase-global
 
@@ -295,6 +426,26 @@ function CodeDispatchClient.new(opts)
 end
 
 -- ========= Utilities =========================================================
+--- mark client fatal + store error (uniform shape)
+function CodeDispatchClient:fail(msg, code)
+    self._fatal = true
+    self._error = { code = code or "FATAL", message = tostring(msg) }
+    log(4, ("CDC.fail[%s]: %s"):format(self._error.code, self._error.message))
+    return nil
+end
+
+function CodeDispatchClient:isFatal()
+    return self._fatal == true
+end
+
+function CodeDispatchClient:getError()
+    return self._error
+end
+
+--- best-effort close (uses NetworkAdapter:close -> NetHub:unregister)
+function CodeDispatchClient:close(reason)
+    pcall(function() NetworkAdapter.close(self, reason or "client-close") end)
+end
 
 ---@param name string
 ---@return boolean
@@ -450,13 +601,11 @@ end
 --- Führt alle gespeicherten Module in definierter Reihenfolge aus
 --- (jetzt via _require, damit Rückgabewerte/Namespaces landen).
 function CodeDispatchClient:callAllLoadedFiles()
-
     for i = 1, #self.codeOrder do
         local name = self.codeOrder[i]
         log(1, "CDC: run " .. tostring(name))
         local ok, err = pcall(function() self:_require(name) end)
         if not ok then log(4, err) end
-
     end
     self.codeOrder = {}
     self.codes     = {}
@@ -526,22 +675,25 @@ function CodeDispatchClient:_executeModule(name)
     local fn, perr = load(chunk, key, "t", env)
     if not fn then
         self.loading[key] = nil
-        error("CDC: load env error for " .. tostring(key) .. ": " .. tostring(perr))
+        log(4, "CDC: load env error for " .. tostring(key) .. ": " .. tostring(perr))
+        return self:fail("module load error: " .. tostring(perr), "MODULE_LOAD")
     end
 
-    local ok, ret = pcall(fn)
+    local ok, ret = xpcall(fn, debug.traceback)
     self.loading[key] = nil
-    if not ok then error("CDC: runtime error in " .. tostring(key) .. ": " .. tostring(ret)) end
-
+    if not ok then
+        log(4, "CDC: runtime error in " .. tostring(key) .. ": " .. tostring(ret))
+        return self:fail("module runtime error: " .. tostring(ret), "MODULE_RUNTIME")
+    end
     local mod = (ret ~= nil) and ret or (next(env.exports) and env.exports) or true
     self.modules[key] = mod
 
-    
-        if TTR_FIN_Config and self.startLog ~= true then
-            log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
-            log(0, "Laguage set to " .. TTR_FIN_Config.language)
-            self.startLog = true 
-        end
+
+    if TTR_FIN_Config and self.startLog ~= true then
+        log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
+        log(0, "Laguage set to " .. TTR_FIN_Config.language)
+        self.startLog = true
+    end
 
     return mod
 end
@@ -569,6 +721,7 @@ function CodeDispatchClient:_require(name)
 
     return self:_executeModule(key)
 end
+
 --------------------------------------------------------------------------------
 --- Starter-Skript
 --- ---------------------------------------------------------------------------
@@ -584,23 +737,45 @@ local function start_with_retry()
     local attempt = 0
     while true do
         attempt = attempt + 1
-        -- pro Versuch neue Instanz, damit interner Zustand sauber ist
+
+        -- fresh client per attempt to ensure clean state
         CodeDispatchClient = CodeDispatchClient.new()
 
-        local ok, err = xpcall(function()
+        local started_ok, start_err = xpcall(function()
             CodeDispatchClient:startClient(START_TARGET)
         end, debug.traceback)
 
-        if ok then
-            log(0, ("Bootloader: started '%s' successfully after %d attempt(s)"):format(START_TARGET, attempt))
-            return
-        end
+        if started_ok then
+            log(0, ("Bootloader: started '%s' successfully after %d attempt(s)")
+                :format(START_TARGET, attempt))
 
-        -- Fehler loggen und nach 5s erneut probieren
-        log(3, ("Bootloader: start of '%s' failed (attempt %d): %s"):format(START_TARGET, attempt, tostring(err)))
-        -- einfache Pause (blockiert nicht hart, verarbeitet Events weiter)
-        event.pull(5.0)
+            -- supervise: as long as client isn't fatal, keep idling here
+            while true do
+                event.pull(0.5)
+                if CodeDispatchClient:isFatal() then
+                    local e = CodeDispatchClient:getError()
+                    log(4, ("Bootloader: client went fatal [%s] %s – reinitializing")
+                        :format(e and e.code or "?", e and e.message or "unknown"))
+
+                    -- best-effort close; unregisters adapter + cleans ports
+                    pcall(function() CodeDispatchClient:close("fatal") end)
+
+                    -- break to outer while → new attempt
+                    event.pull(5.0)
+                    break
+                end
+            end
+        else
+            -- initial start failed (e.g., immediate syntax error) → retry after delay
+            log(3, ("Bootloader: start of '%s' failed (attempt %d): %s")
+                :format(START_TARGET, attempt, tostring(start_err)))
+            event.pull(5.0)
+        end
+        -- on loop continue: we try again with a fresh instance
     end
 end
 
 start_with_retry()
+
+log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
+log(0, "Laguage set to " .. TTR_FIN_Config.language)

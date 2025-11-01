@@ -32,7 +32,7 @@ local FactoryDashboardClient = setmetatable({}, { __index = NetworkAdapter })
 FactoryDashboardClient.__index = FactoryDashboardClient
 
 ---@param opts table|nil
----@return FarbricDashboardClient
+---@return boolean, FarbricDashboardClient|nil, {code:string, message:string, attempts?:integer}|nil
 function FactoryDashboardClient.new(opts)
     assert(NetworkAdapter, "FarbricDashboardClient.new: NetworkAdapter not loaded")
     opts               = opts or {}
@@ -100,15 +100,36 @@ function FactoryDashboardClient.new(opts)
     if opts.fName then
         self:setFactoryInfo(opts.fName)
     else
-        -- Harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
+        -- Kein harter Stopp: Nur loggen und dem Aufrufer einen auswertbaren Fehler geben
         log(4, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
-        computer.stop()
+        return self:fail("myFactoryInfo not provided; initial broadcast skipped", "NO_FACTORY_INFO")
     end
 
     local dash = FactoryDashboard.new {}
     self.dash:init(self.gpu, self.scr)
 
-    return self
+    return true, self, nil
+end
+
+--- Markiert den Client als fatal gestoppt und gibt einen einheitlichen Fehler zurück.
+---@param msg string
+---@param code string|nil
+---@return boolean, nil, {code:string, message:string, attempts?:integer}
+function FactoryDashboardClient:fail(msg, code)
+    self._fatal = true
+    self._error = { code = code or "FATAL", message = msg, attempts = self._responseAttempts }
+    log(4, ("FRC.fail[%s]: %s"):format(self._error.code, self._error.message))
+    return false, nil, self._error
+end
+
+---@return boolean
+function FactoryDashboardClient:isFatal()
+    return self._fatal == true
+end
+
+---@return {code:string, message:string, attempts?:integer}|nil
+function FactoryDashboardClient:getError()
+    return self._error
 end
 
 --------------------------------------------------------------------------
@@ -124,8 +145,9 @@ function FactoryDashboardClient:onResponseFactoryAddress(fromId)
         log(4,
             ("FarbricDashboardClient: onResponseFactoryAddress called more than 5 times; ignoring (attempt %d)"):format(
                 self._responseAttempts))
-        computer.stop()
-        return
+        -- Harter Fehler: Client kann später myFactoryInfo setzen & erneut registrieren
+        log(4, "FRC.register: myFactoryInfo not provided; will skip initial broadcast")
+        return self:fail("no factory address after max attempts", "NO_FACTORY_ADDR")
     end
 
     if not fromId then
@@ -162,8 +184,6 @@ function FactoryDashboardClient:setFactoryInfo(factoryName)
     self:broadcast(NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS, factoryName)
 end
 
-
-
 --- Client schickt ein Update seiner FactoryInfo (als JSON).
 ---@param fromId string
 ---@param factoryInfoS string
@@ -181,7 +201,11 @@ function FactoryDashboardClient:onUpdateFactory(fromId, factoryInfoS)
 end
 
 --- Fragt zyklisch (1/s) alle bekannten Fabriken nach Updates.
+--- @return boolean,nil, {code:string, message:string, attempts?:integer}|nil
 function FactoryDashboardClient:callForUpdate()
+    if self:isFatal() then
+        return false, nil, self:getError()
+    end
     local t = now_ms()
     if t - self.last >= 1000 then
         self.last = t
@@ -198,6 +222,7 @@ function FactoryDashboardClient:callForUpdate()
         -- ggf. myFactoryInfo:update(...) → dann erneut mappen:
         -- dash:setFromFactoryInfo(myFactoryInfo)
     end
+    return true, nil, nil
 end
 
 return FactoryDashboardClient

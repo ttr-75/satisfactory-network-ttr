@@ -51,13 +51,6 @@ local function _safe_open(path, mode)
     return true, f, nil
 end
 
-local function _traceback(tag)
-    return function(err)
-        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
-        log(4, tb)
-        return tb
-    end
-end
 
 --- Safe call Wrapper: ok, result|nil, err
 ---@param where string
@@ -95,26 +88,27 @@ local function _join(root, rel)
 end
 
 
+
 -------------------------------
 -- Listener-Debug-Helfer
 -------------------------------
 -- Warum xpcall? Viele Event-Dispatcher „schlucken“ Errors.
 -- Mit xpcall + traceback loggen wir jeden Fehler *sichtbar* (Level 4).
 local function _traceback(tag)
-  return function(err)
-    local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
-    log(4, tb)
-    return tb
-  end
+    return function(err)
+        local tb = debug.traceback(("%s: %s"):format(tag or "ListenerError", tostring(err)), 2)
+        log(4, tb)
+        return tb
+    end
 end
 
 -- safe_listener(tag, fn): verpackt fn in xpcall, sodass Fehler nicht „leise“ bleiben.
 local function safe_listener(tag, fn)
-  assert(type(fn) == "function", "safe_listener needs a function")
-  return function(...)
-    local ok, res = xpcall(fn, _traceback(tag), ...)
-    return res
-  end
+    assert(type(fn) == "function", "safe_listener needs a function")
+    return function(...)
+        local ok, res = xpcall(fn, _traceback(tag), ...)
+        return res
+    end
 end
 
 
@@ -169,7 +163,9 @@ end
 function NetHub:init(nic)
     if self.listenerId then return end
     self.nic = nic or computer.getPCIDevices(classes.NetworkCard)[1]
-    assert(self.nic, "NetHub: keine NIC gefunden")
+    if not self.nic then
+        return false, { code = "NO_NIC", message = "NetHub: keine NIC gefunden" }
+    end
     event.listen(self.nic)
 
     local f = event.filter { event = "NetworkMessage" }
@@ -206,6 +202,29 @@ function NetHub:close()
     if self.listenerId and event.removeListener then event.removeListener(self.listenerId) end
     self.listenerId = nil
     self.services = {}
+end
+
+function NetHub:unregister(port, name, ver)
+    if type(port) ~= "number" then
+        return false, { code = "BAD_PORT", message = "NetHub.unregister: port must be number" }
+    end
+    local svc = self.services[port]
+    if not svc then
+        return false, { code = "NOT_FOUND", message = ("no service on port %s"):format(port) }
+    end
+    if name and svc.name ~= name then
+        return false, { code = "NAME_MISMATCH", message = "service name mismatch" }
+    end
+    if ver and svc.ver ~= ver then
+        return false, { code = "VER_MISMATCH", message = "service version mismatch" }
+    end
+    pcall(function() if self.nic and self.nic.close then self.nic:close(port) end end)
+    self.services[port] = nil
+    if next(self.services) == nil then
+        if self.listenerId and event.removeListener then pcall(function() event.removeListener(self.listenerId) end) end
+        self.listenerId = nil
+    end
+    return true
 end
 
 local FileIO = {}
@@ -299,7 +318,6 @@ function FileIO:ensureMounted()
     return true
 end
 
-
 function FileIO:_rootLooksReady()
     if not filesystem.exists(self.root) then return false end
     local ok = pcall(function() return filesystem.children(self.root) end)
@@ -368,6 +386,12 @@ function NetworkAdapter:broadcast(cmd, ...)
     self.net:broadcast(self.port, cmd, ...)
 end
 
+function NetworkAdapter:close(reason)
+    if NetHub and NetHub.unregister then
+        pcall(NetHub.unregister, NetHub, self.port, self.name, self.ver)
+    end
+end
+
 ---@class CodeDispatchServer : NetworkAdapter
 ---@field fsio FileIO
 CodeDispatchServer = setmetatable({}, { __index = NetworkAdapter })
@@ -404,7 +428,6 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
     local fallback = [[
         print("Invalid Net-Boot-Program: Program not found!")
         event.pull(5)
-        computer.reset()
     ]]
     log(1, ('CodeDispatchServer: request "%s" from "%s"'):format(programName, tostring(fromId)))
 
@@ -414,8 +437,8 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
             log(3, "Failed to read " .. programName, err)
             return
         end
-       -- content = replace_language_chunk(content, TTR_FIN_Config.language)
-       -- content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
+        -- content = replace_language_chunk(content, TTR_FIN_Config.language)
+        -- content:gsub("[-LANGUAGE-].lua", "_" .. TTR_FIN_Config.language)
         return content
     end)
     if ok == false then
@@ -425,13 +448,23 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
     self:send(fromId, NET_CMD_CODE_DISPATCH_SET_EEPROM, programName, payload)
 end
 
+
 function CodeDispatchServer:run()
-    self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
-    log(1, "CodeDispatchServer: broadcast resetAll")
-    while true do
-        future.run()
-    end
+  self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
+  log(1, "CodeDispatchServer: broadcast resetAll")
+  while true do
+    local ok = xpcall(function() future.run() end, _traceback("CDS.loop"))
+    if not ok then event.pull(0.2) end
+  end
 end
+
+--function CodeDispatchServer:run()
+--    self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
+--    log(1, "CodeDispatchServer: broadcast resetAll")
+ --   while true do
+--        future.run()
+ --   end
+--end
 
 log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)
 log(0, "Laguage set to " .. TTR_FIN_Config.language)

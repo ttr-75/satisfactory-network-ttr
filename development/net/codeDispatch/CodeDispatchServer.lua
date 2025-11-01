@@ -47,7 +47,6 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
     local fallback = [[
         print("Invalid Net-Boot-Program: Program not found!")
         event.pull(5)
-        computer.reset()
     ]]
     log(1, ('CodeDispatchServer: request "%s" from "%s"'):format(programName, tostring(fromId)))
 

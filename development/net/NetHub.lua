@@ -57,7 +57,9 @@ end
 function NetHub:init(nic)
     if self.listenerId then return end
     self.nic = nic or computer.getPCIDevices(classes.NetworkCard)[1]
-    assert(self.nic, "NetHub: keine NIC gefunden")
+    if not self.nic then
+        return false, { code = "NO_NIC", message = "NetHub: keine NIC gefunden" }
+    end
     event.listen(self.nic)
 
     local f = event.filter { event = "NetworkMessage" }
@@ -89,9 +91,73 @@ function NetHub:register(port, name, ver, handler)
     self.nic:open(port) -- Port EINMAL hier öffnen
 end
 
---- Beendet den Listener und leert die Service-Tabelle.
+--- Hebt die Registrierung eines Ports auf und schließt ihn auf der NIC.
+---@param port NetPort
+---@param name NetName|nil   -- optional zur Plausibilitätsprüfung
+---@param ver  NetVersion|nil -- optional zur Plausibilitätsprüfung
+---@return boolean, table|nil -- true, nil bei Erfolg; andernfalls false/nil, {code=, message=}
+function NetHub:unregister(port, name, ver)
+    if type(port) ~= "number" then
+        return false, { code = "BAD_PORT", message = "NetHub.unregister: port must be number" }
+    end
+    local svc = self.services[port]
+    if not svc then
+        return false, { code = "NOT_FOUND", message = ("no service registered on port %s"):format(tostring(port)) }
+    end
+
+    -- optionale Plausibilitätschecks (nur wenn name/ver übergeben wurden)
+    if name ~= nil and svc.name ~= name then
+        return false, {
+            code = "NAME_MISMATCH",
+            message = ("service name mismatch on port %s (have=%s, want=%s)")
+                :format(port, tostring(svc.name), tostring(name))
+        }
+    end
+    if ver ~= nil and svc.ver ~= ver then
+        return false, {
+            code = "VER_MISMATCH",
+            message = ("service version mismatch on port %s (have=%s, want=%s)")
+                :format(port, tostring(svc.ver), tostring(ver))
+        }
+    end
+
+    -- Port schließen (try-catch, falls NIC fehlt/geschlossen)
+    pcall(function()
+        if self.nic and self.nic.close then
+            self.nic:close(port)
+        end
+    end)
+
+    self.services[port] = nil
+    log(0, ("NetHub: unregistered port %s"):format(tostring(port)))
+
+    -- Wenn keine Services mehr registriert: Listener sauber abbauen
+    if next(self.services) == nil then
+        if self.listenerId and event.removeListener then
+            pcall(function() event.removeListener(self.listenerId) end)
+        end
+        self.listenerId = nil
+        log(0, "NetHub: no services remaining; listener stopped")
+    end
+
+    return true
+end
+
+--- Beendet den Listener und leert die Service-Tabelle, schließt alle Ports.
 function NetHub:close()
-    if self.listenerId and event.removeListener then event.removeListener(self.listenerId) end
+    -- Listener abbauen
+    if self.listenerId and event.removeListener then
+        pcall(function() event.removeListener(self.listenerId) end)
+    end
     self.listenerId = nil
+
+    -- Alle Ports schließen (best-effort)
+    if self.nic and self.nic.close then
+        for port, _ in pairs(self.services) do
+            pcall(function() self.nic:close(port) end)
+        end
+    end
+
     self.services = {}
+    log(0, "NetHub: closed")
 end

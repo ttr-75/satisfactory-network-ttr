@@ -1,57 +1,101 @@
 -- factoryRegistry.starter.factoryInfoCollector
-
 require("config")
 
-
-local sleep_s        = require("shared.helper").sleep_s
 local Log            = require("shared.helper_log")
 local log            = Log.log
 local tb             = Log.traceback
 
+local sleep_s        = require("shared.helper").sleep_s
 FactoryDataCollector = require("factoryRegistry.FactoryDataCollector_Main")
 
-
-
+-- Weiche Validierung
+local function _is_empty(s) return s == nil or tostring(s) == "" end
 ---@diagnostic disable-next-line: undefined-global
-assert(fName, "factoryInfoCollector.lua - fName must been set.")
-
-
-sleep_s(1)
-
-local cli = nil
----@diagnostic disable-next-line: undefined-global
-if not stationMin then
-    ---@diagnostic disable-next-line: undefined-global
-    cli = FactoryDataCollector.new { fName = fName }
-else
-    ---@diagnostic disable-next-line: undefined-global
-    cli = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
+if _is_empty(fName) then
+    log(4, "factoryInfoCollector.lua: fName is required (nil/empty) – waiting for configuration...")
 end
 
+-- kleine Initial-Verzögerung, wie gehabt
+sleep_s(1)
 
--- optional: Name/Tag für sauberere Logs
+-- Robuste Konstruktion mit Retry (5s Backoff)
+local cli
+while true do
+    local ok, obj, err
+    ---@diagnostic disable-next-line: undefined-global
+    if stationMin then
+        ok, obj, err = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
+    else
+        ok, obj, err = FactoryDataCollector.new { fName = fName }
+    end
+    if ok and obj then
+        cli = obj
+        break
+    end
+    log(4, ("factoryInfoCollector.lua: client init failed [%s] %s – retry in 5s")
+        :format(err and err.code or "?", err and err.message or "unknown"))
+    event.pull(5.0)
+end
+
+-- Loop-Tag für schöne Logs
 local LOOP_TAG = "FactoryInfoCollectorStarter"
 
 future.addTask(async(function()
     log(0, "[loop] start:", LOOP_TAG)
 
+    local TICK    = TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 0.2
+    local BACKOFF = 0.5
 
     while true do
-        -- Schutz pro Tick: Fehler killen nicht den gesamten Task
-        local ok = xpcall(function()
-            event.pull(TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 0.2)
-            cli:checkTrainsignals()
-        end, tb(LOOP_TAG)) -- nutzt deinen traceback-Logger
+        local iter_ok = xpcall(function()
+            event.pull(TICK)
 
-        -- Falls eine Iteration scheitert, wurde der Stacktrace bereits geloggt.
-        -- Hier kannst du optional Backoff/Telemetry setzen:
-        if not ok then
-            -- Kleiner Cooldown verhindert „Fehler-Spam“ bei harten Dauerfehlern
-            event.pull(0.1)
-            -- oder: log(2, "[loop] tick failed — continuing:", LOOP_TAG)
+            -- Fatal? -> sauber schließen & neu aufbauen
+            if cli.isFatal and cli:isFatal() then
+                local err = cli.getError and cli:getError() or nil
+                log(4, ("[loop] fatal state: %s (%s) – closing adapter")
+                    :format(err and err.message or "unknown", err and err.code or "?"))
+                pcall(function()
+                    if cli.close then
+                        cli:close("fatal")
+                    end
+                end)
+
+                -- Reinit + Backoff
+                while true do
+                    local ok2, obj2, e2
+                    ---@diagnostic disable-next-line: undefined-global
+                    if stationMin then
+                        ok2, obj2, e2 = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
+                    else
+                        ok2, obj2, e2 = FactoryDataCollector.new { fName = fName }
+                    end
+                    if ok2 and obj2 then
+                        cli = obj2
+                        log(1, "[loop] client re-initialized")
+                        break
+                    end
+                    log(4, ("[loop] reinit failed [%s] %s – retry in 5s")
+                        :format(e2 and e2.code or "?", e2 and e2.message or "unknown"))
+                    event.pull(5.0)
+                end
+                return
+            end
+
+            -- Normales Update
+            local ok_call = true
+            if cli.checkTrainsignals then
+                ok_call = cli:checkTrainsignals()
+            end
+            if not ok_call then
+                event.pull(BACKOFF)
+            end
+        end, tb(LOOP_TAG))
+
+        if not iter_ok then
+            event.pull(BACKOFF)
         end
     end
 end))
-
 
 future.loop()
