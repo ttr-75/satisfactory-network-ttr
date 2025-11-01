@@ -4,9 +4,9 @@ local log = require("shared.helper_log").log
 
 local helper = require("shared.helper")
 local sleep_s = helper.sleep_s
-local sleep_ms = helper.sleep_ms
 local now_ms = helper.now_ms
 local byNick = helper.byNick
+local romanize = helper.romanize
 
 
 require("factoryRegistry.basics")
@@ -88,7 +88,8 @@ function FactoryDashboardClient.new(opts)
     ---@diagnostic disable-next-line: undefined-field, assign-type-mismatch
     self.gpu = computer.getPCIDevices(classes.GPU_T2_C)[1]
     if opts.scrName then
-        local ok, scr, err = byNick(opts.scrName)
+        local scrName = romanize(opts.scrName)
+        local ok, scr, err = byNick(scrName)
         if not scr then
             log(4, "FactoryDashboardClient.new: Screen '" .. tostring(opts.scrName) .. "' not found: " .. tostring(err))
         else
