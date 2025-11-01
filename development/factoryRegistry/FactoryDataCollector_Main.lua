@@ -278,10 +278,12 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
 
     -- 2) Typ bestimmen (nur, wenn verfügbar)
     local mTypeName = (manufacturer:getType() and manufacturer:getType().name) or ""
-    if string_contains(mTypeName, C.ASSEMBLER.name, false) then
+    if string_contains(mTypeName, "Assembler", false) then
         self.myFactoryInfo.fType = C.ASSEMBLER
-    elseif string_contains(mTypeName, C.SMELTER.name, false) then
+    elseif string_contains(mTypeName, "Smelter", false) then
         self.myFactoryInfo.fType = C.SMELTER
+    elseif string_contains(mTypeName, "Constructor", false) then
+        self.myFactoryInfo.fType = C.CONSTRUCTOR
     else
         log(2, ('Net-FactoryDataCollector::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
@@ -446,8 +448,7 @@ function FactoryDataCollector:checkTrainsignals()
             end
         end
     end
+    pj(self.myFactoryInfo)
 end
-
-
 
 return FactoryDataCollector
