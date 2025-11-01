@@ -188,15 +188,15 @@ MyItemConst.COLOR_GUN                          = MyItem.new({ name = "Color Gun"
 MyItemConst.PARACHUTE                          = MyItem.new({ name = "Parachute", id = 185 })
 MyItemConst.BACON_AGARIC                       = MyItem.new({ name = "Bacon Agaric", id = 186 })
 MyItemConst.PALEBERRY                          = MyItem.new({ name = "Paleberry", id = 187 })
-MyItemConst.BERYL_NUT                           = MyItem.new({ name = "Beryl Nut", id = 188 })
+MyItemConst.BERYL_NUT                          = MyItem.new({ name = "Beryl Nut", id = 188 })
 MyItemConst.RIFLE                              = MyItem.new({ name = "Rifle", id = 189 })
 MyItemConst.CANDY_CANE_BASHER                  = MyItem.new({ name = "Candy Cane Basher", id = 190 })
 MyItemConst.SNOWBALL_PILE                      = MyItem.new({ name = "Snowball Pile", id = 191 })
 MyItemConst.FACTORY_CART_TM                    = MyItem.new({ name = "Factory Cart™", id = 192 })
-MyItemConst.IRON_ORE                           = MyItem.new({ name = "Eisenerz", id = 193 }) -- done
+MyItemConst.IRON_ORE                           = MyItem.new({ name = "Eisenerz", id = 193 })    -- done
 MyItemConst.IRON_INGOT                         = MyItem.new({ name = "Eisenbarren", id = 194 }) --- done
-MyItemConst.IRON_PLATE                         = MyItem.new({ name = "Iron Plate", id = 195 })
-MyItemConst.IRON_ROD                           = MyItem.new({ name = "Iron Rod", id = 196 })
+MyItemConst.IRON_PLATE                         = MyItem.new({ name = "Eisenplatte", id = 195 }) --- done
+MyItemConst.IRON_ROD                           = MyItem.new({ name = "Eisenstange", id = 196 })
 MyItemConst.HUB_PARTS                          = MyItem.new({ name = "HUB Parts", id = 197 })
 MyItemConst.COPPER_ORE                         = MyItem.new({ name = "Kupfererz", id = 198 })    -- done
 MyItemConst.BAUXITE                            = MyItem.new({ name = "Bauxite", id = 199 })
@@ -206,13 +206,13 @@ MyItemConst.CRUDE_OIL                          = MyItem.new({ name = "Crude Oil"
 MyItemConst.SULFUR                             = MyItem.new({ name = "Schwefel", id = 203 })  -- done
 MyItemConst.LIMESTONE                          = MyItem.new({ name = "Kalkstein", id = 204 }) -- done
 MyItemConst.COAL                               = MyItem.new({ name = "Kohle", id = 205 })     --- done
-MyItemConst.RAW_QUARTZ                         = MyItem.new({ name = "Rohquarz", id = 206 }) --- done
+MyItemConst.RAW_QUARTZ                         = MyItem.new({ name = "Rohquarz", id = 206 })  --- done
 MyItemConst.REINFORCED_IRON_PLATE              = MyItem.new({ name = "Reinforced Iron Plate", id = 207 })
 MyItemConst.CABLE                              = MyItem.new({ name = "Cable", id = 208 })
 MyItemConst.WIRE                               = MyItem.new({ name = "Wire", id = 209 })
-MyItemConst.COPPER_INGOT                       = MyItem.new({ name = "Copper Ingot", id = 210 })
+MyItemConst.COPPER_INGOT                       = MyItem.new({ name = "Kupferbarren", id = 210 }) --- done
 MyItemConst.CONCRETE                           = MyItem.new({ name = "Concrete", id = 211 })
-MyItemConst.SCREW                              = MyItem.new({ name = "Screw", id = 212 })
+MyItemConst.SCREW                              = MyItem.new({ name = "Schrauben", id = 212 })
 MyItemConst.WOOD                               = MyItem.new({ name = "Wood", id = 213 })
 MyItemConst.BIOMASS                            = MyItem.new({ name = "Biomass", id = 214 })
 MyItemConst.LEAVES                             = MyItem.new({ name = "Leaves", id = 215 })
@@ -245,7 +245,7 @@ MyItemConst.ALUMINUM_SCRAP                     = MyItem.new({ name = "Aluminum S
 MyItemConst.WATER                              = MyItem.new({ name = "Water", id = 242 })
 MyItemConst.CIRCUIT_BOARD                      = MyItem.new({ name = "Platine", id = 243 })         -- done
 MyItemConst.VERSATILE_FRAMEWORK                = MyItem.new({ name = "Mehrzweckgerüst", id = 244 }) --done
-MyItemConst.CATERIUM_INGOT                     = MyItem.new({ name = "Caterium Ingot", id = 245 })
+MyItemConst.CATERIUM_INGOT                     = MyItem.new({ name = "Caterium-Barren", id = 245 })  ---  done
 MyItemConst.POLYMER_RESIN                      = MyItem.new({ name = "Polymer Resin", id = 246 })
 MyItemConst.STATOR                             = MyItem.new({ name = "Stator", id = 247 })
 MyItemConst.AUTOMATED_WIRING                   = MyItem.new({ name = "Automated Wiring", id = 248 })
