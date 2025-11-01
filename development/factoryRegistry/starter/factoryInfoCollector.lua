@@ -5,7 +5,6 @@ local Log            = require("shared.helper_log")
 local log            = Log.log
 local tb             = Log.traceback
 
-local sleep_s        = require("shared.helper").sleep_s
 FactoryDataCollector = require("factoryRegistry.FactoryDataCollector_Main")
 
 -- Weiche Validierung
@@ -16,7 +15,7 @@ if _is_empty(fName) then
 end
 
 -- kleine Initial-Verzögerung, wie gehabt
-sleep_s(1)
+require("shared.helper").sleep_ms(1000 + math.random(500)) -- kleine Initial-Verzögerung
 
 -- Robuste Konstruktion mit Retry (5s Backoff)
 local cli
