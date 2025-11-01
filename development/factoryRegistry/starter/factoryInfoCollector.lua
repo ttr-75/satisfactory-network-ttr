@@ -1,3 +1,5 @@
+-- factoryRegistry.starter.factoryInfoCollector
+
 require("config")
 
 
