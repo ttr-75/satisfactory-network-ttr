@@ -58,6 +58,7 @@ Color.GREY_0500     = Color.new(0.500, 0.500, 0.500, 1.0)
 Color.GREY_0250     = Color.new(0.250, 0.250, 0.250, 1.0)
 Color.GREY_0125     = Color.new(0.125, 0.125, 0.125, 1.0)
 
+Color.RED_DARK      = Color.new(0.300, 0.000, 0.000, 1.0)
 Color.RED           = Color.new(1.000, 0.000, 0.000, 1.0)
 Color.GREEN         = Color.new(0.000, 1.000, 0.000, 1.0)
 Color.GREEN_0750    = Color.new(0.000, 0.750, 0.000, 1.0)

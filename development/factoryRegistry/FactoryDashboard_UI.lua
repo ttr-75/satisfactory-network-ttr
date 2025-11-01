@@ -60,6 +60,8 @@ end
 ---@field scr ScreenProxy
 ---@field size Vector2d
 ---@field root ScreenElement
+---@field inputWarning boolean
+---@field outputWarning boolean
 local FactoryDashboard = {}
 FactoryDashboard.__index = FactoryDashboard
 
@@ -86,6 +88,8 @@ function FactoryDashboard.new(opts)
     self.inputs        = {} -- array of rows
     self.outputs       = {}
 
+    self.inputWarning  = false
+    self.outputWarning = false
     -- Client
     --self.mediaCli      = MediaClient.new()
 
@@ -248,6 +252,7 @@ function FactoryDashboard:paintOuputWarning(position, size)
 
     local icon = C.FICSIT_CHECKMARK
     local color = Color.GREEN
+    self.outputWarning = false
     for i, it in pairs(self.outputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
@@ -257,11 +262,13 @@ function FactoryDashboard:paintOuputWarning(position, size)
             if cFrac < 0.2 then
                 icon = C.POWER
                 color = Color.RED
+                self.outputWarning = true
             end
         end
         if sFrac < 0.1 then
             icon = C.POWER
             color = Color.RED
+            self.outputWarning = true
         end
     end
 
@@ -300,6 +307,7 @@ function FactoryDashboard:paintInputWarning(position, size)
 
     local color = Color.GREEN
     local icon = C.FICSIT_CHECKMARK
+    self.inputWarning = false
     for i, it in pairs(self.inputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
@@ -309,11 +317,13 @@ function FactoryDashboard:paintInputWarning(position, size)
             if sFrac < 0.2 then
                 icon = C.POWER
                 color = Color.RED
+                self.inputWarning = true
             end
         end
         if cFrac < 0.1 then
             icon = C.POWER
             color = Color.RED
+            self.inputWarning = true
         end
     end
 
@@ -339,8 +349,12 @@ function FactoryDashboard:paint()
     local w, h = self.size.x, self.size.y
     local mid = math.floor(w / 2)
 
+    local bgColor = self.bg
+    if self.inputWarning and self.outputWarning then
+        bgColor = Color.RED_DARK
+    end
     -- Hintergrund
-    self.root:drawRect(Vector2d.new(0, 0), self.size, self.bg, nil, nil)
+    self.root:drawRect(Vector2d.new(0, 0), self.size, bgColor, nil, nil)
 
     -- Titel
     local pad = self.pad + 50
@@ -374,7 +388,7 @@ function FactoryDashboard:paint()
 
         })
         posX = posX + titleIconSize.x + pad
-       -- self.title = it.name .. " " .. self.title
+        -- self.title = it.name .. " " .. self.title
     end
 
     self.root:drawText(Vector2d.new(posX, posY + titleIconSize.y - 100 * 2), self.title, 100, self.accent, false)
@@ -392,6 +406,8 @@ function FactoryDashboard:paint()
         self.root:drawText(Vector2d.new(mid + posX, posY), "Outputs", self.headerSize, self.fg, false)
         self:paintOuputWarning(Vector2d.new(mid + posX + 200, posY), sizeW)
     end
+
+    
 
     -- vertikaler Trenner
     self.root:drawRect(Vector2d.new(mid - 1, posY), Vector2d.new(2, h - 80), Color.GREY_0125, nil, nil)
