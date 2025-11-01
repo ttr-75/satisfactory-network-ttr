@@ -237,7 +237,7 @@ MyItemConst.MODULAR_FRAME                      = MyItem.new({ name = "Modularer 
 MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Heavy Oil Residue", id = 234 })
 MyItemConst.EMPTY_CANISTER                     = MyItem.new({ name = "Empty Canister", id = 235 })
 MyItemConst.PETROLEUM_COKE                     = MyItem.new({ name = "Petroleum Coke", id = 236 })
-MyItemConst.STEEL_INGOT                        = MyItem.new({ name = "Steel Ingot", id = 237 })
+MyItemConst.STEEL_INGOT                        = MyItem.new({ name = "Stahlbarren", id = 237 }) --- done
 MyItemConst.PACKAGED_WATER                     = MyItem.new({ name = "Packaged Water", id = 238 })
 MyItemConst.PACKAGED_FUEL                      = MyItem.new({ name = "Packaged Fuel", id = 239 })
 MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 240 })
