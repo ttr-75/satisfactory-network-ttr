@@ -208,7 +208,7 @@ MyItemConst.LIMESTONE                          = MyItem.new({ name = "Kalkstein"
 MyItemConst.COAL                               = MyItem.new({ name = "Kohle", id = 205 })     --- done
 MyItemConst.RAW_QUARTZ                         = MyItem.new({ name = "Rohquarz", id = 206 })  --- done
 MyItemConst.REINFORCED_IRON_PLATE              = MyItem.new({ name = "Reinforced Iron Plate", id = 207 })
-MyItemConst.CABLE                              = MyItem.new({ name = "Cable", id = 208 })
+MyItemConst.CABLE                              = MyItem.new({ name = "Kabel", id = 208 }) --- done
 MyItemConst.WIRE                               = MyItem.new({ name = "Draht", id = 209 }) --- done
 MyItemConst.COPPER_INGOT                       = MyItem.new({ name = "Kupferbarren", id = 210 }) --- done
 MyItemConst.CONCRETE                           = MyItem.new({ name = "Concrete", id = 211 })
