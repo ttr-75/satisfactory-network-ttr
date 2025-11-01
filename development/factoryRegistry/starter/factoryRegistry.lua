@@ -1,6 +1,8 @@
 require("config")
-local sleep_ms = require("shared.helper").sleep_ms
+
 FactoryRegistryServer = require("factoryRegistry.FactoryRegistryServer_Main")
+
+require("shared.helper").sleep_ms(math.random(500)) -- kleine Initial-Verzögerung
 
 local regServer = FactoryRegistryServer.new()
 --future.addTask(async(function()
