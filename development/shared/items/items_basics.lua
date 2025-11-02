@@ -18,6 +18,7 @@ Export:
 
 -- Abhängigkeiten ----------------------------------------------------------------
 local romanize = require("shared.helper").romanize
+local pj = require("shared.helper").pj
 local log = require("shared.helper_log").log
 
 
@@ -29,6 +30,7 @@ local log = require("shared.helper_log").log
 ---@field name string|nil  -- Anzeigename (sprachabhängig)
 ---@field id   integer|nil -- Eindeutige numerische Id / Icon-Id
 ---@field max  integer|nil -- Optional: z.B. Stackgröße
+---@field form integer|nil  -- Optional: Form des Items 
 ---@field ref  string|nil  -- Optional: explizite Icon-Ref ("icon:123")
 local MyItem = {}
 MyItem.__index = MyItem
@@ -91,6 +93,7 @@ end
 ---@param name string
 ---@return MyItem|nil
 function MyItemList:get_by_Name(name)
+    --pj(self.k2v)
     if self.k2v[name] == nil then log(3, "Item '" .. tostring(name) .. "' not implemented.") end
     return self.k2v[name]
 end

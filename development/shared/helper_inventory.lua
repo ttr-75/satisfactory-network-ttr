@@ -103,24 +103,54 @@ local function sumContainers(objs, itemMax)
   return count, maxSlots * (itemMax or 0)
 end
 
+--- Summiert Items & Kapazitäten über eine Menge "Container-ähnlicher" Objekte.
+--- Erwartet: getMaxSlotsForContainer(obj), readInventory(obj, totals, types)
+---@param objs PipeReservoir[]|nil
+---@return integer count, integer maxAmount
+local function sumTanks(objs)
+  local max, total = 0, 0
+  for _, obj in pairs(objs or {}) do
+    max = max + obj.maxFluidContent
+    total = total + obj.fluidContent
+    if (total > max) then
+      total = max
+    end
+  end
+
+  return total, max
+end
+
 --- Summiert Items & Kapazitäten über alle Plattformen aller Trainstations.
 ---@param stations RailroadStation[]|nil
 ---@param itemMax integer
 ---@return integer count, integer maxAmount
 local function sumTrainstations(stations, itemMax)
-  local maxSlots, totals, types = 0, {}, {}
+  local count, max = 0, 0
+  -- local maxSlots, totals, types = 0, {}, {}
   for _, station in pairs(stations or {}) do
     local platforms = station:getAllConnectedPlatforms() or {}
     for _, p in pairs(platforms) do
-      totals, types = readInventory(p, totals, types)
-      maxSlots = maxSlots + getMaxSlotsForContainer(p)
+      if p and p:isA(classes.Build_TrainPlatformDockingSideFluid_C) then
+        print("Fluid platform found" .. type(p))
+        local inventory = p:getInventories()[1]
+        local fluid = inventory:getStack(0)
+        cnt = (fluid.count or 0) / 1000
+        count = count + math.floor(cnt)
+        max = max + 1800
+      else
+        print("Solid platform found" .. type(p))
+        local totals, types = readInventory(p, {}, {})
+        local maxSlots = getMaxSlotsForContainer(p)
+        print("Max:" .. maxSlots)
+        for _, cnt in pairs(totals) do
+          count = count + (cnt or 0)
+        end
+        max = (maxSlots or 0) * (itemMax or 0)
+      end
     end
   end
-  local count = 0
-  for _, cnt in pairs(totals) do
-    count = count + (cnt or 0)
-  end
-  return count, maxSlots * (itemMax or 0)
+
+  return count, max
 end
 
 
@@ -201,6 +231,7 @@ return {
   getMaxSlotsForContainer = getMaxSlotsForContainer,
   readInventory           = readInventory,
   sumContainers           = sumContainers,
+  sumTanks                = sumTanks,
   sumTrainstations        = sumTrainstations,
   readMinedItemStack      = readMinedItemStack
 }

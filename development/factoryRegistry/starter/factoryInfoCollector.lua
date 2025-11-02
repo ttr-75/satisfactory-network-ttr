@@ -21,14 +21,9 @@ require("shared.helper").sleep_ms(1000 + math.random(500)) -- kleine Initial-Ver
 local cli
 while true do
     local ok, obj, err
-    ---@diagnostic disable-next-line: undefined-global
-    if stationMin then
-        ---@diagnostic disable-next-line: undefined-global
-        ok, obj, err = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
-    else
-        ---@diagnostic disable-next-line: undefined-global
-        ok, obj, err = FactoryDataCollector.new { fName = fName }
-    end
+---@diagnostic disable-next-line: undefined-global
+    local ok, obj, err = FactoryDataCollector.new { fName = fName, stationMin = stationMin, fIgnore = fIgnore, }
+
     if ok and obj then
         cli = obj
         break

@@ -6,6 +6,7 @@ local byAllNick = helper.byAllNick
 local is_str = helper.is_str
 local to_str = helper.to_str
 local romanize = helper.romanize
+local pj = helper.pj
 
 local log = require("shared.helper_log").log
 
@@ -240,27 +241,27 @@ local function _make_nick(prefix, factoryName, itemStack)
     end
 
     -- itemStack-Variante
-    local ok_isOutput = (type(itemStack) == "table") and (type(itemStack.isOutput) == "function")
+    --  local ok_isOutput = (type(itemStack) == "table") and (type(itemStack.isOutput) == "function")
     local ok_itemClass = (type(itemStack) == "table")
         and (type(itemStack.itemClass) == "table")
         and is_str(itemStack.itemClass.name)
 
-    if not ok_isOutput then
-        return false, nil, "nick: itemStack.isOutput() missing"
-    end
+    -- if not ok_isOutput then
+    --     return false, nil, "nick: itemStack.isOutput() missing"
+    -- end
     if not ok_itemClass then
         return false, nil, "nick: itemStack.itemClass.name missing"
     end
 
     local itemName = _romanize(itemStack.itemClass.name)
-    if itemStack:isOutput() then
-        return true, (prefix .. " " .. itemName), nil
-    else
-        if not is_str(factoryName) or factoryName == "" then
-            return false, nil, "nick: factoryName required for non-output stacks"
-        end
-        return true, (prefix .. " " .. itemName .. "2" .. _romanize(factoryName)), nil
-    end
+    -- if itemStack:isOutput() then
+    return true, (prefix .. " " .. itemName), nil
+    --   else
+    --    if not is_str(factoryName) or factoryName == "" then
+    --      return false, nil, "nick: factoryName required for non-output stacks"
+    --   end
+    --   return true, (prefix .. " " .. itemName .. "2" .. _romanize(factoryName)), nil
+    -- end
 end
 
 --- Ruft byAllNick mit Kontext-Fehlermeldungen auf
@@ -354,6 +355,27 @@ local function containerByFactoryStack(factoryName, itemStack)
 end
 
 ---@param factoryName string
+---@param itemStack any  -- erwartet .isOutput():boolean und .itemClass.name:string
+---@return boolean, FGBuildableStorage[]|nil, string|nil
+local function tanksByFactoryStack(factoryName, itemStack)
+    local ok, nick, e = _make_nick("Tank", factoryName, itemStack)
+    pj(nick)
+    if not ok then return false, nil, "containersByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_all_by_nick("tanksByFactoryStack", nick)
+end
+
+---@param factoryName string
+---@param itemStack any
+---@return boolean, FGBuildableStorage|nil, string|nil
+local function tankByFactoryStack(factoryName, itemStack)
+    local ok, nick, e = _make_nick("Tank", factoryName, itemStack)
+    if not ok then return false, nil, "containerByFactoryStack: " .. e end
+    ---@diagnostic disable-next-line:  param-type-mismatch
+    return _find_one_by_nick_or_err("tankByFactoryStack", nick)
+end
+
+---@param factoryName string
 ---@param itemStack any
 ---@return boolean, RailroadStation[]|nil, string|nil
 local function trainstationsByFactoryStack(factoryName, itemStack)
@@ -402,6 +424,8 @@ return {
     FactoryInfo                 = FactoryInfo,
     containerByFactoryStack     = containerByFactoryStack,
     containersByFactoryStack    = containersByFactoryStack,
+    tankByFactoryStack          = tankByFactoryStack,
+    tanksByFactoryStack         = tanksByFactoryStack,
     trainstationByFactoryStack  = trainstationByFactoryStack,
     trainstationsByFactoryStack = trainstationsByFactoryStack,
     trainsignalByFactoryStack   = trainsignalByFactoryStack,

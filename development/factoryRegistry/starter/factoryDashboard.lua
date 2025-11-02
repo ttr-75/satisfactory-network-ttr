@@ -1,3 +1,5 @@
+-- factoryRegistry.starter.factoryDashboard
+
 require("config")
 
 local Log              = require("shared.helper_log")
@@ -18,8 +20,8 @@ if _is_empty(scrName) then
 end
 
 require("shared.helper").sleep_ms(3000 +
-math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 1000) or
-    1000)) -- kleine Initial-Verzögerung
+    math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 1000) or
+        1000)) -- kleine Initial-Verzögerung
 
 
 
@@ -27,7 +29,7 @@ math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 
 local cli
 while true do
     ---@diagnostic disable-next-line: undefined-global
-    local ok, obj, err = FactoryDashboardClient.new { fName = fName, scrName = scrName }
+    local ok, obj, err = FactoryDashboardClient.new { fName = fName, scrName = scrName, fIgnore = fIgnore }
     if ok and obj then
         cli = obj
         break
