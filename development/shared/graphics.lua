@@ -67,6 +67,7 @@ Color.BLUE          = Color.new(0.000, 0.000, 1.000, 1.0)
 
 Color.FICSIT_ORANGE = Color.new(1.000, 0.550, 0.200, 1.0)
 Color.YELLOW        = Color.new(1.000, 1.000, 0.000, 1.0)
+Color.YELLOW_DARK   = Color.new(0.300, 0.300, 0.000, 1.0)
 
 --------------------------------------------------------------------------------
 -- Vector 2d

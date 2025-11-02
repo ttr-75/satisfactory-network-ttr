@@ -41,6 +41,13 @@ local function get_icon_for(itemName)
     return _icon_cache[itemName]
 end
 
+---@enum FactoryWarningLevel
+local FactoryWarningLevel = {
+    OK = 0,
+    WARN = 1,
+    ERROR = 2
+}
+
 ---@class FactoryDashboard
 ---@field title string
 ---@field pad integer
@@ -60,10 +67,11 @@ end
 ---@field scr ScreenProxy
 ---@field size Vector2d
 ---@field root ScreenElement
----@field inputWarning boolean
----@field outputWarning boolean
+---@field inputWarning FactoryWarningLevel
+---@field outputWarning FactoryWarningLevel
 local FactoryDashboard = {}
 FactoryDashboard.__index = FactoryDashboard
+
 
 
 ---Creates a new dashboard instance.
@@ -88,8 +96,8 @@ function FactoryDashboard.new(opts)
     self.inputs        = {} -- array of rows
     self.outputs       = {}
 
-    self.inputWarning  = false
-    self.outputWarning = false
+    self.inputWarning  = FactoryWarningLevel.OK
+    self.outputWarning = FactoryWarningLevel.OK
     -- Client
     --self.mediaCli      = MediaClient.new()
 
@@ -252,23 +260,24 @@ function FactoryDashboard:paintOuputWarning(position, size)
 
     local icon = C.FICSIT_CHECKMARK
     local color = Color.GREEN
-    self.outputWarning = false
+    self.outputWarning = FactoryWarningLevel.OK
     for i, it in pairs(self.outputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
         if sFrac < 0.5 then
             icon = C.WARNING
             color = Color.YELLOW
+            self.outputWarning = FactoryWarningLevel.WARN
             if cFrac < 0.2 then
                 icon = C.POWER
                 color = Color.RED
-                self.outputWarning = true
+                self.outputWarning = FactoryWarningLevel.ERROR
             end
         end
         if sFrac < 0.1 then
             icon = C.POWER
             color = Color.RED
-            self.outputWarning = true
+            self.outputWarning = FactoryWarningLevel.ERROR
         end
     end
 
@@ -307,23 +316,24 @@ function FactoryDashboard:paintInputWarning(position, size)
 
     local color = Color.GREEN
     local icon = C.FICSIT_CHECKMARK
-    self.inputWarning = false
+    self.inputWarning = FactoryWarningLevel.OK
     for i, it in pairs(self.inputs) do
         local sFrac = it.amountStation / it.maxAmountStation
         local cFrac = it.amountContainer / it.maxAmountContainer
         if cFrac < 0.5 then
             icon = C.WARNING
             color = Color.YELLOW
+            self.inputWarning = FactoryWarningLevel.WARN
             if sFrac < 0.2 then
                 icon = C.POWER
                 color = Color.RED
-                self.inputWarning = true
+                self.inputWarning = FactoryWarningLevel.ERROR
             end
         end
         if cFrac < 0.1 then
             icon = C.POWER
             color = Color.RED
-            self.inputWarning = true
+            self.inputWarning = FactoryWarningLevel.ERROR
         end
     end
 
@@ -350,8 +360,11 @@ function FactoryDashboard:paint()
     local mid = math.floor(w / 2)
 
     local bgColor = self.bg
-    if self.inputWarning and self.outputWarning then
+    if self.inputWarning == FactoryWarningLevel.ERROR and self.outputWarning == FactoryWarningLevel.ERROR then
         bgColor = Color.RED_DARK
+    elseif (self.inputWarning == FactoryWarningLevel.ERROR or self.inputWarning == FactoryWarningLevel.WARN) or (self.outputWarning == FactoryWarningLevel.ERROR or self.outputWarning == FactoryWarningLevel.WARN) then
+      log(4,"gelb")
+        bgColor = Color.YELLOW_DARK
     end
     -- Hintergrund
     self.root:drawRect(Vector2d.new(0, 0), self.size, bgColor, nil, nil)
@@ -407,7 +420,7 @@ function FactoryDashboard:paint()
         self:paintOuputWarning(Vector2d.new(mid + posX + 200, posY), sizeW)
     end
 
-    
+
 
     -- vertikaler Trenner
     self.root:drawRect(Vector2d.new(mid - 1, posY), Vector2d.new(2, h - 80), Color.GREY_0125, nil, nil)
