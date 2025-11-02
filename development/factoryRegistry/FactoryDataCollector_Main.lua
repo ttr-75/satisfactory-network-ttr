@@ -10,7 +10,7 @@ local romanize = helper.romanize
 local log = require("shared.helper_log").log
 
 require("factoryRegistry.basics")
-Helper_inv = require("shared.helper_inventory")
+local Helper_inv = require("shared.helper_inventory")
 local FI = require("factoryRegistry.FactoryInfo")
 local NetworkAdapter = require("net.NetworkAdapter")
 
@@ -225,19 +225,19 @@ function FactoryDataCollector:performMinerUpdate(miner)
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
-local itemForm = 1; 
+    local itemForm = 1;
     local mTypeName = (miner:getType() and miner:getType().name) or ""
     if string_contains(mTypeName, "Miner", false) then
         self.myFactoryInfo.fType = C.MINER_MK_1
-        itemForm = 1; 
+        itemForm = 1;
     elseif string_contains(mTypeName, "OilPump", false) then
         self.myFactoryInfo.fType = C.OIL_EXTRACTOR
-        itemForm = 2; 
+        itemForm = 2;
     end
 
     local maxStack = 0;
     local itemName = nil
-    
+
     for name, output in pairs(self.myFactoryInfo.outputs) do
         itemName = output.itemClass and output.itemClass.name
         maxStack = output.itemClass and output.itemClass.max or 0
@@ -315,6 +315,7 @@ local itemForm = 1;
                 "FactoryDataCollector: Error finding Trainstations for Factory '" ..
                 tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
         else
+            log(0, "Summing trainstations for factory '" .. tostring(itemName) .. "'")
             sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
         end
 
@@ -429,8 +430,8 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                         "FactoryDataCollector: Error finding Trainstations for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
                 else
+                    log(0, "Summing trainstations for factory '" .. tostring(itemName) .. "'")
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
-                    print(sCount, sMax)
                 end
 
                 -- Finales Output-Objekt
@@ -513,6 +514,7 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                         "FactoryDataCollector: Error finding Trainstations for Factory '" ..
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
                 else
+                    log(0, "Summing trainstations for factory '" .. tostring(itemName) .. "'")
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
                 end
 
