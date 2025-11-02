@@ -15,7 +15,7 @@ if _is_empty(scrName) then
     log(3, "factoryDashboard.lua: scrName not set – will try to run headless until a screen appears")
 end
 
-require("shared.helper").sleep_ms(math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 1000) or
+require("shared.helper").sleep_ms(3000 + math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 1000) or
 1000))                                                                                                                            -- kleine Initial-Verzögerung
 
 
