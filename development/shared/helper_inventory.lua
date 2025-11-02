@@ -130,13 +130,13 @@ local function sumTrainstations(stations, itemMax)
   for _, station in pairs(stations or {}) do
     local platforms = station:getAllConnectedPlatforms() or {}
     for _, p in pairs(platforms) do
-      if p and p:isA(classes.Build_TrainPlatformDockingSideFluid_C) then
+      if p and (p:isA(classes.Build_TrainPlatformDockingSideFluid_C) or p:isA(classes.Build_TrainDockingStationLiquid_C)) then
         print("Fluid platform found" .. type(p))
         local inventory = p:getInventories()[1]
         local fluid = inventory:getStack(0)
         cnt = (fluid.count or 0) / 1000
         count = count + math.floor(cnt)
-        max = max + 1800
+        max = max + 2400
       else
         print("Solid platform found" .. type(p))
         local totals, types = readInventory(p, {}, {})

@@ -334,6 +334,23 @@ local function minerByFactoryName(factoryName)
     return _find_one_by_nick_or_err("minerByFactoryName", nick)
 end
 
+
+---@return boolean, FGBuildableResourceExtractor[]|nil, string|nil
+local function oilExtractors()
+    --  local ok, nick, e = _make_nick("Miner", factoryName, nil)
+    --  if not ok then return false, nil, "minersByFactoryName: " .. e end
+
+    return _find_all_by_nick("oilExtractorsByFactoryName", "OilPump")
+end
+
+
+---@return boolean, FGBuildableResourceExtractor|nil, string|nil
+local function oilExtractor()
+    --local ok, nick, e = _make_nick("Miner", factoryName, nil)
+    --if not ok then return false, nil, "minerByFactoryName: " .. e end
+    return _find_one_by_nick_or_err("oilExtractorByFactoryName", "OilPump")
+end
+
 ---@param factoryName string
 ---@param itemStack any  -- erwartet .isOutput():boolean und .itemClass.name:string
 ---@return boolean, FGBuildableStorage[]|nil, string|nil
@@ -434,4 +451,6 @@ return {
     manufacturersByFactoryName  = manufacturersByFactoryName,
     minerByFactoryName          = minerByFactoryName,
     minersByFactoryName         = minersByFactoryName,
+    oilExtractor                = oilExtractor,
+    oilExtractors               = oilExtractors
 }

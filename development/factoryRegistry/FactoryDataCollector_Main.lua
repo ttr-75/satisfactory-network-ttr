@@ -194,13 +194,19 @@ function FactoryDataCollector:performUpdate()
     if not ok then
         local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
         if not ok2 then
-            log(3, "FactoryDataCollector: No Manufacturer or Miner found for Factory '"
-                .. tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2))
-            self:fail("no Manufacturer or Miner found for '" .. tostring(self.myFactoryInfo.fName) .. "'",
-                "NO_FACTORY_OBJECT")
-            return false
+            local ok3, oilExtractor, err3 = FI.oilExtractor()
+            if not ok3 then
+                log(3, "FactoryDataCollector: No Manufacturer or Miner found for Factory '"
+                    .. tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2) .. tostring(err3))
+                self:fail("no Manufacturer or Miner found for '" .. tostring(self.myFactoryInfo.fName) .. "'",
+                    "NO_FACTORY_OBJECT")
+                return false
+            else
+                self:performMinerUpdate(oilExtractor)
+            end
+        else
+            self:performMinerUpdate(miner)
         end
-        self:performMinerUpdate(miner)
     else
         self:performManufactureUpdate(manufacturer)
     end
@@ -219,10 +225,19 @@ function FactoryDataCollector:performMinerUpdate(miner)
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
+local itemForm = 1; 
+    local mTypeName = (miner:getType() and miner:getType().name) or ""
+    if string_contains(mTypeName, "Miner", false) then
+        self.myFactoryInfo.fType = C.MINER_MK_1
+        itemForm = 1; 
+    elseif string_contains(mTypeName, "OilPump", false) then
+        self.myFactoryInfo.fType = C.OIL_EXTRACTOR
+        itemForm = 2; 
+    end
 
-    self.myFactoryInfo.fType = C.MINER_MK_1
     local maxStack = 0;
     local itemName = nil
+    
     for name, output in pairs(self.myFactoryInfo.outputs) do
         itemName = output.itemClass and output.itemClass.name
         maxStack = output.itemClass and output.itemClass.max or 0
@@ -255,6 +270,7 @@ function FactoryDataCollector:performMinerUpdate(miner)
     if item then
         if maxStack > 0 then
             item.max = maxStack
+            item.form = itemForm
         end
         -- Output-Objekt
         local probeOutput = FI.Output:new {
@@ -267,15 +283,29 @@ function FactoryDataCollector:performMinerUpdate(miner)
 
 
         -- Container summieren
-        local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
         local cCount, cMax = 0, 0
-        if not ok then
-            log(3,
-                "FactoryDataCollector: Error finding Containers for Factory '" ..
-                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
-        else
-            cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+        if itemForm == 1 then
+            local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+            if not ok then
+                log(3,
+                    "FactoryDataCollector: Error finding Containers for Factory '" ..
+                    tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+            else
+                cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+            end
+        elseif itemForm == 2 or itemForm == 3 or itemForm == 4 then
+            local ok, tanks, err = FI.tanksByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+            if not ok then
+                log(3,
+                    "FactoryDataCollector: Error finding Tanks for Factory '" ..
+                    tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+            else
+                cCount, cMax = Helper_inv.sumTanks(tanks)
+                cCount       = math.floor(cCount)
+                cMax         = math.floor(cMax)
+            end
         end
+
 
         -- Trainstations summieren
         local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeOutput)
@@ -400,7 +430,7 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
                 else
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
-                      print(sCount, sMax)
+                    print(sCount, sMax)
                 end
 
                 -- Finales Output-Objekt
