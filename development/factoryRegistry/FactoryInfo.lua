@@ -95,12 +95,6 @@ function Output:isInput() return false end
 ---@return boolean
 function Output:isOutput() return true end
 
---[[ USAGE
-local a = Input:new{ itemClass="IronPlate", amountStation=120, amountContainer=800 }
-local b = Output:new{ itemClass="Screw", amountStation=300, amountContainer=1500 }
-
-print(a, a:isInput(), a:isOutput())   -- Input{...}   true  false
-print(b, b:isInput(), b:isOutput())   -- Output{...}  false true]]
 
 --- Factory Info
 
