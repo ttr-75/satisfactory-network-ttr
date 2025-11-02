@@ -198,11 +198,11 @@ MyItemConst.IRON_INGOT                         = MyItem.new({ name = "Eisenbarre
 MyItemConst.IRON_PLATE                         = MyItem.new({ name = "Eisenplatte", id = 195 }) --- done
 MyItemConst.IRON_ROD                           = MyItem.new({ name = "Eisenstange", id = 196 })
 MyItemConst.HUB_PARTS                          = MyItem.new({ name = "HUB Parts", id = 197 })
-MyItemConst.COPPER_ORE                         = MyItem.new({ name = "Kupfererz", id = 198 })    -- done
+MyItemConst.COPPER_ORE                         = MyItem.new({ name = "Kupfererz", id = 198 })              -- done
 MyItemConst.BAUXITE                            = MyItem.new({ name = "Bauxite", id = 199 })
-MyItemConst.CATERIUM_ORE                       = MyItem.new({ name = "Caterium-Erz", id = 200 }) --- done
+MyItemConst.CATERIUM_ORE                       = MyItem.new({ name = "Caterium-Erz", id = 200 })           --- done
 MyItemConst.URANIUM                            = MyItem.new({ name = "Uranium", id = 201 })
-MyItemConst.CRUDE_OIL                          = MyItem.new({ name = "Crude Oil", id = 202 })
+MyItemConst.CRUDE_OIL                          = MyItem.new({ name = "Rohöl", id = 202 })                  --- done
 MyItemConst.SULFUR                             = MyItem.new({ name = "Schwefel", id = 203 })               -- done
 MyItemConst.LIMESTONE                          = MyItem.new({ name = "Kalkstein", id = 204 })              -- done
 MyItemConst.COAL                               = MyItem.new({ name = "Kohle", id = 205 })                  --- done
@@ -222,7 +222,7 @@ MyItemConst.QUARTZ_CRYSTAL                     = MyItem.new({ name = "Quarzkrist
 MyItemConst.STEEL_BEAM                         = MyItem.new({ name = "Stahlträger", id = 219 })      --done
 MyItemConst.COPPER_SHEET                       = MyItem.new({ name = "Kupferblech", id = 220 })      --- done
 MyItemConst.ENCASED_INDUSTRIAL_BEAM            = MyItem.new({ name = "Stahlbetonträger", id = 221 }) --- done
-MyItemConst.RUBBER                             = MyItem.new({ name = "Gummi", id = 222 }) --- done
+MyItemConst.RUBBER                             = MyItem.new({ name = "Gummi", id = 222 })            --- done
 MyItemConst.MOTOR                              = MyItem.new({ name = "Motor", id = 223 })
 MyItemConst.PLASTIC                            = MyItem.new({ name = "Kunststoff", id = 224 })
 MyItemConst.HEAVY_MODULAR_FRAME                = MyItem.new({ name = "Schwerer modularer Rahmen", id = 225 }) --- done
@@ -230,11 +230,11 @@ MyItemConst.HIGH_SPEED_CONNECTOR               = MyItem.new({ name = "Highspeed-
 MyItemConst.ALCLAD_ALUMINUM_SHEET              = MyItem.new({ name = "Alclad Aluminum Sheet", id = 227 })
 MyItemConst.ALUMINUM_CASING                    = MyItem.new({ name = "Aluminum Casing", id = 228 })
 MyItemConst.RADIO_CONTROL_UNIT                 = MyItem.new({ name = "Radio Control Unit", id = 229 })
-MyItemConst.AI_LIMITER                         = MyItem.new({ name = "KI-Begrenzer", id = 230 }) ---    done
+MyItemConst.AI_LIMITER                         = MyItem.new({ name = "KI-Begrenzer", id = 230 })      ---    done
 MyItemConst.DRONE                              = MyItem.new({ name = "Drone", id = 231 })
-MyItemConst.ROTOR                              = MyItem.new({ name = "Rotor", id = 232 }) --- done  
-MyItemConst.MODULAR_FRAME                      = MyItem.new({ name = "Modularer Rahmen", id = 233 }) --done
-MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Heavy Oil Residue", id = 234 })
+MyItemConst.ROTOR                              = MyItem.new({ name = "Rotor", id = 232 })             --- done
+MyItemConst.MODULAR_FRAME                      = MyItem.new({ name = "Modularer Rahmen", id = 233 })  --done
+MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Schwerölrückstand", id = 234 }) --- done
 MyItemConst.EMPTY_CANISTER                     = MyItem.new({ name = "Empty Canister", id = 235 })
 MyItemConst.PETROLEUM_COKE                     = MyItem.new({ name = "Petroleum Coke", id = 236 })
 MyItemConst.STEEL_INGOT                        = MyItem.new({ name = "Stahlbarren", id = 237 }) --- done
@@ -243,16 +243,16 @@ MyItemConst.PACKAGED_FUEL                      = MyItem.new({ name = "Packaged F
 MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 240 })
 MyItemConst.ALUMINUM_SCRAP                     = MyItem.new({ name = "Aluminum Scrap", id = 241 })
 MyItemConst.WATER                              = MyItem.new({ name = "Water", id = 242 })
-MyItemConst.CIRCUIT_BOARD                      = MyItem.new({ name = "Platine", id = 243 })         -- done
-MyItemConst.VERSATILE_FRAMEWORK                = MyItem.new({ name = "Mehrzweckgerüst", id = 244 }) --done
-MyItemConst.CATERIUM_INGOT                     = MyItem.new({ name = "Caterium-Barren", id = 245 }) ---  done
-MyItemConst.POLYMER_RESIN                      = MyItem.new({ name = "Polymer Resin", id = 246 })
+MyItemConst.CIRCUIT_BOARD                      = MyItem.new({ name = "Platine", id = 243 })                   -- done
+MyItemConst.VERSATILE_FRAMEWORK                = MyItem.new({ name = "Mehrzweckgerüst", id = 244 })           --done
+MyItemConst.CATERIUM_INGOT                     = MyItem.new({ name = "Caterium-Barren", id = 245 })           ---  done
+MyItemConst.POLYMER_RESIN                      = MyItem.new({ name = "Polymerharz", id = 246 })               --- done
 MyItemConst.STATOR                             = MyItem.new({ name = "Stator", id = 247 })
-MyItemConst.AUTOMATED_WIRING                   = MyItem.new({ name = "Automatische Verkabelung", id = 248 }) --- done
+MyItemConst.AUTOMATED_WIRING                   = MyItem.new({ name = "Automatische Verkabelung", id = 248 })  --- done
 MyItemConst.SMART_PLATING                      = MyItem.new({ name = "Intelligente Beschichtung", id = 249 }) --- done
 MyItemConst.FABRIC                             = MyItem.new({ name = "Fabric", id = 250 })
 MyItemConst.ALUMINUM_INGOT                     = MyItem.new({ name = "Aluminum Ingot", id = 251 })
-MyItemConst.FUEL                               = MyItem.new({ name = "Fuel", id = 252 })
+MyItemConst.FUEL                               = MyItem.new({ name = "Treibstoff", id = 252 }) --- done
 MyItemConst.COMPACTED_COAL                     = MyItem.new({ name = "Compacted Coal", id = 253 })
 MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbofuel", id = 254 })
 MyItemConst.PACKAGED_TURBOFUEL                 = MyItem.new({ name = "Packaged Turbofuel", id = 255 })
@@ -280,12 +280,12 @@ MyItemConst.BLACK_POWDER                       = MyItem.new({ name = "Black Powd
 MyItemConst.NOBELISK                           = MyItem.new({ name = "Nobelisk", id = 277 })
 MyItemConst.ENCASED_URANIUM_CELL               = MyItem.new({ name = "Encased Uranium Cell", id = 278 })
 MyItemConst.URANIUM_FUEL_ROD                   = MyItem.new({ name = "Uranium Fuel Rod", id = 279 })
-MyItemConst.SAM                                = MyItem.new({ name = "SAM", id = 280 }) --- done    
+MyItemConst.SAM                                = MyItem.new({ name = "SAM", id = 280 }) --- done
 MyItemConst.POWER_SHARD                        = MyItem.new({ name = "Power Shard", id = 281 })
 MyItemConst.SOLID_BIOFUEL                      = MyItem.new({ name = "Solid Biofuel", id = 282 })
 MyItemConst.TRACTOR                            = MyItem.new({ name = "Tractor", id = 283 })
 MyItemConst.TRUCK                              = MyItem.new({ name = "Truck", id = 284 })
-MyItemConst.MODULAR_ENGINE                     = MyItem.new({ name = "Modularer Motor", id = 285 }) --- done
+MyItemConst.MODULAR_ENGINE                     = MyItem.new({ name = "Modularer Motor", id = 285 })        --- done
 MyItemConst.ADAPTIVE_CONTROL_UNIT              = MyItem.new({ name = "Adaptive Steuereinheit", id = 286 }) --- done
 MyItemConst.PACKAGED_OIL                       = MyItem.new({ name = "Packaged Oil", id = 287 })
 MyItemConst.PACKAGED_HEAVY_OIL_RESIDUE         = MyItem.new({ name = "Packaged Heavy Oil Residue", id = 288 })
@@ -842,12 +842,12 @@ MyItemConst.EXCITED_PHOTONIC_MATTER            = MyItem.new({ name = "Excited Ph
 MyItemConst.DARK_MATTER_RESIDUE                = MyItem.new({ name = "Dark Matter Residue", id = 845 })
 MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbofuel", id = 846 })
 MyItemConst.PACKAGED_ROCKET_FUEL               = MyItem.new({ name = "Packaged Rocket Fuel", id = 847 })
-MyItemConst.FUEL                               = MyItem.new({ name = "Fuel", id = 848 })
+--MyItemConst.FUEL                               = MyItem.new({ name = "Fuel", id = 848 })
 MyItemConst.NITROGEN_GAS                       = MyItem.new({ name = "Nitrogen Gas", id = 849 })
 MyItemConst.SUPERCOMPUTER                      = MyItem.new({ name = "Supercomputer", id = 850 })
 MyItemConst.IONIZED_FUEL                       = MyItem.new({ name = "Ionized Fuel", id = 851 })
 MyItemConst.WATER                              = MyItem.new({ name = "Water", id = 852 })
-MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Heavy Oil Residue", id = 853 })
+--MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Schwerölrückstand", id = 853 })--
 MyItemConst.LIQUID_BIOFUEL                     = MyItem.new({ name = "Liquid Biofuel", id = 854 })
 MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 855 })
 MyItemConst.SULFURIC_ACID                      = MyItem.new({ name = "Sulfuric Acid", id = 856 })
