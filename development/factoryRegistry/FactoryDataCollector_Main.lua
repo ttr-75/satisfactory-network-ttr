@@ -5,6 +5,7 @@ local string_contains = helper.string_contains
 local now_ms = helper.now_ms
 local sleep_ms = helper.sleep_ms
 local pj = helper.pj
+local romanize = helper.romanize
 
 local log = require("shared.helper_log").log
 
@@ -33,6 +34,13 @@ local LOG_TAG = "FactoryDataCollector"
 ---@field myFactoryInfo FactoryInfo|nil
 ---@field registered boolean
 ---@field stationMin integer
+---@field _fatal boolean|nil
+---@field _error table|nil
+---@field _initOpts table|nil
+---@field ver integer
+---@field name string
+---@field port integer
+---@field fIgnore any|nil
 local FactoryDataCollector = setmetatable({}, { __index = NetworkAdapter })
 FactoryDataCollector.__index = FactoryDataCollector
 
@@ -49,6 +57,7 @@ function FactoryDataCollector.new(opts)
     self.registered          = false
     self.stationMin          = opts.stationMin or 0
     self._initOpts           = opts -- für spätere Re-Registrierung
+    self.fIgnore             = opts.fIgnore or nil
     self._fatal, self._error = nil, nil
 
     if not self.net then
@@ -314,6 +323,8 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
         self.myFactoryInfo.fType = C.CONSTRUCTOR
     elseif string_contains(mTypeName, "Manufacturer", false) then
         self.myFactoryInfo.fType = C.MANUFACTURER
+    elseif string_contains(mTypeName, "Refinery", false) then
+        self.myFactoryInfo.fType = C.REFINERY
     else
         log(2, ('Net-FactoryDataCollector::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
@@ -330,14 +341,24 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
         local ptype = product and product.type
         local itemName = ptype and ptype.name
         local maxStack = ptype and ptype.max or 0
+        local itemForm = ptype and ptype.form or 1
+
+        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        then
+            log(1,
+                "FactoryDataCollector: Ignoring output item '" ..
+                tostring(itemName) .. "' as per fIgnore setting.")
+            goto continue
+        end
 
         if itemName then
             local item = MyItemList:get_by_Name(itemName)
             if item then
-                item.max                  = maxStack
+                item.form          = itemForm
+                item.max           = maxStack
 
                 -- Vor-Objekt nur zur Zielbestimmung (Container/Stations-Finder nutzt itemClass)
-                local probeOutput         = FI.Output:new {
+                local probeOutput  = FI.Output:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
@@ -346,14 +367,28 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                 }
 
                 -- Container summieren
-                local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
-                local cCount, cMax        = 0, 0
-                if not ok then
-                    log(3,
-                        "FactoryDataCollector: Error finding Containers for Factory '" ..
-                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
-                else
-                    cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+
+                local cCount, cMax = 0, 0
+                if itemForm == 1 then
+                    local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                    if not ok then
+                        log(3,
+                            "FactoryDataCollector: Error finding Containers for Factory '" ..
+                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                    else
+                        cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                    end
+                elseif itemForm == 2 or itemForm == 3 or itemForm == 4 then
+                    local ok, tanks, err = FI.tanksByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                    if not ok then
+                        log(3,
+                            "FactoryDataCollector: Error finding Tanks for Factory '" ..
+                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                    else
+                        cCount, cMax = Helper_inv.sumTanks(tanks)
+                        cCount       = math.floor(cCount)
+                        cMax         = math.floor(cMax)
+                    end
                 end
 
                 -- Trainstations summieren
@@ -365,6 +400,7 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                         tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
                 else
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
+                      print(sCount, sMax)
                 end
 
                 -- Finales Output-Objekt
@@ -379,6 +415,7 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
             end
             -- wenn item nil ist, einfach diesen Eintrag überspringen (kein break!)
         end
+        ::continue::
     end
 
     ---------------------------------------------------------------------------
@@ -389,13 +426,23 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
         local itype = ing and ing.type
         local itemName = itype and itype.name
         local maxStack = itype and itype.max or 0
+        local itemForm = itype and itype.form or 1
+
+        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        then
+            log(1,
+                "FactoryDataCollector: Ignoring output item '" ..
+                tostring(itemName) .. "' as per fIgnore setting.")
+            goto continue
+        end
 
         if itemName then
             local item = MyItemList:get_by_Name(itemName)
             if item then
-                item.max                  = maxStack
+                item.form          = itemForm
+                item.max           = maxStack
 
-                local probeInput          = FI.Input:new {
+                local probeInput   = FI.Input:new {
                     itemClass          = item,
                     amountStation      = 0,
                     amountContainer    = 0,
@@ -404,14 +451,28 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                 }
 
                 -- Container summieren
-                local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeInput)
-                local cCount, cMax        = 0, 0
-                if not ok then
-                    log(3,
-                        "FactoryDataCollector: Error finding Containers for Factory '" ..
-                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
-                else
-                    cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                local cCount, cMax = 0, 0
+                if itemForm == 1 then
+                    item.max                  = maxStack
+                    local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                    if not ok then
+                        log(3,
+                            "FactoryDataCollector: Error finding Containers for Factory '" ..
+                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                    else
+                        cCount, cMax = Helper_inv.sumContainers(containers, item.max)
+                    end
+                elseif itemForm == 2 or itemForm == 3 or itemForm == 4 then
+                    local ok, tanks, err = FI.tanksByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                    if not ok then
+                        log(3,
+                            "FactoryDataCollector: Error finding Tanks for Factory '" ..
+                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                    else
+                        cCount, cMax = Helper_inv.sumTanks(tanks)
+                        cCount       = math.floor(cCount)
+                        cMax         = math.floor(cMax)
+                    end
                 end
 
                 -- Trainstations summieren
@@ -435,6 +496,7 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                 self.myFactoryInfo:updateInput(input)
             end
         end
+        ::continue::
     end
 end
 

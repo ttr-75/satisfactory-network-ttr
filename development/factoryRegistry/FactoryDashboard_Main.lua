@@ -29,6 +29,13 @@ local JSON = require("shared.serializer")
 ---@field gpu GPUProxy|nil
 ---@field last integer
 ---@field dash FactoryDashboard
+---@field ver integer
+---@field _fatal boolean|nil
+---@field _error {code:string, message:string, attempts?:integer}|nil
+---@field _responseAttempts integer|nil
+---@field name string
+---@field port integer
+
 local FactoryDashboardClient = setmetatable({}, { __index = NetworkAdapter })
 FactoryDashboardClient.__index = FactoryDashboardClient
 
@@ -44,6 +51,7 @@ function FactoryDashboardClient.new(opts)
     self.scr           = nil
     self.ver           = 1
     self.dash          = FactoryDashboard.new {}
+    self.fIgnore       = opts and opts.fIgnore or nil
     ---@type FactoryInfo|nil
     self.myFactoryInfo = opts and opts.factoryInfo or nil
     ---@type integer
@@ -107,7 +115,7 @@ function FactoryDashboardClient.new(opts)
     end
 
     local dash = FactoryDashboard.new {}
-    self.dash:init(self.gpu, self.scr)
+    self.dash:init(self.gpu, self.scr, self.fIgnore)
 
     return true, self, nil
 end

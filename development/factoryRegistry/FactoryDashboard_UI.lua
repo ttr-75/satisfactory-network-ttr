@@ -1,5 +1,6 @@
 helper           = require("shared.helper")
 local now_ms     = helper.now_ms
+local romanize   = helper.romanize
 
 local MyItemList = require("shared.items.items[-LANGUAGE-]")
 local MyItem     = require("shared.items.items_basics").MyItem
@@ -146,9 +147,10 @@ end
 ---Initializes rendering targets and root screen element.
 ---@param gpu GPUProxy
 ---@param scr ScreenProxy
-function FactoryDashboard:init(gpu, scr)
+function FactoryDashboard:init(gpu, scr, fIgnore)
     self.gpu            = gpu
     self.scr            = scr
+    self.fIgnore        = fIgnore
 
     local width, height = scr:getSize()
     width               = width * 300
@@ -262,22 +264,30 @@ function FactoryDashboard:paintOuputWarning(position, size)
     local color = Color.GREEN
     self.outputWarning = FactoryWarningLevel.OK
     for i, it in pairs(self.outputs) do
-        local sFrac = it.amountStation / it.maxAmountStation
-        local cFrac = it.amountContainer / it.maxAmountContainer
-        if sFrac < 0.5 then
-            icon = C.WARNING
-            color = Color.YELLOW
-            self.outputWarning = FactoryWarningLevel.WARN
-            if cFrac < 0.2 then
+        local itemName = it.name
+        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        then
+            log(0,
+                "FactoryDataCollector: Ignoring OuputWarning item '" ..
+                tostring(itemName) .. "' as per fIgnore setting.")
+        else
+            local sFrac = it.amountStation / it.maxAmountStation
+            local cFrac = it.amountContainer / it.maxAmountContainer
+            if sFrac < 0.5 then
+                icon = C.WARNING
+                color = Color.YELLOW
+                self.outputWarning = FactoryWarningLevel.WARN
+                if cFrac < 0.2 then
+                    icon = C.POWER
+                    color = Color.RED
+                    self.outputWarning = FactoryWarningLevel.ERROR
+                end
+            end
+            if sFrac < 0.1 then
                 icon = C.POWER
                 color = Color.RED
                 self.outputWarning = FactoryWarningLevel.ERROR
             end
-        end
-        if sFrac < 0.1 then
-            icon = C.POWER
-            color = Color.RED
-            self.outputWarning = FactoryWarningLevel.ERROR
         end
     end
 
@@ -318,22 +328,30 @@ function FactoryDashboard:paintInputWarning(position, size)
     local icon = C.FICSIT_CHECKMARK
     self.inputWarning = FactoryWarningLevel.OK
     for i, it in pairs(self.inputs) do
-        local sFrac = it.amountStation / it.maxAmountStation
-        local cFrac = it.amountContainer / it.maxAmountContainer
-        if cFrac < 0.5 then
-            icon = C.WARNING
-            color = Color.YELLOW
-            self.inputWarning = FactoryWarningLevel.WARN
-            if sFrac < 0.2 then
+        local itemName = it.name
+        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        then
+            log(0,
+                "FactoryDataCollector: Ignoring InputWarning item '" ..
+                tostring(itemName) .. "' as per fIgnore setting.")
+        else
+            local sFrac = it.amountStation / it.maxAmountStation
+            local cFrac = it.amountContainer / it.maxAmountContainer
+            if cFrac < 0.5 then
+                icon = C.WARNING
+                color = Color.YELLOW
+                self.inputWarning = FactoryWarningLevel.WARN
+                if sFrac < 0.2 then
+                    icon = C.POWER
+                    color = Color.RED
+                    self.inputWarning = FactoryWarningLevel.ERROR
+                end
+            end
+            if cFrac < 0.1 then
                 icon = C.POWER
                 color = Color.RED
                 self.inputWarning = FactoryWarningLevel.ERROR
             end
-        end
-        if cFrac < 0.1 then
-            icon = C.POWER
-            color = Color.RED
-            self.inputWarning = FactoryWarningLevel.ERROR
         end
     end
 
@@ -363,7 +381,7 @@ function FactoryDashboard:paint()
     if self.inputWarning == FactoryWarningLevel.ERROR and self.outputWarning == FactoryWarningLevel.ERROR then
         bgColor = Color.RED_DARK
     elseif (self.inputWarning == FactoryWarningLevel.ERROR or self.inputWarning == FactoryWarningLevel.WARN) or (self.outputWarning == FactoryWarningLevel.ERROR or self.outputWarning == FactoryWarningLevel.WARN) then
-      log(4,"gelb")
+        log(4, "gelb")
         bgColor = Color.YELLOW_DARK
     end
     -- Hintergrund
@@ -430,10 +448,26 @@ function FactoryDashboard:paint()
     local rightW = (w - mid) - 2 * self.pad
 
     for i, it in ipairs(self.inputs) do
-        self:_drawRow(self.pad, posY, i, it, leftW)
+        local itemName = it.name
+        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        then
+            log(1,
+                "FactoryDataCollector: Ignoring output item '" ..
+                tostring(itemName) .. "' as per fIgnore setting.")
+        else
+            self:_drawRow(self.pad, posY, i, it, leftW)
+        end
     end
     for i, it in ipairs(self.outputs) do
-        self:_drawRow(mid + self.pad, posY, i, it, rightW)
+        local itemName = it.name
+        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        then
+            log(1,
+                "FactoryDataCollector: Ignoring output item '" ..
+                tostring(itemName) .. "' as per fIgnore setting.")
+        else
+            self:_drawRow(mid + self.pad, posY, i, it, rightW)
+        end
     end
 
 
