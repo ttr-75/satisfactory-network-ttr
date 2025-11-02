@@ -1,83 +1,114 @@
+local config = require("config")
 local helper = require("shared.helper")
 local pj = helper.pj
 
 
 
--- Miner-Item-Reader (FIN Lua)
--- Übergabe: miner = component.proxy("<UUID>")  -- oder via Nick/Find
+--- Liest Fluid-Level einer (Fluid-)Freight-Platform.
+--- Gibt (current, max, fluidClassOrNil) zurück.
+---@param platform any  -- FIN Actor-Proxy der Plattform
+---@return number, number, any
+local function read_platform_fluid(platform)
+    if not platform or type(platform.getComponents) ~= "function" then
+        return 0, 0, nil
+    end
 
+    -- 1) Bevorzugt: internen Tank (PipeReservoir) nehmen -> hat content + max
+    local reservoirs = {}
+    -- In FIN kann man Klassenobjekte an getComponents übergeben:
+    -- meist via globaler 'classes' Tabelle erreichbar.
+    local ok, cls = pcall(function() return classes.PipeReservoir end)
+    if ok and cls then
+        local ok2, arr = pcall(function() return platform:getComponents(cls) end)
+        if ok2 and type(arr) == "table" and arr[1] then reservoirs = arr end
+    end
 
--- Hilfsfunktion: ersten belegten Stack in einem Inventory finden
-local function firstStack(inv)
-    if not inv then return nil end
-    local size = inv.size or 0
-    for slot = 0, size - 1 do
-        local stack = inv:getStack(slot)
-        if stack and stack.count and stack.count > 0 and stack.item then
-            return stack
+    pj(reservoirs)
+
+    if reservoirs[1] then
+        print("Found Reservoir")
+        local r = reservoirs[1]
+        local cur = tonumber(r.fluidContent) or 0
+        local max = tonumber(r.maxFluidContent) or 0
+
+        -- Optional: Fluid-Typ (ItemType-Class) mitgeben
+        local ftype = nil
+        if type(r.getFluidType) == "function" then
+            local okT, t = pcall(function() return r:getFluidType() end)
+            if okT then ftype = t end
+        end
+        return cur, max, ftype
+    end
+
+    -- 2) Fallback: PipeConnections summieren (liefert Inhalt, aber kein Max).
+    -- Nützlich, wenn kein Reservoir exponiert ist.
+    local total = 0
+    if type(platform.getPipeConnectors) == "function" then
+        local okC, conns = pcall(function() return platform:getPipeConnectors() end)
+        if okC and type(conns) == "table" then
+            for _, pc in ipairs(conns) do
+                local amt = tonumber(pc.fluidBoxContent) or 0
+                total = total + amt
+            end
         end
     end
-    return nil
-end
-
--- Alle relevanten Inventare des Miners einsammeln:
-local function collectInventories(miner)
-    local list = {}
-    -- 1) Direkte Inventare des Actors (z.B. Output-/Buffer)
-    for _, inv in ipairs(miner:getInventories() or {}) do
-        table.insert(list, inv)
-    end
-    -- 2) Inventare der Factory Connections (Output-Puffer der Ports)
-    for _, conn in ipairs(miner:getFactoryConnectors() or {}) do
-        local inv = conn:getInventory()
-        if inv then table.insert(list, inv) end
-    end
-    return list
-end
-
--- Einmal über alle Inventare schauen und den ersten Stack zurückgeben
-local function scanOnce(miner)
-    for _, inv in ipairs(collectInventories(miner)) do
-        local s = firstStack(inv)
-        if s then return s end
-    end
-    return nil
-end
-
--- Hauptfunktion:
--- Gibt bei Erfolg eine Table (Stack) zurück (inkl. s.item, s.count, …)
--- oder nil, falls (bei inaktivem Miner) nichts gefunden wurde / Timeout.
-local function readMinedItem(miner, activeTimeoutSeconds)
-    local active = (miner.standby == false) -- Factory.standby
-    if not active then
-        -- Inaktiv: einmal probieren, sonst skip (nil)
-        return scanOnce(miner)
-    end
-
-    -- Aktiv: wiederholen bis etwas im Inventar landet
-    local timeout = tonumber(activeTimeoutSeconds) or 30
-    local deadlineTicks = math.floor(timeout / 0.2)
-    for i = 1, deadlineTicks do
-        local stack = scanOnce(miner)
-        if stack then return stack end
-        helper.sleep_ms(200) -- kurz yielden, dann erneut prüfen
-    end
-    return nil      -- Sicherheit: falls nach Timeout immer noch nichts da ist
-end
-
-miner = component.proxy(component.findComponent("Miner Schwefel")[1])
-
--- Beispielnutzung:
---local miner = component.proxy("YOUR-MINER-UUID")
-local stack = readMinedItem(miner, 45) -- 45s Timeout im aktiven Fall
-if stack then
-    local name = (stack.item and (stack.item.type and stack.item.type.name or stack.item.type.name  )) or "Unknown"
-    print(("Miner fördert: %s (x%d)"):format(name, stack.count or 0))
-else
-    print("Kein Item gefunden (Miner inaktiv oder Timeout erreicht).")
+    -- Max unbekannt ohne Reservoir; 0 signalisiert "unbekannt".
+    return total, 0, nil
 end
 
 
-fac = component.proxy(component.findComponent("Factory Mehrzweckgeruest")[1])
 
-pj(fac)
+local function read_platform_fluid2(platform)
+    -- comps = platform:getComponents(classes.PipeReservoir
+    local inventory = platform:getInventories()[1]
+    if not inventory then
+        return 0, 0, nil
+    end
+    size = inventory.itemCount
+    local fluid = inventory:getStack(0)
+    print(size .. " m³".. (fluid.count / 1000) .. " m³", fluid.item.type.name)
+
+
+    pcbs = platform:getComponents(classes.PipeConnectionBase)
+    pj(pcbs)
+    for _, pcb in pairs(pcbs) do
+        pj(pcb:getConnection())
+    end
+end
+-- Beispiel-Nutzung:
+-- local platform = byAllNick("EN_Your Fluid Platform Nick") -- oder dein vorhandener Proxy
+-- local cur, max, ftype = read_platform_fluid(platform)
+-- print("Fluid:", cur, "/", (max > 0 and max or "unknown"), "type:", ftype and tostring(ftype) or "n/a")
+
+function station_fluid()
+    cn = component.findComponent("Trainstation Rohoel")
+
+    station = component.proxy(cn[1])
+
+
+    local platforms = station:getAllConnectedPlatforms() or {}
+    for _, p in pairs(platforms) do
+        local cur, max, ftype = read_platform_fluid2(p)
+
+        --    pj(cur)
+        --  pj(max)
+        --pj(ftype)
+
+        --    totals, types = readInventory(p, totals, types)
+        --    maxSlots = maxSlots + getMaxSlotsForContainer(p)
+    end
+end
+
+function tanks()
+    cn = component.findComponent("Tank Rohoel")
+    tank = component.proxy(cn[1])
+
+    -- for _, n in pairs(cn) do
+    --    local tank = component.proxy(n)
+    pj(tank.fluidContent)
+    pj(tank.maxFluidContent)
+    -- end
+end
+
+station_fluid()
+
