@@ -7,6 +7,7 @@ local sleep_s = helper.sleep_s
 local now_ms = helper.now_ms
 local byNick = helper.byNick
 local romanize = helper.romanize
+local pj = helper.pj
 
 
 require("factoryRegistry.basics")
@@ -197,6 +198,10 @@ function FactoryDashboardClient:onUpdateFactory(fromId, factoryInfoS)
     ---@cast o FactoryInfo
     self.myFactoryInfo:update(o)
     self.dash:setFromFactoryInfo(self.myFactoryInfo)
+    if (TTR_FIN_Config and TTR_FIN_Config.LOG_LEVEL == 0) or (LOG_MIN == 0) then
+        log(5, "FactoryDataCollector: FactoryInfo after performUpdate:")
+        pj(self.myFactoryInfo)
+    end
     self.dash:paint()
 end
 
