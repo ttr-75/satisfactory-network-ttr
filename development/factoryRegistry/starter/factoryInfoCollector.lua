@@ -23,8 +23,10 @@ while true do
     local ok, obj, err
     ---@diagnostic disable-next-line: undefined-global
     if stationMin then
+        ---@diagnostic disable-next-line: undefined-global
         ok, obj, err = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
     else
+        ---@diagnostic disable-next-line: undefined-global
         ok, obj, err = FactoryDataCollector.new { fName = fName }
     end
     if ok and obj then
@@ -65,8 +67,10 @@ future.addTask(async(function()
                     local ok2, obj2, e2
                     ---@diagnostic disable-next-line: undefined-global
                     if stationMin then
+                        ---@diagnostic disable-next-line: undefined-global
                         ok2, obj2, e2 = FactoryDataCollector.new { fName = fName, stationMin = stationMin }
                     else
+                        ---@diagnostic disable-next-line: undefined-global
                         ok2, obj2, e2 = FactoryDataCollector.new { fName = fName }
                     end
                     if ok2 and obj2 then

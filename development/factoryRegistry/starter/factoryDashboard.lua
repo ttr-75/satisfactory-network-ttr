@@ -8,21 +8,25 @@ FactoryDashboardClient = require("factoryRegistry.FactoryDashboard_Main")
 
 -- Weiche Validierung: keine harten Stops
 local function _is_empty(s) return s == nil or tostring(s) == "" end
+---@diagnostic disable-next-line: undefined-global
 if _is_empty(fName) then
     log(4, "factoryDashboard.lua: fName is required (nil/empty) – waiting for configuration...")
 end
+---@diagnostic disable-next-line: undefined-global
 if _is_empty(scrName) then
     log(3, "factoryDashboard.lua: scrName not set – will try to run headless until a screen appears")
 end
 
-require("shared.helper").sleep_ms(3000 + math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 1000) or
-1000))                                                                                                                            -- kleine Initial-Verzögerung
+require("shared.helper").sleep_ms(3000 +
+math.random((TTR_FIN_Config and TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 1000) or
+    1000)) -- kleine Initial-Verzögerung
 
 
 
 -- Robuste Konstruktion mit Retry (5s Backoff), passend zur New-Signatur (ok,self,err)
 local cli
 while true do
+    ---@diagnostic disable-next-line: undefined-global
     local ok, obj, err = FactoryDashboardClient.new { fName = fName, scrName = scrName }
     if ok and obj then
         cli = obj
@@ -56,6 +60,7 @@ future.addTask(async(function()
                 pcall(function() cli:close("fatal") end) -- nutzt NetHub:unregister
                 -- Neuaufbau versuchen (gleiche Logik wie oben)
                 while true do
+                    ---@diagnostic disable-next-line: undefined-global
                     local ok2, obj2, e2 = FactoryDashboardClient.new { fName = fName, scrName = scrName }
                     if ok2 and obj2 then
                         cli = obj2
