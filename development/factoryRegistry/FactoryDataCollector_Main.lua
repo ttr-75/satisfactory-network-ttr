@@ -195,6 +195,10 @@ function FactoryDataCollector:performUpdate()
     else
         self:performManufactureUpdate(manufacturer)
     end
+    if (TTR_FIN_Config and TTR_FIN_Config.LOG_LEVEL == 0) or (LOG_MIN == 0) then
+        log(5, "FactoryDataCollector: FactoryInfo after performUpdate:")
+        pj(self.myFactoryInfo)
+    end
     return true
 end
 
@@ -308,6 +312,8 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
         self.myFactoryInfo.fType = C.FOUNDRY
     elseif string_contains(mTypeName, "Constructor", false) then
         self.myFactoryInfo.fType = C.CONSTRUCTOR
+    elseif string_contains(mTypeName, "Manufacturer", false) then
+        self.myFactoryInfo.fType = C.MANUFACTURER
     else
         log(2, ('Net-FactoryDataCollector::Unknown Manufacturer Type "%s"'):format(mTypeName))
     end
@@ -430,7 +436,6 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
             end
         end
     end
-   -- pj(self.myFactoryInfo)
 end
 
 --- Server hat Registry zurückgesetzt
@@ -467,7 +472,6 @@ function FactoryDataCollector:checkTrainsignals()
         end
     end
     -- Debug: bei Bedarf aktiv lassen
-    -- pj(self.myFactoryInfo)
     return true
 end
 
