@@ -46,7 +46,7 @@ local LOOP_TAG = "FactoryDashboardStarter"
 future.addTask(async(function()
     log(0, "[loop] start:", LOOP_TAG)
 
-    local TICK = TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 0.2
+    local TICK = TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 1
     local BACKOFF = 0.5
 
     while true do

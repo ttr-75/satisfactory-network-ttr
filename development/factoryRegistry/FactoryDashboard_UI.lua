@@ -70,6 +70,7 @@ local FactoryWarningLevel = {
 ---@field root ScreenElement
 ---@field inputWarning FactoryWarningLevel
 ---@field outputWarning FactoryWarningLevel
+---@field online boolean
 local FactoryDashboard = {}
 FactoryDashboard.__index = FactoryDashboard
 
@@ -101,6 +102,7 @@ function FactoryDashboard.new(opts)
     self.outputWarning = FactoryWarningLevel.OK
     -- Client
     --self.mediaCli      = MediaClient.new()
+    self.online        = false
 
 
 
@@ -369,6 +371,22 @@ function FactoryDashboard:paintInputWarning(position, size)
     })]]
 end
 
+function FactoryDashboard:drawOnlineNotice() 
+    local w, h = self.size.x, self.size.y
+    local mid = math.floor(w / 2)
+
+    local noticeText = "OFFLINE"
+    local noticeColor = Color.RED
+    if self.online then
+        noticeText = "ONLINE"
+        noticeColor = Color.GREEN
+    end
+
+    self.root:drawText(Vector2d.new(w - 300,  50), noticeText, 48, noticeColor, false)
+    
+end
+
+
 function FactoryDashboard:paint()
     local t = now_ms()
     if t - self.lastPaint < self.minIntervalMs then return end
@@ -396,7 +414,7 @@ function FactoryDashboard:paint()
 
 
 
-    local factoryIcon = get_icon_for(self.factoryInfo.fType.name)
+    local factoryIcon = get_icon_for(self.factoryInfo.fType.name)   
     self.root:drawBox({
         position  = Vector2d.new(posX, posY),
         size      = titleIconSize,
@@ -470,7 +488,7 @@ function FactoryDashboard:paint()
         end
     end
 
-
+    self:drawOnlineNotice()
 
 
     self.gpu:flush()

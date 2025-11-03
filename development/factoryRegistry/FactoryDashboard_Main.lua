@@ -56,6 +56,9 @@ function FactoryDashboardClient.new(opts)
     self.myFactoryInfo = opts and opts.factoryInfo or nil
     ---@type integer
     self.last          = 0
+    self.lastSuccess   = now_ms()
+    self.first         = true
+
 
 
 
@@ -201,11 +204,12 @@ function FactoryDashboardClient:onUpdateFactory(fromId, factoryInfoS)
     log(0, ('Net-FarbricDashboardClient: Received Update from "%s"'):format(fromId))
     local J = JSON.new { indent = 2, sort_keys = true }
     local o = J:decode(factoryInfoS)
-    --print(arg1)
-    --local id = o.fCoreNetworkCard
+
+
     ---@cast o FactoryInfo
     self.myFactoryInfo:update(o)
     self.dash:setFromFactoryInfo(self.myFactoryInfo)
+    self.lastSuccess = now_ms()
     if (TTR_FIN_Config and TTR_FIN_Config.LOG_LEVEL == 0) or (LOG_MIN == 0) then
         log(5, "FactoryDataCollector: FactoryInfo after performUpdate:")
         pj(self.myFactoryInfo)
@@ -219,6 +223,7 @@ function FactoryDashboardClient:callForUpdate()
     if self:isFatal() then
         return false, nil, self:getError()
     end
+
     local t = now_ms()
     if t - self.last >= 1000 then
         self.last = t
@@ -231,7 +236,14 @@ function FactoryDashboardClient:callForUpdate()
         else
         end
 
-
+        if self.lastSuccess == 0 or (t - self.lastSuccess) > ((TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 3000) or 30000) then
+            self.dash.online = false
+            self.dash:paint()
+        elseif self.first == false then
+            self.dash.online = true
+            self.dash:paint()
+        end
+        self.first = false
         -- ggf. myFactoryInfo:update(...) → dann erneut mappen:
         -- dash:setFromFactoryInfo(myFactoryInfo)
     end
