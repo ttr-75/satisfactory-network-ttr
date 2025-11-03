@@ -418,6 +418,7 @@ function CodeDispatchClient.new(opts)
                 local ok, err = pcall(self._onReset)
                 if not ok then log(3, "CDC: reset handler error: " .. tostring(err)) end
             end
+            event.pull(math.random() * 5000)
             computer.reset()
         end
     end)
