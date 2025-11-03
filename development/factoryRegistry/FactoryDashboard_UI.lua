@@ -371,7 +371,7 @@ function FactoryDashboard:paintInputWarning(position, size)
     })]]
 end
 
-function FactoryDashboard:drawOnlineNotice() 
+function FactoryDashboard:drawOnlineNotice()
     local w, h = self.size.x, self.size.y
     local mid = math.floor(w / 2)
 
@@ -382,10 +382,8 @@ function FactoryDashboard:drawOnlineNotice()
         noticeColor = Color.GREEN
     end
 
-    self.root:drawText(Vector2d.new(w - 300,  50), noticeText, 48, noticeColor, false)
-    
+    self.root:drawText(Vector2d.new(w - 300, 50), noticeText, 48, noticeColor, false)
 end
-
 
 function FactoryDashboard:paint()
     local t = now_ms()
@@ -396,11 +394,17 @@ function FactoryDashboard:paint()
     local mid = math.floor(w / 2)
 
     local bgColor = self.bg
-    if self.inputWarning == FactoryWarningLevel.ERROR and self.outputWarning == FactoryWarningLevel.ERROR then
+    if #self.inputs > 0 and self.inputWarning == FactoryWarningLevel.ERROR and self.outputWarning == FactoryWarningLevel.ERROR then
         bgColor = Color.RED_DARK
-    elseif (self.inputWarning == FactoryWarningLevel.ERROR or self.inputWarning == FactoryWarningLevel.WARN) or (self.outputWarning == FactoryWarningLevel.ERROR or self.outputWarning == FactoryWarningLevel.WARN) then
-        log(4, "gelb")
+    elseif #self.inputs > 0 and ((self.inputWarning == FactoryWarningLevel.ERROR or self.inputWarning == FactoryWarningLevel.WARN)
+            or (self.outputWarning == FactoryWarningLevel.ERROR or self.outputWarning == FactoryWarningLevel.WARN)) then
         bgColor = Color.YELLOW_DARK
+    elseif #self.inputs == 0 then
+        if self.outputWarning == FactoryWarningLevel.ERROR then
+            bgColor = Color.RED_DARK
+        elseif self.outputWarning == FactoryWarningLevel.WARN then
+            bgColor = Color.YELLOW_DARK
+        end
     end
     -- Hintergrund
     self.root:drawRect(Vector2d.new(0, 0), self.size, bgColor, nil, nil)
@@ -414,7 +418,7 @@ function FactoryDashboard:paint()
 
 
 
-    local factoryIcon = get_icon_for(self.factoryInfo.fType.name)   
+    local factoryIcon = get_icon_for(self.factoryInfo.fType.name)
     self.root:drawBox({
         position  = Vector2d.new(posX, posY),
         size      = titleIconSize,
