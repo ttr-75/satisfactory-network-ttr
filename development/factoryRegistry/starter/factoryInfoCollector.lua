@@ -15,13 +15,13 @@ if _is_empty(fName) then
 end
 
 -- kleine Initial-Verzögerung, wie gehabt
-require("shared.helper").sleep_ms(1000 + math.random(500)) -- kleine Initial-Verzögerung
+require("shared.helper").sleep_ms(1000 + math.random(5000)) -- kleine Initial-Verzögerung
 
 -- Robuste Konstruktion mit Retry (5s Backoff)
 local cli
 while true do
     local ok, obj, err
----@diagnostic disable-next-line: undefined-global
+    ---@diagnostic disable-next-line: undefined-global
     local ok, obj, err = FactoryDataCollector.new { fName = fName, stationMin = stationMin, fIgnore = fIgnore, }
 
     if ok and obj then
@@ -81,9 +81,34 @@ future.addTask(async(function()
             end
 
             -- Normales Update
+        end, tb(LOOP_TAG))
+
+        if not iter_ok then
+            event.pull(BACKOFF)
+        end
+    end
+end))
+
+future.addTask(async(function()
+    log(0, "[loop] start:", LOOP_TAG)
+
+    --local TICK = TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL or 0.2
+    local TICK_INTERVAL = 0.5
+    local BACKOFF       = 0.5
+
+    while true do
+        event.pull(TICK_INTERVAL)
+        local iter_ok = xpcall(function()
+            --event.pull(TICK)
+
+            -- Fatal? -> sauber schließen & neu aufbauen
+
+
+            -- Normales Update
             local ok_call = true
             if cli.checkTrainsignals then
                 ok_call = cli:checkTrainsignals()
+                log(0, "[loop] check signal:", LOOP_TAG)
             end
             if not ok_call then
                 event.pull(BACKOFF)

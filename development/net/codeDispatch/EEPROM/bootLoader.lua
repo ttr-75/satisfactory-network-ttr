@@ -776,6 +776,8 @@ local function start_with_retry()
     end
 end
 
+event.pull(math.random(5000)/1000)
+
 start_with_retry()
 
 log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)

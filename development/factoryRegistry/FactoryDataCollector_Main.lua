@@ -559,7 +559,7 @@ function FactoryDataCollector:checkTrainsignals()
                 log(0, "Switching Signal " .. signal.nick .. " to green")
             end
         else
-            if not block.isPathBlock then
+            if block.isPathBlock == false then
                 log(0, "Switching Signal " .. signal.nick .. " to red")
                 block.isPathBlock = true
             end
