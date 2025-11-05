@@ -199,7 +199,7 @@ MyItemConst.IRON_PLATE                         = MyItem.new({ name = "Eisenplatt
 MyItemConst.IRON_ROD                           = MyItem.new({ name = "Eisenstange", id = 196 })
 MyItemConst.HUB_PARTS                          = MyItem.new({ name = "HUB Parts", id = 197 })
 MyItemConst.COPPER_ORE                         = MyItem.new({ name = "Kupfererz", id = 198 })              -- done
-MyItemConst.BAUXITE                            = MyItem.new({ name = "Bauxite", id = 199 })
+MyItemConst.BAUXITE                            = MyItem.new({ name = "Bauxit", id = 199 })
 MyItemConst.CATERIUM_ORE                       = MyItem.new({ name = "Caterium-Erz", id = 200 })           --- done
 MyItemConst.URANIUM                            = MyItem.new({ name = "Uranium", id = 201 })
 MyItemConst.CRUDE_OIL                          = MyItem.new({ name = "Rohöl", id = 202 })                  --- done
@@ -240,9 +240,9 @@ MyItemConst.PETROLEUM_COKE                     = MyItem.new({ name = "Petroleum 
 MyItemConst.STEEL_INGOT                        = MyItem.new({ name = "Stahlbarren", id = 237 }) --- done
 MyItemConst.PACKAGED_WATER                     = MyItem.new({ name = "Packaged Water", id = 238 })
 MyItemConst.PACKAGED_FUEL                      = MyItem.new({ name = "Packaged Fuel", id = 239 })
-MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 240 })
-MyItemConst.ALUMINUM_SCRAP                     = MyItem.new({ name = "Aluminum Scrap", id = 241 })
-MyItemConst.WATER                              = MyItem.new({ name = "Water", id = 242 })
+MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Aluminiumoxidlösung", id = 240 })
+MyItemConst.ALUMINUM_SCRAP                     = MyItem.new({ name = "Aluminiumschrott", id = 241 })
+MyItemConst.WATER                              = MyItem.new({ name = "Wasser", id = 242 })
 MyItemConst.CIRCUIT_BOARD                      = MyItem.new({ name = "Platine", id = 243 })                   -- done
 MyItemConst.VERSATILE_FRAMEWORK                = MyItem.new({ name = "Mehrzweckgerüst", id = 244 })           --done
 MyItemConst.CATERIUM_INGOT                     = MyItem.new({ name = "Caterium-Barren", id = 245 })           ---  done
@@ -251,7 +251,7 @@ MyItemConst.STATOR                             = MyItem.new({ name = "Stator", i
 MyItemConst.AUTOMATED_WIRING                   = MyItem.new({ name = "Automatische Verkabelung", id = 248 })  --- done
 MyItemConst.SMART_PLATING                      = MyItem.new({ name = "Intelligente Beschichtung", id = 249 }) --- done
 MyItemConst.FABRIC                             = MyItem.new({ name = "Fabric", id = 250 })
-MyItemConst.ALUMINUM_INGOT                     = MyItem.new({ name = "Aluminum Ingot", id = 251 })
+MyItemConst.ALUMINUM_INGOT                     = MyItem.new({ name = "Aluminiumbarren", id = 251 })
 MyItemConst.FUEL                               = MyItem.new({ name = "Treibstoff", id = 252 }) --- done
 MyItemConst.COMPACTED_COAL                     = MyItem.new({ name = "Compacted Coal", id = 253 })
 MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbofuel", id = 254 })
@@ -846,10 +846,10 @@ MyItemConst.PACKAGED_ROCKET_FUEL               = MyItem.new({ name = "Packaged R
 MyItemConst.NITROGEN_GAS                       = MyItem.new({ name = "Nitrogen Gas", id = 849 })
 MyItemConst.SUPERCOMPUTER                      = MyItem.new({ name = "Supercomputer", id = 850 })
 MyItemConst.IONIZED_FUEL                       = MyItem.new({ name = "Ionized Fuel", id = 851 })
-MyItemConst.WATER                              = MyItem.new({ name = "Water", id = 852 })
+--MyItemConst.WATER                              = MyItem.new({ name = "Water", id = 852 })
 --MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Schwerölrückstand", id = 853 })--
 MyItemConst.LIQUID_BIOFUEL                     = MyItem.new({ name = "Liquid Biofuel", id = 854 })
-MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 855 })
+--MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 855 })
 MyItemConst.SULFURIC_ACID                      = MyItem.new({ name = "Sulfuric Acid", id = 856 })
 MyItemConst.DISSOLVED_SILICA                   = MyItem.new({ name = "Dissolved Silica", id = 857 })
 MyItemConst.FICSONIUM                          = MyItem.new({ name = "Ficsonium", id = 858 })
