@@ -1,17 +1,18 @@
 --------------------------------------------------------------------------------
 -- Konstanten (wie in deiner Originaldatei)
 --------------------------------------------------------------------------------
-NET_PORT_CODE_DISPATCH           = 8
-NET_NAME_CODE_DISPATCH_CLIENT    = "CodeDispatchClient"
-NET_NAME_CODE_DISPATCH_SERVER    = "CodeDispatchServer"
+NET_PORT_CODE_DISPATCH             = 8
+NET_NAME_CODE_DISPATCH_CLIENT      = "CodeDispatchClient"
+NET_NAME_CODE_DISPATCH_SERVER      = "CodeDispatchServer"
 
 --NET_CMD_CODE_DISPATCH_SET_EEPROM = "CodeDispatchClient.setEEPROM"
 --NET_CMD_CODE_DISPATCH_GET_EEPROM = "CodeDispatchClient.getEEPROM"
 --NET_CMD_CODE_DISPATCH_RESET_ALL      = "CodeDispatchClient.resetAll"
 
-NET_CMD_CODE_DISPATCH_SET_EEPROM = "setEEPROM"
-NET_CMD_CODE_DISPATCH_GET_EEPROM = "getEEPROM"
-NET_CMD_CODE_DISPATCH_RESET_ALL  = "resetAll"
+NET_CMD_CODE_DISPATCH_SET_EEPROM   = "setEEPROM"
+NET_CMD_CODE_DISPATCH_GET_EEPROM   = "getEEPROM"
+NET_CMD_CODE_DISPATCH_RESET_ALL    = "resetAll"
+NET_CMD_CODE_DISPATCH_RESET_SERVER = "resetServer"
 
 
 local function _to_strings(tbl)
@@ -413,10 +414,17 @@ function CodeDispatchServer.new(opts)
         if port ~= self.port then return end
         if cmd == NET_CMD_CODE_DISPATCH_GET_EEPROM then
             self:onGetEEPROM(from, tostring(programName or ""))
+        elseif cmd == NET_CMD_CODE_DISPATCH_RESET_SERVER then
+            self:onResetServer(from)
         end
     end)
 
     return self
+end
+
+function CodeDispatchServer:onResetServer(fromId)
+    log(3, ('CodeDispatchServer: resetServer request from "%s"'):format(tostring(fromId)))
+    computer.reset()
 end
 
 --=== Prototyp-Methoden =======================================================
@@ -448,22 +456,21 @@ function CodeDispatchServer:onGetEEPROM(fromId, programName)
     self:send(fromId, NET_CMD_CODE_DISPATCH_SET_EEPROM, programName, payload)
 end
 
-
 function CodeDispatchServer:run()
-  self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
-  log(1, "CodeDispatchServer: broadcast resetAll")
-  while true do
-    local ok = xpcall(function() future.run() end, _traceback("CDS.loop"))
-    if not ok then event.pull(0.2) end
-  end
+    self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
+    log(1, "CodeDispatchServer: broadcast resetAll")
+    while true do
+        local ok = xpcall(function() future.run() end, _traceback("CDS.loop"))
+        if not ok then event.pull(0.2) end
+    end
 end
 
 --function CodeDispatchServer:run()
 --    self:broadcast(NET_CMD_CODE_DISPATCH_RESET_ALL)
 --    log(1, "CodeDispatchServer: broadcast resetAll")
- --   while true do
+--   while true do
 --        future.run()
- --   end
+--   end
 --end
 
 log(2, "Log-Level set to " .. TTR_FIN_Config.LOG_LEVEL)

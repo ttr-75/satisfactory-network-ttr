@@ -32,6 +32,8 @@ function CodeDispatchServer.new(opts)
         if port ~= self.port then return end
         if cmd == NET_CMD_CODE_DISPATCH_GET_EEPROM then
             self:onGetEEPROM(from, tostring(programName or ""))
+        elseif cmd == NET_CMD_CODE_DISPATCH_RESET_SERVER then
+            self:onResetServer(from)
         end
     end)
 
@@ -39,6 +41,10 @@ function CodeDispatchServer.new(opts)
 end
 
 --=== Prototyp-Methoden =======================================================
+function CodeDispatchServer:onResetServer(fromId)
+    log(3, ('CodeDispatchServer: resetServer request from "%s"'):format(tostring(fromId)))
+    computer.reset()
+end
 
 --- Antwortet auf GET_EEPROM mit dem angeforderten Code.
 ---@param fromId string
