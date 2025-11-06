@@ -224,7 +224,9 @@ end
 
 ---@param query string
 ---@return boolean, table[]|nil, string|nil  -- ok, componentsOrNil, err
-local function byAllNick(query)
+---@param exactly boolean|nil  -- true = nur exakte Treffer, false = alle Treffer (default)
+local function byAllNick(query, exactly)
+  if exactly == nil then exactly = false end
   if not is_str(query) or query == "" then
     return false, nil, "byAllNick: query must be non-empty string"
   end
@@ -240,7 +242,15 @@ local function byAllNick(query)
       -- harter Fehler -> gesamten Call als Fehler behandeln (konsistente Semantik)
       return false, nil, errP
     end
-    if comp then out[#out + 1] = comp end
+    if comp then
+      if exactly and comp.nick == query then
+        out[#out + 1] = comp
+        log(0, "byAllNick: matched exactly: " .. tostring(comp.nick) .. " for query: " .. tostring(query))
+      elseif exactly == false then
+        out[#out + 1] = comp
+        log(0, "byAllNick: matched (not exactly): " .. tostring(comp.nick) .. " for query: " .. tostring(query))
+      end
+    end
   end
   return true, out, nil
 end
