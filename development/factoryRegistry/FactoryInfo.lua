@@ -95,7 +95,6 @@ function Output:isInput() return false end
 ---@return boolean
 function Output:isOutput() return true end
 
-
 --- Factory Info
 
 --------------------------------------------------------------------------------
@@ -262,8 +261,9 @@ end
 ---@param ctx string
 ---@param nick string
 ---@return boolean, table[]|nil, string|nil
-local function _find_all_by_nick(ctx, nick)
-    local ok, comps, err = byAllNick(nick)
+local function _find_all_by_nick(ctx, nick, exactly)
+    if exactly == nil then exactly = false end
+    local ok, comps, err = byAllNick(nick, exactly)
     if not ok then
         return false, nil, string.format("%s: byAllNick(%q) failed: %s", ctx, nick, to_str(err))
     end
@@ -275,8 +275,9 @@ end
 ---@param ctx string
 ---@param nick string
 ---@return boolean, table|nil, string|nil
-local function _find_one_by_nick_or_err(ctx, nick)
-    local ok, comps, err = _find_all_by_nick(ctx, nick)
+local function _find_one_by_nick_or_err(ctx, nick, exactly)
+    if exactly == nil then exactly = false end
+    local ok, comps, err = _find_all_by_nick(ctx, nick, exactly)
     if not ok then return false, nil, err end
     if #comps == 0 then
         return false, nil, string.format("%s: no component found for nick %q", ctx, nick)
@@ -298,7 +299,7 @@ local function manufacturersByFactoryName(factoryName)
     local ok, nick, e = _make_nick("Manufacturer", factoryName, nil)
     if not ok then return false, nil, "manufacturersByFactoryName: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_all_by_nick("manufacturersByFactoryName", nick)
+    return _find_all_by_nick("manufacturersByFactoryName", nick, true)
 end
 
 ---@param factoryName string
@@ -307,7 +308,7 @@ local function manufacturerByFactoryName(factoryName)
     local ok, nick, e = _make_nick("Manufacturer", factoryName, nil)
     if not ok then return false, nil, "manufacturerByFactoryName: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("manufacturerByFactoryName", nick)
+    return _find_one_by_nick_or_err("manufacturerByFactoryName", nick, true)
 end
 
 ---@param factoryName string
@@ -316,7 +317,7 @@ local function minersByFactoryName(factoryName)
     local ok, nick, e = _make_nick("Miner", factoryName, nil)
     if not ok then return false, nil, "minersByFactoryName: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_all_by_nick("minersByFactoryName", nick)
+    return _find_all_by_nick("minersByFactoryName", nick, true)
 end
 
 ---@param factoryName string
@@ -325,7 +326,7 @@ local function minerByFactoryName(factoryName)
     local ok, nick, e = _make_nick("Miner", factoryName, nil)
     if not ok then return false, nil, "minerByFactoryName: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("minerByFactoryName", nick)
+    return _find_one_by_nick_or_err("minerByFactoryName", nick, true)
 end
 
 
@@ -334,7 +335,7 @@ local function oilExtractors()
     --  local ok, nick, e = _make_nick("Miner", factoryName, nil)
     --  if not ok then return false, nil, "minersByFactoryName: " .. e end
 
-    return _find_all_by_nick("oilExtractorsByFactoryName", "OilPump")
+    return _find_all_by_nick("oilExtractorsByFactoryName", "OilPump", true)
 end
 
 
@@ -342,7 +343,7 @@ end
 local function oilExtractor()
     --local ok, nick, e = _make_nick("Miner", factoryName, nil)
     --if not ok then return false, nil, "minerByFactoryName: " .. e end
-    return _find_one_by_nick_or_err("oilExtractorByFactoryName", "OilPump")
+    return _find_one_by_nick_or_err("oilExtractorByFactoryName", "OilPump", true)
 end
 
 ---@param factoryName string
@@ -352,7 +353,7 @@ local function containersByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Container", factoryName, itemStack)
     if not ok then return false, nil, "containersByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_all_by_nick("containersByFactoryStack", nick)
+    return _find_all_by_nick("containersByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -362,7 +363,7 @@ local function containerByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Container", factoryName, itemStack)
     if not ok then return false, nil, "containerByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("containerByFactoryStack", nick)
+    return _find_one_by_nick_or_err("containerByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -373,7 +374,7 @@ local function tanksByFactoryStack(factoryName, itemStack)
     pj(nick)
     if not ok then return false, nil, "containersByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_all_by_nick("tanksByFactoryStack", nick)
+    return _find_all_by_nick("tanksByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -383,7 +384,7 @@ local function tankByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Tank", factoryName, itemStack)
     if not ok then return false, nil, "containerByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("tankByFactoryStack", nick)
+    return _find_one_by_nick_or_err("tankByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -393,7 +394,7 @@ local function trainstationsByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Trainstation", factoryName, itemStack)
     if not ok then return false, nil, "trainstationsByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_all_by_nick("trainstationsByFactoryStack", nick)
+    return _find_all_by_nick("trainstationsByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -403,7 +404,7 @@ local function trainstationByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Trainstation", factoryName, itemStack)
     if not ok then return false, nil, "trainstationByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("trainstationByFactoryStack", nick)
+    return _find_one_by_nick_or_err("trainstationByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -413,7 +414,7 @@ local function trainsignalsByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Trainsignal", factoryName, itemStack)
     if not ok then return false, nil, "trainsignalsByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_all_by_nick("trainsignalsByFactoryStack", nick)
+    return _find_all_by_nick("trainsignalsByFactoryStack", nick, true)
 end
 
 ---@param factoryName string
@@ -423,7 +424,7 @@ local function trainsignalByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Trainsignal", factoryName, itemStack)
     if not ok then return false, nil, "trainsignalByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("trainsignalByFactoryStack", nick)
+    return _find_one_by_nick_or_err("trainsignalByFactoryStack", nick, true)
 end
 
 

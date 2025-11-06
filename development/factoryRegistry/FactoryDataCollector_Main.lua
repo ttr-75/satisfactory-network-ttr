@@ -190,15 +190,16 @@ end
 
 --- Statt der alten: function FactoryDataCollector:performUpdate() ... end
 function FactoryDataCollector:performUpdate()
-    local ok, manufacturer, err = FI.manufacturerByFactoryName(self.myFactoryInfo.fName)
+    local romanizedName = romanize(self.myFactoryInfo.fName or "")
+    local ok, manufacturer, err = FI.manufacturerByFactoryName(romanizedName)
     if not ok then
-        local ok2, miner, err2 = FI.minerByFactoryName(self.myFactoryInfo.fName)
+        local ok2, miner, err2 = FI.minerByFactoryName(romanizedName)
         if not ok2 then
             local ok3, oilExtractor, err3 = FI.oilExtractor()
             if not ok3 then
                 log(3, "FactoryDataCollector: No Manufacturer or Miner found for Factory '"
-                    .. tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err) .. tostring(err2) .. tostring(err3))
-                self:fail("no Manufacturer or Miner found for '" .. tostring(self.myFactoryInfo.fName) .. "'",
+                    .. tostring(romanizedName) .. "': " .. tostring(err) .. tostring(err2) .. tostring(err3))
+                self:fail("no Manufacturer or Miner found for '" .. tostring(romanizedName) .. "'",
                     "NO_FACTORY_OBJECT")
                 return false
             else
@@ -225,6 +226,9 @@ function FactoryDataCollector:performMinerUpdate(miner)
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
+
+    local romanizedName = romanize(self.myFactoryInfo.fName or "")
+
     local itemForm = 1;
     local mTypeName = (miner:getType() and miner:getType().name) or ""
     if string_contains(mTypeName, "Miner", false) then
@@ -245,12 +249,12 @@ function FactoryDataCollector:performMinerUpdate(miner)
     if itemName == nil then
         log(0,
             "FactoryDataCollector: Trying to determine mined item for Factory '" ..
-            tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories")
+            tostring(romanizedName) .. "' via Miner Inventories")
         local minedItem = Helper_inv.readMinedItemStack(miner, 30)
         if minedItem then
             log(0,
                 "FactoryDataCollector: Determined mined item for Factory '" ..
-                tostring(self.myFactoryInfo.fName) .. "' via Miner Inventories: " ..
+                tostring(romanizedName) .. "' via Miner Inventories: " ..
                 ---@diagnostic disable-next-line: undefined-field
                 tostring((minedItem and minedItem.item and minedItem.item.type.name) or "Unknown"))
             ---@diagnostic disable-next-line: undefined-field
@@ -262,7 +266,7 @@ function FactoryDataCollector:performMinerUpdate(miner)
 
     if itemName == nil then
         log(2, "FactoryDataCollector: Could not determine mined item for Factory '" ..
-            tostring(self.myFactoryInfo.fName) .. "'")
+            tostring(romanizedName) .. "'")
         return
     end
 
@@ -285,20 +289,20 @@ function FactoryDataCollector:performMinerUpdate(miner)
         -- Container summieren
         local cCount, cMax = 0, 0
         if itemForm == 1 then
-            local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+            local ok, containers, err = FI.containersByFactoryStack(romanizedName, probeOutput)
             if not ok then
                 log(3,
                     "FactoryDataCollector: Error finding Containers for Factory '" ..
-                    tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                    tostring(romanizedName) .. "': " .. tostring(err))
             else
                 cCount, cMax = Helper_inv.sumContainers(containers, item.max)
             end
         elseif itemForm == 2 or itemForm == 3 or itemForm == 4 then
-            local ok, tanks, err = FI.tanksByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+            local ok, tanks, err = FI.tanksByFactoryStack(romanizedName, probeOutput)
             if not ok then
                 log(3,
                     "FactoryDataCollector: Error finding Tanks for Factory '" ..
-                    tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                    tostring(romanizedName) .. "': " .. tostring(err))
             else
                 cCount, cMax = Helper_inv.sumTanks(tanks)
                 cCount       = math.floor(cCount)
@@ -308,12 +312,12 @@ function FactoryDataCollector:performMinerUpdate(miner)
 
 
         -- Trainstations summieren
-        local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+        local ok2, stations, err2 = FI.trainstationsByFactoryStack(romanizedName, probeOutput)
         local sCount, sMax = 0, 0
         if not ok2 then
             log(3,
                 "FactoryDataCollector: Error finding Trainstations for Factory '" ..
-                tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+                tostring(romanizedName) .. "': " .. tostring(err2))
         else
             log(0, "Summing trainstations for factory '" .. tostring(itemName) .. "'")
             sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
@@ -341,6 +345,8 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
             tostring(self.myFactoryInfo.fName) .. "'")
         return
     end
+
+    local romanizedName = romanize(self.myFactoryInfo.fName or "")
 
     -- 2) Typ bestimmen (nur, wenn verfügbar)
     local mTypeName = (manufacturer:getType() and manufacturer:getType().name) or ""
@@ -401,20 +407,20 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
 
                 local cCount, cMax = 0, 0
                 if itemForm == 1 then
-                    local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                    local ok, containers, err = FI.containersByFactoryStack(romanizedName, probeOutput)
                     if not ok then
                         log(3,
                             "FactoryDataCollector: Error finding Containers for Factory '" ..
-                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                            tostring(romanizedName) .. "': " .. tostring(err))
                     else
                         cCount, cMax = Helper_inv.sumContainers(containers, item.max)
                     end
                 elseif itemForm == 2 or itemForm == 3 or itemForm == 4 then
-                    local ok, tanks, err = FI.tanksByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                    local ok, tanks, err = FI.tanksByFactoryStack(romanizedName, probeOutput)
                     if not ok then
                         log(3,
                             "FactoryDataCollector: Error finding Tanks for Factory '" ..
-                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                            tostring(romanizedName) .. "': " .. tostring(err))
                     else
                         cCount, cMax = Helper_inv.sumTanks(tanks)
                         cCount       = math.floor(cCount)
@@ -423,12 +429,12 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                 end
 
                 -- Trainstations summieren
-                local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeOutput)
+                local ok2, stations, err2 = FI.trainstationsByFactoryStack(romanizedName, probeOutput)
                 local sCount, sMax = 0, 0
                 if not ok2 then
                     log(3,
                         "FactoryDataCollector: Error finding Trainstations for Factory '" ..
-                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+                        tostring(romanizedName) .. "': " .. tostring(err2))
                 else
                     log(0, "Summing trainstations for factory '" .. tostring(itemName) .. "'")
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
@@ -485,20 +491,20 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                 local cCount, cMax = 0, 0
                 if itemForm == 1 then
                     item.max                  = maxStack
-                    local ok, containers, err = FI.containersByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                    local ok, containers, err = FI.containersByFactoryStack(romanizedName, probeInput)
                     if not ok then
                         log(3,
                             "FactoryDataCollector: Error finding Containers for Factory '" ..
-                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                            tostring(romanizedName) .. "': " .. tostring(err))
                     else
                         cCount, cMax = Helper_inv.sumContainers(containers, item.max)
                     end
                 elseif itemForm == 2 or itemForm == 3 or itemForm == 4 then
-                    local ok, tanks, err = FI.tanksByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                    local ok, tanks, err = FI.tanksByFactoryStack(romanizedName, probeInput)
                     if not ok then
                         log(3,
                             "FactoryDataCollector: Error finding Tanks for Factory '" ..
-                            tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                            tostring(romanizedName) .. "': " .. tostring(err))
                     else
                         cCount, cMax = Helper_inv.sumTanks(tanks)
                         cCount       = math.floor(cCount)
@@ -507,12 +513,12 @@ function FactoryDataCollector:performManufactureUpdate(manufacturer)
                 end
 
                 -- Trainstations summieren
-                local ok2, stations, err2 = FI.trainstationsByFactoryStack(self.myFactoryInfo.fName, probeInput)
+                local ok2, stations, err2 = FI.trainstationsByFactoryStack(romanizedName, probeInput)
                 local sCount, sMax = 0, 0
                 if not ok2 then
                     log(3,
                         "FactoryDataCollector: Error finding Trainstations for Factory '" ..
-                        tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err2))
+                        tostring(romanizedName) .. "': " .. tostring(err2))
                 else
                     log(0, "Summing trainstations for factory '" .. tostring(itemName) .. "'")
                     sCount, sMax = Helper_inv.sumTrainstations(stations, item.max)
@@ -539,16 +545,18 @@ function FactoryDataCollector:checkTrainsignals()
     if t - self.last < 1000 then return true end
     self.last = t
 
+    local romanizedName = romanize(self.myFactoryInfo.fName or "")
+
     for _, input in pairs(self.myFactoryInfo.inputs or {}) do
-        local ok, signal, err = FI.trainsignalByFactoryStack(self.myFactoryInfo.fName, input)
+        local ok, signal, err = FI.trainsignalByFactoryStack(romanizedName, input)
         if not ok then
             log(0, "FactoryDataCollector: Error finding Trainsignal for Factory '"
-                .. tostring(self.myFactoryInfo.fName) .. "': " .. tostring(err))
+                .. tostring(romanizedName) .. "': " .. tostring(err))
             return false
         end
         if not signal then
             log(0, "FactoryDataCollector: No Trainsignal found for Factory '"
-                .. tostring(self.myFactoryInfo.fName) .. "' and Input Item '"
+                .. tostring(romanizedName) .. "' and Input Item '"
                 .. tostring(input.itemClass and input.itemClass.name) .. "'")
             return false
         end
