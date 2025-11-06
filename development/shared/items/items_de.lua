@@ -227,8 +227,8 @@ MyItemConst.MOTOR                              = MyItem.new({ name = "Motor", id
 MyItemConst.PLASTIC                            = MyItem.new({ name = "Kunststoff", id = 224 })
 MyItemConst.HEAVY_MODULAR_FRAME                = MyItem.new({ name = "Schwerer modularer Rahmen", id = 225 }) --- done
 MyItemConst.HIGH_SPEED_CONNECTOR               = MyItem.new({ name = "Highspeed-Anschluss", id = 226 })
-MyItemConst.ALCLAD_ALUMINUM_SHEET              = MyItem.new({ name = "Alclad Aluminum Sheet", id = 227 })
-MyItemConst.ALUMINUM_CASING                    = MyItem.new({ name = "Aluminum Casing", id = 228 })
+MyItemConst.ALCLAD_ALUMINUM_SHEET              = MyItem.new({ name = "Alclad-Aluminiumblech", id = 227 })
+MyItemConst.ALUMINUM_CASING                    = MyItem.new({ name = "Aluminumgehäuse", id = 228 })
 MyItemConst.RADIO_CONTROL_UNIT                 = MyItem.new({ name = "Radio Control Unit", id = 229 })
 MyItemConst.AI_LIMITER                         = MyItem.new({ name = "KI-Begrenzer", id = 230 })      ---    done
 MyItemConst.DRONE                              = MyItem.new({ name = "Drone", id = 231 })
