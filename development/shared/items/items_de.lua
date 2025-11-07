@@ -253,8 +253,8 @@ MyItemConst.SMART_PLATING                      = MyItem.new({ name = "Intelligen
 MyItemConst.FABRIC                             = MyItem.new({ name = "Fabric", id = 250 })
 MyItemConst.ALUMINUM_INGOT                     = MyItem.new({ name = "Aluminiumbarren", id = 251 })
 MyItemConst.FUEL                               = MyItem.new({ name = "Treibstoff", id = 252 }) --- done
-MyItemConst.COMPACTED_COAL                     = MyItem.new({ name = "Compacted Coal", id = 253 })
-MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbofuel", id = 254 })
+MyItemConst.COMPACTED_COAL                     = MyItem.new({ name = "Verdichtete Kohle", id = 253 })
+MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbotreibstoff", id = 254 })
 MyItemConst.PACKAGED_TURBOFUEL                 = MyItem.new({ name = "Packaged Turbofuel", id = 255 })
 MyItemConst.STEEL_PIPE                         = MyItem.new({ name = "Stahlrohr", id = 256 }) --- done
 MyItemConst.BATTERY                            = MyItem.new({ name = "Battery", id = 257 })
@@ -840,7 +840,7 @@ MyItemConst.LOW_BARRIER                        = MyItem.new({ name = "Low Barrie
 MyItemConst.HIGH_BARRIER                       = MyItem.new({ name = "High Barrier", id = 843 })
 MyItemConst.EXCITED_PHOTONIC_MATTER            = MyItem.new({ name = "Excited Photonic Matter", id = 844 })
 MyItemConst.DARK_MATTER_RESIDUE                = MyItem.new({ name = "Dark Matter Residue", id = 845 })
-MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbofuel", id = 846 })
+--MyItemConst.TURBOFUEL                          = MyItem.new({ name = "Turbofuel", id = 846 })
 MyItemConst.PACKAGED_ROCKET_FUEL               = MyItem.new({ name = "Packaged Rocket Fuel", id = 847 })
 --MyItemConst.FUEL                               = MyItem.new({ name = "Fuel", id = 848 })
 MyItemConst.NITROGEN_GAS                       = MyItem.new({ name = "Nitrogen Gas", id = 849 })
