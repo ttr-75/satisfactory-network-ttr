@@ -302,13 +302,17 @@ local function manufacturersByFactoryName(factoryName)
     return _find_all_by_nick("manufacturersByFactoryName", nick, true)
 end
 
----@param factoryName string
+---@param manufacturerName string
 ---@return boolean, Manufacturer|nil, string|nil
-local function manufacturerByFactoryName(factoryName)
-    local ok, nick, e = _make_nick("Manufacturer", factoryName, nil)
-    if not ok then return false, nil, "manufacturerByFactoryName: " .. e end
-    ---@diagnostic disable-next-line:  param-type-mismatch
-    return _find_one_by_nick_or_err("manufacturerByFactoryName", nick, true)
+local function manufacturerByFactoryName(manufacturerName)
+    if manufacturerName then
+        local ok, nick, e = _make_nick("Manufacturer", manufacturerName, nil)
+        if not ok then return false, nil, "manufacturerByFactoryName: " .. e end
+        ---@diagnostic disable-next-line:  param-type-mismatch
+        return _find_one_by_nick_or_err("manufacturerByFactoryName", nick, true)
+    else
+        return _find_one_by_nick_or_err("manufacturerByFactoryName", "Manufacturer", false)
+    end
 end
 
 ---@param factoryName string
@@ -371,7 +375,6 @@ end
 ---@return boolean, FGBuildableStorage[]|nil, string|nil
 local function tanksByFactoryStack(factoryName, itemStack)
     local ok, nick, e = _make_nick("Tank", factoryName, itemStack)
-    pj(nick)
     if not ok then return false, nil, "containersByFactoryStack: " .. e end
     ---@diagnostic disable-next-line:  param-type-mismatch
     return _find_all_by_nick("tanksByFactoryStack", nick, true)

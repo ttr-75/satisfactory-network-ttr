@@ -41,6 +41,8 @@ local LOG_TAG = "FactoryDataCollector"
 ---@field name string
 ---@field port integer
 ---@field fIgnore any|nil
+---@field fManufacturer string|nil
+---@field fSignal boolean|nil
 local FactoryDataCollector = setmetatable({}, { __index = NetworkAdapter })
 FactoryDataCollector.__index = FactoryDataCollector
 
@@ -58,6 +60,8 @@ function FactoryDataCollector.new(opts)
     self.stationMin          = opts.stationMin or 0
     self._initOpts           = opts -- für spätere Re-Registrierung
     self.fIgnore             = opts.fIgnore or nil
+    self.fManufacturer       = opts.fManufacturer or nil
+    self.fSignal             = opts.fSignal or true
     self._fatal, self._error = nil, nil
 
     if not self.net then
@@ -82,6 +86,7 @@ function FactoryDataCollector.new(opts)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_UPDATE then
             self:onGetFactoryUpdate(from, a)
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REGISTER_FACTORY then
+            log(0, LOG_TAG .. ": received unexpected REGISTER_FACTORY on client – ignoring from " .. tostring(a))
             -- Nothing just catch
         elseif port == self.port and cmd == NET_CMD_FACTORY_REGISTRY_REQUEST_FACTORY_ADDRESS then
             -- Nothing just catch
@@ -191,7 +196,8 @@ end
 --- Statt der alten: function FactoryDataCollector:performUpdate() ... end
 function FactoryDataCollector:performUpdate()
     local romanizedName = romanize(self.myFactoryInfo.fName or "")
-    local ok, manufacturer, err = FI.manufacturerByFactoryName(romanizedName)
+
+    local ok, manufacturer, err = FI.manufacturerByFactoryName(self.fManufacturer)
     if not ok then
         local ok2, miner, err2 = FI.minerByFactoryName(romanizedName)
         if not ok2 then
@@ -542,7 +548,8 @@ end
 function FactoryDataCollector:checkTrainsignals()
     local t = now_ms()
     self.last = self.last or 0
-    if t - self.last < 1000 then return true end
+    if t - self.last < 1000 then return false end
+    if self.fSignal == false then return false end
     self.last = t
 
     local romanizedName = romanize(self.myFactoryInfo.fName or "")
