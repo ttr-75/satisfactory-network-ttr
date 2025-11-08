@@ -1,4 +1,6 @@
--- local name = "net.codeDispatch.starter.resetServer"
+--[[
+local name = "net.codeDispatch.starter.resetServer"
+]]
 
 
 require("config")

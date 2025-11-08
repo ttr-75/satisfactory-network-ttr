@@ -4,6 +4,7 @@ local name = "factoryRegistry.starter.factoryInfoCollector"
 fName="Treibstoff 1"
 fIgnore="Polymerharz"
 fSignal = false
+fManufacturer = nil
 
 ]]
 require("config")
