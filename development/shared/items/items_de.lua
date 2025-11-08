@@ -276,7 +276,7 @@ MyItemConst.PACKAGED_NITROGEN_GAS              = MyItem.new({ name = "Packaged N
 MyItemConst.TURBO_MOTOR                        = MyItem.new({ name = "Turbo Motor", id = 273 })
 MyItemConst.QUICKWIRE                          = MyItem.new({ name = "Turbodraht", id = 274 }) --done
 MyItemConst.SILICA                             = MyItem.new({ name = "Quarzsand", id = 275 })  ---  done
-MyItemConst.BLACK_POWDER                       = MyItem.new({ name = "Black Powder", id = 276 })
+MyItemConst.BLACK_POWDER                       = MyItem.new({ name = "Schwarzpulver", id = 276 })
 MyItemConst.NOBELISK                           = MyItem.new({ name = "Nobelisk", id = 277 })
 MyItemConst.ENCASED_URANIUM_CELL               = MyItem.new({ name = "Encased Uranium Cell", id = 278 })
 MyItemConst.URANIUM_FUEL_ROD                   = MyItem.new({ name = "Uranium Fuel Rod", id = 279 })
