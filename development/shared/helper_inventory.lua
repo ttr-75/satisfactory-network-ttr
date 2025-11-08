@@ -130,7 +130,7 @@ local function sumTrainstations(stations, itemMax)
   for _, station in pairs(stations or {}) do
     local platforms = station:getAllConnectedPlatforms() or {}
     for _, p in pairs(platforms) do
-      if p and (p:isA(classes.Build_TrainPlatformDockingSideFluid_C) or p:isA(classes.Build_TrainDockingStationLiquid_C)) then
+      if p and (p:isA(classes.Build_TrainPlatformDockingSideFluid_C) or p:isA(classes.Build_TrainPlatformDockingSideFluid_Underfed_C) or p:isA(classes.Build_TrainDockingStationLiquid_C)) then
         log(0, "Fluid platform found" .. type(p))
         local inventory = p:getInventories()[1]
         local fluid = inventory:getStack(0)
