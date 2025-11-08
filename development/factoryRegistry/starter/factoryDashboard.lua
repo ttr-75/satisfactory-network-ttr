@@ -92,5 +92,29 @@ future.addTask(async(function()
 end))
 
 
+--[[ Restart loop for scheduled computer restarts according to configuration ]]
+future.addTask(async(function()
+    log(1, "[loop] restart loop start:", LOOP_TAG)
+
+
+
+    while true do
+        -- Pro Tick geschützt
+        local iter_ok = xpcall(function()
+            local min = TTR_FIN_Config.RESTART_COMPUTERS_MIN or 30
+            local max = TTR_FIN_Config.RESTART_COMPUTERS_MAX or 60
+
+            if min < 10 then min = 10 end
+            if max < min + 5 then max = min + 5 end
+
+
+            local restart_time = math.random(min * 60, max * 60)
+            log(1, ("[loop] restart in %d secondes (%f minutes)"):format(restart_time, restart_time / 60))
+            event.pull(restart_time)
+            log(2, "[loop] restarting computer now")
+            computer.reset()
+        end, tb(LOOP_TAG))
+    end
+end))
 
 future.loop()

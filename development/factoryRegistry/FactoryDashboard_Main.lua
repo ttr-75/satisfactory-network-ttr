@@ -239,11 +239,17 @@ function FactoryDashboardClient:callForUpdate()
         if self.lastSuccess == 0 or (t - self.lastSuccess) > ((TTR_FIN_Config.FACTORY_SCREEN_UPDATE_INTERVAL * 3000) or 30000) then
             self.dash.online = false
             self.dash:paint()
-        elseif self.first == false then
-            self.dash.online = true
-            self.dash:paint()
+            log(0, "FactoryDashboardClient: Offline detected")
+            --elseif self.first == false then
+        else
+            if self.first == false then
+                log(0, "FactoryDashboardClient: Online again")
+                self.dash.online = true
+                self.dash:paint()
+            end
+            self.first = false
         end
-        self.first = false
+
         -- ggf. myFactoryInfo:update(...) → dann erneut mappen:
         -- dash:setFromFactoryInfo(myFactoryInfo)
     end
