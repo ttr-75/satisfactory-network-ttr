@@ -1,4 +1,4 @@
-
+---gpt ignore
 -------------------------------------------------------------------------------
 -- MediaServer – liefert Dateien (z. B. PNG) in Chunks
 -- Abhängigkeiten: NetHub.lua, NetworkAdapter.lua (bereits bei dir vorhanden)

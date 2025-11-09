@@ -1,3 +1,4 @@
+---gpt ignore
 ---@diagnostic disable: duplicate-doc-field, duplicate-set-field, redefined-local, lowercase-global
 
 
