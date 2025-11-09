@@ -17,13 +17,6 @@ FactoryInfo = require("factoryRegistry.FactoryInfo")
 ----------------------------------------------------------------
 
 
----Monotonic-ish milliseconds (prefers game API, falls back to os.clock).
----@return integer ms
-local function now_ms()
-    return (computer and computer.millis and computer.millis())
-        or math.floor(os.clock() * 1000)
-end
-
 ---FIN icon cache by item name.
 ---@type table<string, MyItem|nil>
 local _icon_cache = {}
@@ -129,7 +122,7 @@ function FactoryDashboard:setFromFactoryInfo(fi)
                     maxAmountContainer = obj.maxAmountContainer or 0,
                 }
             end
-            table.sort(rows, function(a, b) return tostring(a.name) < tostring(b.name) end)
+            table.sort(rows, function(a, b) return a.name < b.name end)
         end
         return rows
     end
@@ -153,6 +146,8 @@ function FactoryDashboard:init(gpu, scr, fIgnore)
     self.gpu            = gpu
     self.scr            = scr
     self.fIgnore        = fIgnore
+
+    self.fIgnoreRoman   = romanize(self.fIgnore)
 
     local width, height = scr:getSize()
     width               = width * 300
@@ -267,7 +262,7 @@ function FactoryDashboard:paintOuputWarning(position, size)
     self.outputWarning = FactoryWarningLevel.OK
     for i, it in pairs(self.outputs) do
         local itemName = it.name
-        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        if self.fIgnoreRoman and romanize(itemName) == self.fIgnoreRoman
         then
             log(0,
                 "FactoryDataCollector: Ignoring OuputWarning item '" ..
@@ -331,7 +326,7 @@ function FactoryDashboard:paintInputWarning(position, size)
     self.inputWarning = FactoryWarningLevel.OK
     for i, it in pairs(self.inputs) do
         local itemName = it.name
-        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        if self.fIgnoreRoman and romanize(itemName) == self.fIgnoreRoman
         then
             log(0,
                 "FactoryDataCollector: Ignoring InputWarning item '" ..
@@ -471,7 +466,7 @@ function FactoryDashboard:paint()
 
     for i, it in ipairs(self.inputs) do
         local itemName = it.name
-        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        if self.fIgnoreRoman and romanize(itemName) == self.fIgnoreRoman
         then
             log(1,
                 "FactoryDataCollector: Ignoring output item '" ..
@@ -482,7 +477,7 @@ function FactoryDashboard:paint()
     end
     for i, it in ipairs(self.outputs) do
         local itemName = it.name
-        if self.fIgnore and romanize(itemName) == romanize(self.fIgnore)
+        if self.fIgnoreRoman and romanize(itemName) == self.fIgnoreRoman
         then
             log(1,
                 "FactoryDataCollector: Ignoring output item '" ..
