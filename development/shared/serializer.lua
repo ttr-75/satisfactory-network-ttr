@@ -308,10 +308,22 @@ end
 
 -- Default-Instanz + Helfer
 JSON.default = JSON.new()
+
 local function json_encode(value, opts) return JSON.default:encode(value, opts) end
 
 local function json_decode(str) return JSON.default:decode(str) end
 
+function JSON.safe_encode(self, value, opts)
+  local ok, res = pcall(function() return self:encode(value, opts) end)
+  if ok then return true, res end
+  return false, nil, res
+end
+
+function JSON.safe_decode(self, str)
+  local ok, res = pcall(function() return self:decode(str) end)
+  if ok then return true, res end
+  return false, nil, res
+end
 
 return JSON
 

@@ -19,10 +19,18 @@
 ]]
 
 local Helper_log = require("shared.helper_log")
-local log = Helper_log.log
-local JSON = require("shared.serializer")
-local i18n = require("shared.helper[-LANGUAGE-]")
+local log        = Helper_log.log
+local JSON       = require("shared.serializer")
+local i18n       = require("shared.helper[-LANGUAGE-]")
 
+local _G         = _G
+local computer   = _G.computer
+local event      = _G.event
+local component  = _G.component
+
+local event_pull = event and event.pull
+local comp_find  = component and component.findComponent
+local comp_proxy = component and component.proxy
 
 
 ---@param where string  -- Kontext (für Fehlertexte)
@@ -62,7 +70,15 @@ local function sleep_ms(ms)
   while true do
     local remaining = deadline - now_ms()
     if remaining <= 0 then break end
-    event.pull(math.min(remaining, 250) / 1000) -- max 250ms pro Pull hält UI/Netzwerk reaktiv
+    if event_pull then
+      event_pull(math.min(remaining, 250) / 1000)
+    else
+      -- Fallback ohne Events: busy-sleep in kleinen Slices
+      local slice = math.min(remaining, 25)
+      -- leichte CPU-Schonung
+      local target = now_ms() + slice
+      while now_ms() < target do end
+    end
   end
 end
 
@@ -90,10 +106,49 @@ local function throttle_ms(fn, interval_ms)
   end
 end
 
+-- Optionale trailing-Variante (führt den letzten Aufruf nach Ablauf aus)
+-- Nutzt, wenn vorhanden, event.pull; sonst Zeit-Loop (siehe sleep_ms).
+local function throttle_ms_trailing(fn, interval_ms)
+  local last = 0
+  local queued = false
+  local qargs
+  local flushing = false
+
+  local function flush_after(wait_ms)
+    if flushing then return end
+    flushing = true
+    -- einfacher Timer über sleep_ms
+    sleep_ms(wait_ms)
+    flushing = false
+    if queued then
+      queued = false
+      last = now_ms()
+      local args = qargs; qargs = nil
+      return fn(table.unpack(args, 1, args.n))
+    end
+  end
+
+  return function(...)
+    local t = now_ms()
+    local delta = t - last
+    if delta >= interval_ms then
+      last = t
+      return fn(...)
+    else
+      -- merken & später ausführen
+      queued = true
+      qargs = table.pack(...)
+      flush_after(interval_ms - delta)
+    end
+  end
+end
+
 ----------------------------------------------------------------
 -- Strings
 ----------------------------------------------------------------
-
+local function is_non_empty_string(v)
+  return type(v) == "string" and v ~= ""
+end
 
 ---@param v any
 ---@return string
@@ -113,36 +168,35 @@ local function is_longer_than(s, x)
   return #s > x
 end
 
---- Fall-insensitive Teilstring-Suche ohne Patterns.
--- @param s string|nil
--- @param sub string|nil
--- @return boolean true, wenn gefunden
-local function string_icontains(s, sub)
-  if s == nil or sub == nil then return false end
-  return string.find(string.lower(s), string.lower(sub), 1, true) ~= nil
-end
 
 --- Fall-sensitive Teilstring-Suche ohne Patterns.
 -- @param s string|nil Volltext
 -- @param sub string|nil gesuchter Teilstring
 -- @param caseSensitiv boolean|nil true = case-sensitive (Default), false = case-insensitive
 -- @return boolean true, wenn gefunden
-local function string_contains(s, sub, caseSensitiv)
-  if not caseSensitiv then
-    caseSensitiv = true
+local function string_contains(s, sub, caseSensitive)
+  if type(s) ~= "string" or type(sub) ~= "string" then return false end
+  if caseSensitive == nil then caseSensitive = true end
+  if not caseSensitive then
+    s, sub = s:lower(), sub:lower()
   end
-  if caseSensitiv then
-    if s == nil or sub == nil then return false end
-    return string.find(s, sub, 1, true) ~= nil
-  else
-    return string_icontains(s, sub)
-  end
+  return s:find(sub, 1, true) ~= nil
 end
 
 local function romanize(s)
   if type(s) ~= "string" then return s end
   return i18n.romanize(s)
 end
+
+--- Fall-insensitive Teilstring-Suche ohne Patterns.
+-- @param s string|nil
+-- @param sub string|nil
+-- @return boolean true, wenn gefunden
+local function string_icontains(s, sub)
+  -- delegiert => einheitliche Semantik
+  return string_contains(s, sub, false)
+end
+
 
 
 --------------------------------------------------------------------------------
@@ -292,13 +346,23 @@ end
 -- @param opts table|nil z.B. { indent=2, sort_keys=true, cycle="<cycle>" }
 -- @return string JSON-String
 -- Hinweis: `shared/serializer.lua` sollte `JSON.new()` global verfügbar machen.
+local JSON = require("shared.serializer")
+
+-- Standard-Optionen einmal definieren
+local DEFAULT_JSON_OPTS = { indent = 2, sort_keys = true }
+
+-- Einmalige Default-Instanz
+local JSON_DEFAULT = JSON.new(DEFAULT_JSON_OPTS)
+
 local function pretty_json(value, opts)
-  local J = JSON.new(opts or { indent = 2, sort_keys = true })
-  return J:encode(value)
+  if not opts then
+    return JSON_DEFAULT:encode(value)
+  else
+    -- seltener Fall: eigene Optionen -> Einmal-Encoder erzeugen
+    return JSON.new(opts):encode(value)
+  end
 end
 
---- Kurzform zum Debug-Dumpen von Werten (print + JSON).
--- @param value any
 local function pj(value)
   print(pretty_json(value))
 end
@@ -306,20 +370,32 @@ end
 
 
 return {
+  -- Zeit
   now_ms = now_ms,
   sleep_ms = sleep_ms,
-  sleep_s = sleep_s,
+  sleep_s = function(seconds) sleep_ms(math.floor((seconds or 0) * 1000)) end,
+
+  -- Throttle
   throttle_ms = throttle_ms,
-  is_longer_than = is_longer_than,
-  romanize = romanize,
+  throttle_ms_trailing = throttle_ms_trailing,
+
+  -- Strings
   string_contains = string_contains,
   string_icontains = string_icontains,
+  romanize = romanize,
+
+  -- Lookups
   byNick = byNick,
   byAllNick = byAllNick,
   byClass = byClass,
+
+  -- JSON
   pretty_json = pretty_json,
   pj = pj,
+
+  -- Utils
   pcall_norm = pcall_norm,
-  is_str = is_str,
-  to_str = to_str,
+  is_str = function(v) return type(v) == "string" end,
+  to_str = function(v) return v == nil and "nil" or tostring(v) end,
+  is_non_empty_string = is_non_empty_string,
 }
