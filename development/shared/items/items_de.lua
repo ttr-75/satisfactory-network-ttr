@@ -263,7 +263,7 @@ MyItemConst.COOLING_SYSTEM                     = MyItem.new({ name = "Cooling Sy
 MyItemConst.ELECTROMAGNETIC_CONTROL_ROD        = MyItem.new({ name = "Electromagnetic Control Rod", id = 260 })
 MyItemConst.URANIUM_WASTE                      = MyItem.new({ name = "Uranium Waste", id = 261 })
 MyItemConst.NITRIC_ACID                        = MyItem.new({ name = "Nitric Acid", id = 262 })
-MyItemConst.SULFURIC_ACID                      = MyItem.new({ name = "Sulfuric Acid", id = 263 })
+MyItemConst.SULFURIC_ACID                      = MyItem.new({ name = "Schwefelsäure", id = 263 })  --- done
 MyItemConst.NON_FISSILE_URANIUM                = MyItem.new({ name = "Non-Fissile Uranium", id = 264 })
 MyItemConst.FUSED_MODULAR_FRAME                = MyItem.new({ name = "Fused Modular Frame", id = 265 })
 MyItemConst.ENCASED_PLUTONIUM_CELL             = MyItem.new({ name = "Encased Plutonium Cell", id = 266 })
@@ -850,7 +850,7 @@ MyItemConst.IONIZED_FUEL                       = MyItem.new({ name = "Ionized Fu
 --MyItemConst.HEAVY_OIL_RESIDUE                  = MyItem.new({ name = "Schwerölrückstand", id = 853 })--
 MyItemConst.LIQUID_BIOFUEL                     = MyItem.new({ name = "Liquid Biofuel", id = 854 })
 --MyItemConst.ALUMINA_SOLUTION                   = MyItem.new({ name = "Alumina Solution", id = 855 })
-MyItemConst.SULFURIC_ACID                      = MyItem.new({ name = "Sulfuric Acid", id = 856 })
+--MyItemConst.SULFURIC_ACID                      = MyItem.new({ name = "Sulfuric Acid", id = 856 })
 MyItemConst.DISSOLVED_SILICA                   = MyItem.new({ name = "Dissolved Silica", id = 857 })
 MyItemConst.FICSONIUM                          = MyItem.new({ name = "Ficsonium", id = 858 })
 MyItemConst.FICSONIUM_FUEL_ROD                 = MyItem.new({ name = "Ficsonium Fuel Rod", id = 859 })
