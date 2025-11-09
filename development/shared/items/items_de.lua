@@ -673,7 +673,7 @@ MyItemConst.HATCHER_REMAINS                    = MyItem.new({ name = "Hatcher Re
 MyItemConst.STINGER_REMAINS                    = MyItem.new({ name = "Stinger Remains", id = 676 })
 MyItemConst.STUN_REBAR                         = MyItem.new({ name = "Stun Rebar", id = 677 })
 MyItemConst.RIFLE_AMMO                         = MyItem.new({ name = "Gewehrmunition", id = 678 }) --- done
-MyItemConst.HOMING_RIFLE_AMMO                  = MyItem.new({ name = "Homing Rifle Ammo", id = 679 })
+MyItemConst.HOMING_RIFLE_AMMO                  = MyItem.new({ name = "Zielsuch-Gewehrmunition", id = 679 }) --- done
 MyItemConst.GAS_NOBELISK                       = MyItem.new({ name = "Gas Nobelisk", id = 680 })
 MyItemConst.SHATTER_REBAR                      = MyItem.new({ name = "Shatter Rebar", id = 681 })
 MyItemConst.PULSE_NOBELISK                     = MyItem.new({ name = "Pulse Nobelisk", id = 682 })
